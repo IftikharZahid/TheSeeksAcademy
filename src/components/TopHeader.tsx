@@ -1,0 +1,107 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { notices } from '../screens/NoticesScreen';
+
+export const TopHeader: React.FC<{ title?: string; onBell?: () => void; notificationCount?: number }> = ({ title = 'Home', onBell, notificationCount }) => {
+  const navigation = useNavigation<any>();
+  
+  const handleBellPress = () => {
+    if (onBell) {
+      onBell();
+    } else {
+      // Navigate to NoticeBoard tab in MainTabs
+      navigation.navigate('NoticeBoard');
+    }
+  };
+
+  const count = notificationCount !== undefined ? notificationCount : notices.length;
+
+  return (
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.leftSection}>
+          <View style={styles.avatar}>
+            <Image source={require('../assets/profile.jpg')} style={styles.avatarImage} />
+          </View>
+          <View style={styles.userInfo}>
+            <Text style={styles.welcomeText}>Welcome back</Text>
+            <Text style={styles.userName}>Iftikhar Zahid</Text>
+          </View>
+        </View>
+        <TouchableOpacity onPress={handleBellPress} style={styles.bellButton}>
+          <Text style={{ fontSize: 20 }}>🔔</Text>
+          {count > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{count > 9 ? '9+' : count}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  safeArea: {
+    backgroundColor: '#f9fafb',
+  },
+  container: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  leftSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarText: {
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  userInfo: {
+    marginLeft: 12,
+  },
+  welcomeText: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  bellButton: {
+    padding: 8,
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 2,
+  },
+  badgeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+});
