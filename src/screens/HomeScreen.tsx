@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, StyleSheet, StatusBar, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useCourses } from '../context/CoursesContext';
+import { DeckSwiper } from '../components/DeckSwiper';
 
 const quickItems = [
   { key: 'courses', label: 'Courses', emoji: '📚' },
@@ -57,24 +58,7 @@ export const HomeScreen: React.FC = () => {
             <Text style={styles.featuredTitle}>
               {featuredCourses.length > 0 ? 'Your Selected Courses' : 'Featured Courses'}
             </Text>
-            <FlatList
-              data={displayCourses}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View style={styles.featuredCard}>
-                  <Image source={{ uri: item.image }} style={styles.featuredImage} />
-                  <View style={styles.featuredInfo}>
-                    <Text style={styles.featuredCourseName} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.featuredTeacher} numberOfLines={1}>{item.teacher}</Text>
-                  </View>
-                </View>
-              )}
-              snapToInterval={236} // Card width (224) + margin (12)
-              decelerationRate="fast"
-              contentContainerStyle={{ paddingHorizontal: 16 }}
-            />
+            <DeckSwiper data={displayCourses} />
           </View>
         </View>
       </ScrollView>
@@ -158,27 +142,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
     marginBottom: 8,
-  },
-  featuredCard: {
-    width: 224,
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    marginRight: 12,
-  },
-  featuredImage: {
-    width: '100%',
-    height: 112,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-  },
-  featuredInfo: {
-    padding: 12,
-  },
-  featuredCourseName: {
-    fontWeight: '600',
-  },
-  featuredTeacher: {
-    color: '#6b7280',
-    marginTop: 4,
   },
 });
