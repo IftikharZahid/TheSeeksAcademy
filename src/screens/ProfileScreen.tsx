@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LogoutIcon } from '../components/LogoutIcon';
 
 export const ProfileScreen: React.FC = () => {
   return (
@@ -9,6 +10,9 @@ export const ProfileScreen: React.FC = () => {
 
         {/* Header Section */}
         <View style={styles.header}>
+          <TouchableOpacity style={styles.headerLogoutBtn}>
+            <LogoutIcon size={20} color="#FF3B30" />
+          </TouchableOpacity>
           <Image
             source={require('../assets/profile.jpg')}
             style={styles.avatar}
@@ -98,9 +102,7 @@ export const ProfileScreen: React.FC = () => {
         </View>
 
         {/* Logout */}
-        <TouchableOpacity style={styles.logoutBtn}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+
 
       </ScrollView>
     </SafeAreaView>
@@ -201,19 +203,27 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  logoutBtn: {
-    backgroundColor: "#FF4B4B",
-    padding: 14,
-    marginHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 40,
-    marginTop: 10,
+  headerLogoutBtn: {
+    position: 'absolute',
+    top: 40,
+    right: 20, // Moved to right
+    zIndex: 10,
+    backgroundColor: '#ffffff', // White background
+    width: 40,
+    height: 40,
+    borderRadius: 20, // Circular
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 5,
   },
 
-  logoutText: {
-    color: "#fff",
-    fontWeight: "700",
-    textAlign: "center",
-    fontSize: 16,
+  headerLogoutText: {
+    color: '#FF3B30', // Red icon
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });

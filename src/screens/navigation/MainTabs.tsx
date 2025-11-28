@@ -7,6 +7,7 @@ import { ProfileScreen } from '../ProfileScreen';
 import { Text } from 'react-native';
 import { TopHeader } from '../../components/TopHeader';
 import { NoticeboardSection } from './NoticeBoard';
+import { CustomTabBar } from '../../components/CustomTabBar';
 
 type TabParamList = {
   Home: undefined;
@@ -21,6 +22,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 export const MainTabs: React.FC = () => {
   return (
     <Tab.Navigator 
+      tabBar={props => <CustomTabBar {...props} />}
       screenOptions={{ 
         headerShown: true,
         header: () => <TopHeader />
