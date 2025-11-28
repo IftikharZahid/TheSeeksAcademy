@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     height: 350,
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: 5,
   },
   emptyContainer: {
     height: 300,
@@ -219,7 +219,8 @@ const styles = StyleSheet.create({
   },
   counterContainer: {
     position: 'absolute',
-    bottom: 10,
+    top: 30,
+    right: 15,
     backgroundColor: 'rgba(0,0,0,0.6)',
     paddingHorizontal: 12,
     paddingVertical: 6,

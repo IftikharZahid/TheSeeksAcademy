@@ -29,7 +29,7 @@ export const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, 
   // `;
 const CURVE_WIDTH = 65;   // widen the curve
 const CURVE_DEPTH = 25;   // deepen the curve
-const BUTTON_RADIUS = 25; // matches large 70–80 px button
+const BUTTON_RADIUS = 15; // matches large 70–80 px button
 
 const path = `
   M0,0

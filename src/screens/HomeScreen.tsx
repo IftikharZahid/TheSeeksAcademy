@@ -22,7 +22,7 @@ export const HomeScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 0 }}>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
         
         <View style={styles.content}>
           {/* Admissions Banner */}
@@ -119,28 +119,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginTop: 16,
+    marginTop: 10,
   },
   quickActionCard: {
     width: '47%',
     backgroundColor: '#ffffff',
     borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
+    padding: 8,
+    marginBottom: 10,
   },
   quickActionEmoji: {
     fontSize: 32,
   },
   quickActionLabel: {
-    marginTop: 8,
     fontWeight: '600',
   },
   featuredSection: {
-    marginTop: 8,
+    marginTop: 1,
   },
   featuredTitle: {
     fontWeight: '600',
     fontSize: 16,
-    marginBottom: 8,
+    marginBottom: 1,
   },
 });
