@@ -275,9 +275,9 @@ export const AttendanceScreen: React.FC = () => {
             <Svg width={160} height={160}>
               <Defs>
                 <LinearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-                  <Stop offset="0" stopColor="#6366F1" />
-                  <Stop offset="0.5" stopColor="#1E66FF" />
-                  <Stop offset="1" stopColor="#0EA5E9" />
+                  <Stop offset="0" stopColor="#8b5cf6" />
+                  <Stop offset="0.5" stopColor="#a78bfa" />
+                  <Stop offset="1" stopColor="#c4b5fd" />
                 </LinearGradient>
               </Defs>
 
@@ -442,15 +442,15 @@ export const AttendanceScreen: React.FC = () => {
         STYLES
 ------------------------------ */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F5F7FA" },
+  container: { flex: 1, backgroundColor: "#ffffff" },
 
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     padding: 16,
   },
-  backIcon: { fontSize: 24, fontWeight: "700" },
-  headerTitle: { fontSize: 20, fontWeight: "700" },
+  backIcon: { fontSize: 24, fontWeight: "700", color: "#1f2937" },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: "#1f2937" },
   subtitle: { textAlign: "center", color: "#6B7280", marginBottom: 15 },
 
   dropdownContainer: { marginHorizontal: 16 },
@@ -460,25 +460,34 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     flexDirection: "row",
     justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
-  dropdownText: { fontSize: 15, fontWeight: "600" },
-  dropdownArrow: { fontSize: 16 },
+  dropdownText: { fontSize: 15, fontWeight: "600", color: "#1f2937" },
+  dropdownArrow: { fontSize: 16, color: "#6b7280" },
   dropdownList: {
     marginTop: 6,
     backgroundColor: "#fff",
     borderRadius: 10,
     elevation: 4,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
   },
   dropdownItem: { padding: 12 },
-  dropdownItemText: { fontSize: 14 },
+  dropdownItemText: { fontSize: 14, color: "#1f2937" },
 
   progressContainer: { alignItems: "center", marginVertical: 20 },
   circleWrapper: { width: 160, height: 160, justifyContent: "center", alignItems: "center" },
   centerTextContainer: { position: "absolute", alignItems: "center" },
-  percentageTextBig: { fontSize: 30, fontWeight: "700" },
+  percentageTextBig: { fontSize: 30, fontWeight: "700", color: "#8b5cf6" },
   percentageLabel: { color: "#6B7280" },
 
-  sectionTitle: { fontSize: 18, fontWeight: "700", marginLeft: 16, marginBottom: 10 },
+  sectionTitle: { fontSize: 18, fontWeight: "700", marginLeft: 16, marginBottom: 10, color: "#1f2937" },
 
   /* CALENDAR */
   calendarRow: {
@@ -509,7 +518,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#1E66FF",
+    backgroundColor: "#8b5cf6",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -517,7 +526,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#1E66FF",
+    backgroundColor: "#8b5cf6",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -537,8 +546,15 @@ const styles = StyleSheet.create({
     padding: 16,
     marginHorizontal: 16,
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
-  summaryTitle: { fontSize: 16, fontWeight: "700", marginBottom: 10 },
+  summaryTitle: { fontSize: 16, fontWeight: "700", marginBottom: 10, color: "#1f2937" },
   summaryRow: { flexDirection: "row", justifyContent: "space-between" },
   summaryBox: { alignItems: "center", flex: 1 },
   summaryNumber: { fontSize: 22, fontWeight: "700", color: "#10B981" },
@@ -551,9 +567,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginHorizontal: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   logHeader: { flexDirection: "row", justifyContent: "space-between" },
-  logDate: { fontSize: 15, fontWeight: "700" },
+  logDate: { fontSize: 15, fontWeight: "700", color: "#1f2937" },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
   badgeText: { color: "#fff", fontWeight: "700" },
   logText: { marginTop: 6, color: "#4B5563" },
@@ -571,7 +594,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 16,
   },
-  modalTitle: { fontSize: 18, fontWeight: "700" },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: "#1f2937" },
   modalText: { marginTop: 8, color: "#4B5563" },
   modalStatusBadge: {
     paddingHorizontal: 10,
@@ -583,7 +606,7 @@ const styles = StyleSheet.create({
   modalStatusText: { color: "#fff", fontWeight: "700" },
   modalCloseButton: {
     padding: 12,
-    backgroundColor: "#1E66FF",
+    backgroundColor: "#8b5cf6",
     borderRadius: 10,
     alignItems: "center",
     marginTop: 20,

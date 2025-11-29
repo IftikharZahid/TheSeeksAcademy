@@ -10,10 +10,13 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { AuthAPI } from '../api/api';
 import { RootStackParamList } from '../../App';
+
+const { width } = Dimensions.get('window');
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -59,43 +62,38 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#3b82f6" />
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
-        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header Section */}
-        <View style={styles.header}>
+        {/* Illustration Section */}
+        <View style={styles.illustrationContainer}>
+          <View style={styles.circleBackground} />
+          <View style={styles.phoneFrame}>
+            <Image 
+              source={require('../assets/profile.jpg')} 
+              style={styles.logoImage} 
+              resizeMode="contain"
+            />
+            {/* Mock UI lines */}
+            <View style={styles.mockLineLong} />
+            <View style={styles.mockLineShort} />
+            <View style={styles.mockLineMedium} />
+          </View>
+        </View>
+
+        {/* Header Text */}
+        <View style={styles.headerContainer}>
           <Text style={styles.headerTitle}>Welcome Back!</Text>
           <Text style={styles.headerSubtitle}>Sign in to continue learning</Text>
         </View>
 
-        {/* Login Form Container */}
+        {/* Form Container */}
         <View style={styles.formContainer}>
-          {/* Test Credentials Info Box */}
-          <View style={styles.testCredentialsBox}>
-            <Text style={styles.testCredentialsTitle}>🚀 Quick Test Login</Text>
-            <Text style={styles.testCredentialsText}>
-              Tap the button below to navigate to the home screen
-            </Text>
-            <TouchableOpacity
-              onPress={handleQuickLogin}
-              style={styles.quickLoginButton}
-            >
-              <Text style={styles.quickLoginButtonText}>
-                Go to Home Screen →
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Academy Name */}
-          <View style={styles.brandingContainer}>
-            <Text style={styles.academyName}>The Seeks Academy</Text>
-            <Text style={styles.tagline}>Unlock Your Knowledge</Text>
-          </View>
-
+          
           {/* Email Input */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Email Address</Text>
@@ -173,12 +171,15 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </Text>
           </TouchableOpacity>
 
-          {/* Divider */}
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR</Text>
-            <View style={styles.dividerLine} />
-          </View>
+          {/* Quick Test Login (Subtle) */}
+          <TouchableOpacity
+            onPress={handleQuickLogin}
+            style={styles.quickLoginButton}
+          >
+            <Text style={styles.quickLoginButtonText}>
+              🚀 Quick Test Login
+            </Text>
+          </TouchableOpacity>
 
           {/* Sign Up Link */}
           <View style={styles.signupContainer}>
@@ -188,13 +189,6 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            By signing in, you agree to our Terms of Service and Privacy Policy
-          </Text>
-        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -203,78 +197,91 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#ffffff',
   },
-  scrollView: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 40,
   },
-  header: {
-    backgroundColor: '#3b82f6',
-    paddingTop: 64,
-    paddingBottom: 48,
+  illustrationContainer: {
+    marginTop: 40,
+    marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    width: width,
+    height: 240,
+  },
+  circleBackground: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: '#f3f4f6',
+    top: 10,
+  },
+  phoneFrame: {
+    width: 120,
+    height: 220,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    borderWidth: 3,
+    borderColor: '#1f2937',
+    alignItems: 'center',
+    paddingTop: 24,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  logoImage: {
+    width: 60,
+    height: 60,
+    marginBottom: 16,
+    borderRadius: 30,
+  },
+  mockLineLong: {
+    width: '80%',
+    height: 6,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 3,
+    marginBottom: 6,
+  },
+  mockLineShort: {
+    width: '50%',
+    height: 6,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 3,
+    marginBottom: 6,
+    alignSelf: 'flex-start',
+    marginLeft: 12,
+  },
+  mockLineMedium: {
+    width: '70%',
+    height: 6,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 3,
+    alignSelf: 'flex-start',
+    marginLeft: 12,
+  },
+  headerContainer: {
     paddingHorizontal: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    marginBottom: 24,
+    alignItems: 'center',
   },
   headerTitle: {
-    color: '#ffffff',
-    fontSize: 36,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1f2937',
     marginBottom: 8,
   },
   headerSubtitle: {
-    color: '#dbeafe',
     fontSize: 16,
+    color: '#6b7280',
   },
   formContainer: {
-    flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 32,
-  },
-  testCredentialsBox: {
-    backgroundColor: '#fef3c7',
-    borderWidth: 2,
-    borderColor: '#f59e0b',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  testCredentialsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#92400e',
-    marginBottom: 8,
-  },
-  testCredentialsText: {
-    fontSize: 14,
-    color: '#78350f',
-    marginBottom: 12,
-  },
-  quickLoginButton: {
-    backgroundColor: '#f59e0b',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  quickLoginButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  brandingContainer: {
-    marginBottom: 32,
-  },
-  academyName: {
-    color: '#1f2937',
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  tagline: {
-    color: '#6b7280',
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 4,
   },
   inputGroup: {
     marginBottom: 16,
@@ -297,7 +304,7 @@ const styles = StyleSheet.create({
   },
   inputIcon: {
     color: '#9ca3af',
-    marginRight: 8,
+    marginRight: 10,
     fontSize: 16,
   },
   textInput: {
@@ -310,7 +317,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   passwordToggleIcon: {
-    fontSize: 20,
+    fontSize: 18,
   },
   optionsRow: {
     flexDirection: 'row',
@@ -325,7 +332,7 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 20,
     height: 20,
-    borderRadius: 4,
+    borderRadius: 6,
     borderWidth: 2,
     borderColor: '#d1d5db',
     marginRight: 8,
@@ -333,56 +340,52 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxChecked: {
-    backgroundColor: '#3b82f6',
-    borderColor: '#3b82f6',
+    backgroundColor: '#8b5cf6',
+    borderColor: '#8b5cf6',
   },
   checkmark: {
     color: '#ffffff',
     fontSize: 12,
+    fontWeight: 'bold',
   },
   rememberMeText: {
     color: '#4b5563',
     fontSize: 14,
   },
   forgotPasswordText: {
-    color: '#3b82f6',
+    color: '#8b5cf6',
     fontSize: 14,
     fontWeight: '600',
   },
   loginButton: {
-    backgroundColor: '#3b82f6',
-    borderRadius: 12,
+    backgroundColor: '#8b5cf6',
+    borderRadius: 30,
     paddingVertical: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowColor: '#8b5cf6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   loginButtonDisabled: {
-    backgroundColor: '#93c5fd',
+    backgroundColor: '#c4b5fd',
   },
   loginButtonText: {
     color: '#ffffff',
     textAlign: 'center',
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: 16,
   },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  quickLoginButton: {
+    paddingVertical: 12,
     marginBottom: 24,
+    alignItems: 'center',
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#d1d5db',
-  },
-  dividerText: {
-    color: '#6b7280',
+  quickLoginButtonText: {
+    color: '#d97706',
+    fontWeight: '600',
     fontSize: 14,
-    marginHorizontal: 16,
   },
   signupContainer: {
     flexDirection: 'row',
@@ -394,17 +397,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   signupLink: {
-    color: '#3b82f6',
+    color: '#8b5cf6',
     fontSize: 14,
-    fontWeight: 'bold',
-  },
-  footer: {
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-  },
-  footerText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    textAlign: 'center',
+    fontWeight: '700',
   },
 });

@@ -1,22 +1,41 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { LogoutIcon } from '../components/LogoutIcon';
 
+const { width } = Dimensions.get('window');
+
 export const ProfileScreen: React.FC = () => {
+  const navigation = useNavigation();
+
+  const handleLogout = () => {
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      })
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
 
         {/* Header Section */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.headerLogoutBtn}>
-            <LogoutIcon size={20} color="#FF3B30" />
+          <View style={styles.circleBackground} />
+          
+          <TouchableOpacity style={styles.headerLogoutBtn} onPress={handleLogout}>
+            <LogoutIcon size={20} color="#ef4444" />
           </TouchableOpacity>
-          <Image
-            source={require('../assets/profile.jpg')}
-            style={styles.avatar}
-          />
+          
+          <View style={styles.avatarContainer}>
+            <Image
+              source={require('../assets/profile.jpg')}
+              style={styles.avatar}
+            />
+          </View>
 
           <Text style={styles.name}>Iftikhar Zahid</Text>
           <Text style={styles.role}>Student – The Seeks Academy</Text>
@@ -27,82 +46,97 @@ export const ProfileScreen: React.FC = () => {
         </View>
 
         {/* Personal Info */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Personal Information</Text>
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Personal Information</Text>
+          <View style={styles.card}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Full Name</Text>
+              <Text style={styles.infoValue}>Iftikhar Zahid</Text>
+            </View>
+            <View style={styles.divider} />
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Full Name</Text>
-            <Text style={styles.infoValue}>Iftikhar Zahid</Text>
-          </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Email</Text>
+              <Text style={styles.infoValue}>IftikharXahhid@gmail.com</Text>
+            </View>
+            <View style={styles.divider} />
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Email</Text>
-            <Text style={styles.infoValue}>iftikharXahhid@gmail.com</Text>
-          </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Phone</Text>
+              <Text style={styles.infoValue}>+92 300 7971374</Text>
+            </View>
+            <View style={styles.divider} />
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Phone</Text>
-            <Text style={styles.infoValue}>+92 300 7971374</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Date of Birth</Text>
-            <Text style={styles.infoValue}>12 Aug 2000</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Date of Birth</Text>
+              <Text style={styles.infoValue}>12 Aug 2000</Text>
+            </View>
           </View>
         </View>
 
         {/* Academic Info */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Academic Information</Text>
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Academic Information</Text>
+          <View style={styles.card}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Roll Number</Text>
+              <Text style={styles.infoValue}>SA-2025-001</Text>
+            </View>
+            <View style={styles.divider} />
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Roll Number</Text>
-            <Text style={styles.infoValue}>SA-2025-001</Text>
-          </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Class</Text>
+              <Text style={styles.infoValue}>BSCS</Text>
+            </View>
+            <View style={styles.divider} />
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Class</Text>
-            <Text style={styles.infoValue}>BSCS</Text>
-          </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Section</Text>
+              <Text style={styles.infoValue}>A</Text>
+            </View>
+            <View style={styles.divider} />
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Section</Text>
-            <Text style={styles.infoValue}>A</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Session</Text>
-            <Text style={styles.infoValue}>2024 – 2028</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Session</Text>
+              <Text style={styles.infoValue}>2024 – 2028</Text>
+            </View>
           </View>
         </View>
 
         {/* Settings */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Settings</Text>
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Settings</Text>
+          <View style={styles.card}>
+            <TouchableOpacity style={styles.settingRow}>
+              <Text style={styles.settingText}>🔒 Change Password</Text>
+              <Text style={styles.chevron}>›</Text>
+            </TouchableOpacity>
+            <View style={styles.divider} />
 
-          <TouchableOpacity style={styles.settingRow}>
-            <Text style={styles.settingText}>🔒 Change Password</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.settingRow}>
+              <Text style={styles.settingText}>📊 Attendance Log</Text>
+              <Text style={styles.chevron}>›</Text>
+            </TouchableOpacity>
+            <View style={styles.divider} />
 
-          <TouchableOpacity style={styles.settingRow}>
-            <Text style={styles.settingText}>📊 Attendance Log</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.settingRow}>
+              <Text style={styles.settingText}>📝 Assignments</Text>
+              <Text style={styles.chevron}>›</Text>
+            </TouchableOpacity>
+            <View style={styles.divider} />
 
-          <TouchableOpacity style={styles.settingRow}>
-            <Text style={styles.settingText}>📝 Assignments</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.settingRow}>
+              <Text style={styles.settingText}>💬 Messages</Text>
+              <Text style={styles.chevron}>›</Text>
+            </TouchableOpacity>
+            <View style={styles.divider} />
 
-          <TouchableOpacity style={styles.settingRow}>
-            <Text style={styles.settingText}>💬 Messages</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.settingRow}>
-            <Text style={styles.settingText}>🔔 Notification Settings</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.settingRow}>
+              <Text style={styles.settingText}>🔔 Notification Settings</Text>
+              <Text style={styles.chevron}>›</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-
-        {/* Logout */}
-
 
       </ScrollView>
     </SafeAreaView>
@@ -112,118 +146,159 @@ export const ProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    backgroundColor: "#ffffff",
   },
 
   header: {
     alignItems: "center",
-    paddingVertical: 30,
-    backgroundColor: "#1E66FF",
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    marginBottom: 20,
+    paddingTop: 40,
+    paddingBottom: 30,
+    position: 'relative',
+    marginBottom: 10,
+  },
+
+  circleBackground: {
+    position: 'absolute',
+    width: width * 1.2,
+    height: width * 1.2,
+    borderRadius: (width * 1.2) / 2,
+    backgroundColor: '#f3f4f6', // Light gray/purple tint matching Welcome screen
+    top: -width * 0.8,
+    zIndex: -1,
+  },
+
+  headerLogoutBtn: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    backgroundColor: '#ffffff',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+
+  avatarContainer: {
+    padding: 4,
+    backgroundColor: '#ffffff',
+    borderRadius: 50,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    marginBottom: 16,
   },
 
   avatar: {
     width: 90,
     height: 90,
     borderRadius: 45,
-    borderWidth: 2,
-    borderColor: "#fff",
-    marginBottom: 10,
-    marginTop:15,
   },
 
   name: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#fff",
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#1f2937",
+    marginBottom: 4,
   },
 
   role: {
-    fontSize: 13,
-    color: "#E5ECFF",
-    marginTop: 4,
+    fontSize: 14,
+    color: "#6b7280",
+    marginBottom: 16,
   },
 
   editBtn: {
-    marginTop: 12,
-    backgroundColor: "#ffffff",
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: "#8b5cf6", // Primary Purple
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 25,
+    shadowColor: '#8b5cf6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
 
   editBtnText: {
-    color: "#1E66FF",
-    fontWeight: "600",
+    color: "#ffffff",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+
+  sectionContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#374151",
+    marginBottom: 12,
+    marginLeft: 4,
   },
 
   card: {
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 12,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: "#f3f4f6",
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
 
   infoRow: {
-    marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
   },
 
   infoLabel: {
-    fontSize: 12,
-    color: "#6B7280",
+    fontSize: 14,
+    color: "#6b7280",
+    fontWeight: "500",
   },
 
   infoValue: {
     fontSize: 14,
     fontWeight: "600",
-    marginTop: 2,
+    color: "#1f2937",
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: "#f3f4f6",
   },
 
   settingRow: {
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
   },
 
   settingText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "600",
+    color: "#374151",
   },
 
-  headerLogoutBtn: {
-    position: 'absolute',
-    top: 40,
-    right: 20, // Moved to right
-    zIndex: 10,
-    backgroundColor: '#ffffff', // White background
-    width: 40,
-    height: 40,
-    borderRadius: 20, // Circular
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 5,
-  },
-
-  headerLogoutText: {
-    color: '#FF3B30', // Red icon
+  chevron: {
     fontSize: 18,
-    fontWeight: 'bold',
+    color: "#9ca3af",
+    fontWeight: "600",
   },
 });

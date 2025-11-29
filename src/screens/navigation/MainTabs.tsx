@@ -7,7 +7,7 @@ import { CoursesScreen } from '../CoursesScreen';
 import { MessagesScreen } from '../MessagesScreen';
 import { ProfileScreen } from '../ProfileScreen';
 import { TopHeader } from '../../components/TopHeader';
-import { NoticeboardSection } from './NoticeBoard';
+import { NoticesScreen } from '../NoticesScreen';
 import { CustomTabBar } from '../../components/CustomTabBar';
 
 type TabParamList = {
@@ -63,7 +63,7 @@ export const MainTabs: React.FC = () => {
       />
       <Tab.Screen
         name="NoticeBoard"
-        component={NoticeboardSection}
+        component={NoticesScreen}
         options={{
           tabBarIcon: () => <Text>📢</Text>,
         }}

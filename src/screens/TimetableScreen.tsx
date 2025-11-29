@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     color: '#1f2937',
   },
   dateCard: {
-    backgroundColor: '#6366f1',
+    backgroundColor: '#8b5cf6',
     marginHorizontal: 16,
     marginTop: 8,
     borderRadius: 16,
@@ -224,9 +224,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     marginRight: 8,
+    backgroundColor: '#f3f4f6',
   },
   tabActive: {
-    backgroundColor: '#1f2937',
+    backgroundColor: '#8b5cf6',
   },
   tabText: {
     fontSize: 14,
@@ -284,7 +285,12 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#ffffff',
     borderRadius: 12,
-    borderWidth: 1.5,
+    borderWidth: 1,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   classHeader: {
     flexDirection: 'row',

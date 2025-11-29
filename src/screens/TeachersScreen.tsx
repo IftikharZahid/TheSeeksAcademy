@@ -175,7 +175,7 @@ export const TeachersScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#ffffff",
   },
   header: {
     flexDirection: 'row',
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
   },
   tabActive: {
-    backgroundColor: '#1E66FF',
+    backgroundColor: '#8b5cf6',
   },
   tabText: {
     fontSize: 14,
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#ffffff",
     paddingHorizontal: 16,
   },
   cardsGrid: {
@@ -241,8 +241,13 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(0,0,0,0.05)',
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   imageContainer: {
     width: 80,

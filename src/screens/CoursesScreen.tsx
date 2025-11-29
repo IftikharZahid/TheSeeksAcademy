@@ -98,7 +98,7 @@ const CARD_WIDTH = '48%';
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#ffffff' },
 
-  list: { flex: 1, backgroundColor: '#F5F7FA' },
+  list: { flex: 1, backgroundColor: '#ffffff' },
 
   listContent: {
     paddingHorizontal: 16,
@@ -115,11 +115,13 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
     elevation: 2,
-    shadowColor: '#00000030',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
 
   courseImage: {
@@ -173,7 +175,7 @@ const styles = StyleSheet.create({
   },
 
   enrollButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#8b5cf6',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 6,

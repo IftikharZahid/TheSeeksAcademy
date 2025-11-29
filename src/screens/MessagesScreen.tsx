@@ -66,7 +66,7 @@ export const MessagesScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#ffffff',
   },
 
   card: {
@@ -75,16 +75,24 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 12,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
 
   unreadCard: {
-    backgroundColor: "#EAF1FF",
+    backgroundColor: "#f3e8ff",
+    borderColor: "#d8b4fe",
   },
 
   sender: {
     fontSize: 15,
     fontWeight: "700",
+    color: '#1f2937',
     marginBottom: 4,
   },
 
@@ -108,7 +116,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#1E66FF",
+    backgroundColor: "#8b5cf6",
     marginTop: 6,
   },
 });

@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     color: '#1f2937',
   },
   studentCard: {
-    backgroundColor: '#6366f1',
+    backgroundColor: '#8b5cf6',
     marginHorizontal: 16,
     marginTop: 8,
     borderRadius: 16,
@@ -273,9 +273,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
+    backgroundColor: '#f3f4f6',
   },
   tabActive: {
-    backgroundColor: '#1f2937',
+    backgroundColor: '#8b5cf6',
   },
   tabText: {
     fontSize: 13,
@@ -290,6 +291,16 @@ const styles = StyleSheet.create({
   },
   examCard: {
     marginBottom: 20,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    overflow: 'hidden',
   },
   examHeader: {
     flexDirection: 'row',
@@ -297,9 +308,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
   },
   examTitle: {
     fontSize: 16,
@@ -330,7 +340,7 @@ const styles = StyleSheet.create({
     color: '#059669',
   },
   subjectsContainer: {
-    marginTop: 12,
+    padding: 16,
   },
   subjectRow: {
     flexDirection: 'row',
@@ -360,7 +370,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
     backgroundColor: '#ffffff',
     borderRadius: 12,
     borderWidth: 1,

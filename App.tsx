@@ -8,12 +8,14 @@ import { CoursesProvider } from './src/context/CoursesContext';
 
 import { LoginScreen } from './src/screens/LoginScreen';
 import { SignupScreen } from './src/screens/SignupScreen';
+import { WelcomeScreen } from './src/screens/WelcomeScreen';
 import { MainTabs } from './src/screens/navigation/MainTabs';
 import { AdminDashboard } from './src/screens/AdminDashboard';
 import { TopHeader } from './src/components/TopHeader';
 
 
 export type RootStackParamList = {
+  Welcome: undefined;
   Login: undefined;
   Signup: undefined;
   Main: undefined;
@@ -31,7 +33,8 @@ return (
     <SafeAreaProvider>
       <CoursesProvider>
         <NavigationContainer>
-          <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+          <Stack.Navigator initialRouteName="Welcome" screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Welcome" component={WelcomeScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Signup" component={SignupScreen} />
             <Stack.Screen name="Main" component={MainTabs} />

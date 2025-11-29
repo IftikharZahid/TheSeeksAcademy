@@ -66,7 +66,7 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
         
         <View style={styles.content}>
@@ -142,7 +142,7 @@ export const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#ffffff',
   },
   container: {
     flex: 1,
@@ -208,26 +208,37 @@ const styles = StyleSheet.create({
   quickActionCard: {
     width: '31%',
     backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 8,
-    marginBottom: 10,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   quickActionEmoji: {
     fontSize: 32,
     textAlign: 'center',
+    marginBottom: 4,
   },
   quickActionLabel: {
     fontWeight: '600',
     textAlign: 'center',
+    fontSize: 12,
+    color: '#374151',
   },
   featuredSection: {
-    marginTop: 1,
+    marginTop: 10,
   },
   featuredTitle: {
-    fontWeight: '600',
-    fontSize: 16,
-    marginBottom: 1,
+    fontWeight: '700',
+    fontSize: 18,
+    color: '#1f2937',
+    marginBottom: 12,
   },
 });

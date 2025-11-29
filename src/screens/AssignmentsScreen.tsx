@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    backgroundColor: "#ffffff",
     padding: 16,
   },
 
@@ -271,7 +271,13 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 14,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
 
   filterRow: {
@@ -285,11 +291,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     backgroundColor: "#fff",
     borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
 
   filterBtnActive: {
-    backgroundColor: "#3b82f6",
+    backgroundColor: "#8b5cf6",
+    borderColor: "#8b5cf6",
   },
 
   filterText: {
@@ -307,7 +320,13 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 14,
     marginBottom: 14,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
 
   subjectRow: {
@@ -323,6 +342,7 @@ const styles = StyleSheet.create({
   subjectText: {
     fontSize: 15,
     fontWeight: "700",
+    color: '#1f2937',
   },
 
   teacherText: {
@@ -333,6 +353,7 @@ const styles = StyleSheet.create({
   assignmentTitle: {
     fontSize: 16,
     fontWeight: "600",
+    color: '#1f2937',
     marginTop: 10,
     marginBottom: 15,
   },
@@ -361,22 +382,22 @@ const styles = StyleSheet.create({
   },
 
   fab: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
-    backgroundColor: "#1E66FF",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#8b5cf6",
     alignItems: "center",
     justifyContent: "center",
     position: "absolute",
     bottom: 40,
     right: 20,
     elevation: 8,
-    shadowColor: "#000",
+    shadowColor: "#8b5cf6",
     shadowOffset: {
       width: 0,
       height: 4,
     },
     shadowOpacity: 0.3,
-    shadowRadius: 4.65,
+    shadowRadius: 8,
   },
 });
