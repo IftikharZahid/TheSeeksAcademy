@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { notices } from '../NoticesScreen';
+import { notices, NoticeScreen } from '../NoticesScreen';
 
 export const NoticeboardSection: React.FC = () => {
 
@@ -14,7 +14,7 @@ export const NoticeboardSection: React.FC = () => {
     }
   };
 
-  const renderNotice = ({ item }: { item: typeof notices[0] }) => (
+  const renderNotice = ({ item }: { item: NoticeScreen }) => (
     <View style={styles.card}>
       
       {/* Tag */}
@@ -41,7 +41,7 @@ export const NoticeboardSection: React.FC = () => {
           keyExtractor={(item) => item.id}
           renderItem={renderNotice}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingTop: 16 }}
+          contentContainerStyle={{ paddingTop: 16, paddingBottom: 100 }}
         />
       </View>
     </SafeAreaView>

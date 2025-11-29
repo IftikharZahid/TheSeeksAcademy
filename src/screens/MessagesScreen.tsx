@@ -10,32 +10,31 @@ interface Message {
   unread: boolean;
 }
 
+const messages: Message[] = [
+  {
+    id: '1',
+    sender: 'Admin Office',
+    text: 'Your fee submission deadline is approaching.',
+    time: '10:45 AM',
+    unread: true,
+  },
+  {
+    id: '2',
+    sender: 'Ms. Aisha – Python',
+    text: 'Assignment 03 has been uploaded. Please check LMS.',
+    time: 'Yesterday',
+    unread: false,
+  },
+  {
+    id: '3',
+    sender: 'Examination Dept.',
+    text: 'Mid-term exams will start next week.',
+    time: '2 days ago',
+    unread: false,
+  },
+];
+
 export const MessagesScreen: React.FC = () => {
-
-  const messages: Message[] = [
-    {
-      id: '1',
-      sender: 'Admin Office',
-      text: 'Your fee submission deadline is approaching.',
-      time: '10:45 AM',
-      unread: true,
-    },
-    {
-      id: '2',
-      sender: 'Ms. Aisha – Python',
-      text: 'Assignment 03 has been uploaded. Please check LMS.',
-      time: 'Yesterday',
-      unread: false,
-    },
-    {
-      id: '3',
-      sender: 'Examination Dept.',
-      text: 'Mid-term exams will start next week.',
-      time: '2 days ago',
-      unread: false,
-    },
-  ];
-
   const renderMessage = ({ item }: { item: Message }) => (
     <TouchableOpacity style={[styles.card, item.unread && styles.unreadCard]}>
       <View style={{ flex: 1 }}>
@@ -57,7 +56,7 @@ export const MessagesScreen: React.FC = () => {
         keyExtractor={(item) => item.id}
         renderItem={renderMessage}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
       />
     </SafeAreaView>
   );

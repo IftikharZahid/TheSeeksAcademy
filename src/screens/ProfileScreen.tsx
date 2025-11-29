@@ -6,7 +6,7 @@ import { LogoutIcon } from '../components/LogoutIcon';
 export const ProfileScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 0 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
 
         {/* Header Section */}
         <View style={styles.header}>
