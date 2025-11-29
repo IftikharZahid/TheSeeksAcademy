@@ -339,7 +339,32 @@ export const AttendanceScreen: React.FC = () => {
                 const key = showDay ? `${currentYear}-${mm}-${dd}` : null;
                 const status = key ? attendanceMap[key] : undefined;
 
+                const isSunday = colIndex === 0;
                 const isToday = isCalendarMonthToday && showDay && day === todayDate;
+
+                // Determine background color and text color
+                let bgColor = "transparent";
+                let textColor = showDay ? "#1f2937" : "transparent";
+
+                if (showDay) {
+                  if (isSunday) {
+                     textColor = "#EF4444"; // Red text for Sunday
+                  } else {
+                      if (status === 'present') {
+                        bgColor = "#10B981"; // Green
+                        textColor = "#ffffff";
+                      } else if (status === 'absent') {
+                        bgColor = "#EF4444"; // Red
+                        textColor = "#ffffff";
+                      } else if (status === 'late') {
+                        bgColor = "#F59E0B"; // Amber
+                        textColor = "#ffffff";
+                      } else if (isToday) {
+                        bgColor = "#8b5cf6"; // Purple (Primary)
+                        textColor = "#ffffff";
+                      }
+                  }
+                }
 
                 return (
                   <TouchableOpacity
@@ -348,24 +373,21 @@ export const AttendanceScreen: React.FC = () => {
                     disabled={!showDay}
                     onPress={() => showDay && openDayModal(currentYear, monthIndex, day)}
                   >
-                    <View style={{ alignItems: "center" }}>
-                      {/* highlight background for today */}
-                      {isToday ? (
-                        <View style={styles.todayOuter}>
-                          <View style={styles.todayInner}>
-                            <Text style={[styles.calendarDate, { color: "#fff" }]}>{day}</Text>
-                          </View>
-                        </View>
-                      ) : (
-                        <Text style={[styles.calendarDate, { color: showDay ? "#1f2937" : "transparent" }]}>
+                    <View style={{ alignItems: "center", justifyContent: 'center' }}>
+                      <View style={[
+                        styles.dayCircle, 
+                        { backgroundColor: bgColor },
+                        isSunday && !isToday && styles.sundayBackground
+                      ]}>
+                        <Text style={[
+                          styles.calendarDate, 
+                          { color: textColor },
+                        ]}>
                           {showDay ? day : ""}
                         </Text>
-                      )}
-
-                      {/* attendance marker */}
-                      {status && (
-                        <View style={[styles.marker, { backgroundColor: getColor(status) }]} />
-                      )}
+                      </View>
+                      
+                      {/* Optional: Label for Sunday/Off if needed, or just visual */}
                     </View>
                   </TouchableOpacity>
                 );
@@ -513,31 +535,26 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  /* today highlight */
-  todayOuter: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#8b5cf6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  todayInner: {
+  /* today highlight - REPLACED by generic dayCircle logic but keeping for ref if needed, 
+     actually we can remove todayOuter/todayInner and use dayCircle */
+  dayCircle: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#8b5cf6",
     alignItems: "center",
     justifyContent: "center",
   },
-
-  /* marker dot */
-  marker: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginTop: 6,
+  sundayBackground: {
+    backgroundColor: '#FEF2F2', // Light red background for Sundays
   },
+
+  /* marker dot - REMOVED as we use background color now */
+  // marker: {
+  //   width: 8,
+  //   height: 8,
+  //   borderRadius: 4,
+  //   marginTop: 6,
+  // },
 
   /* SUMMARY */
   summaryCard: {

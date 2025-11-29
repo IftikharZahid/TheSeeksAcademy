@@ -84,7 +84,7 @@ const path = `
 
           // Extract the icon from the options
           // Note: We assume tabBarIcon is a function returning a ReactNode
-          const Icon = options.tabBarIcon ? (options.tabBarIcon as any)({ focused: isFocused, color: isFocused ? '#3b82f6' : '#9ca3af', size: 24 }) : null;
+          const Icon = options.tabBarIcon ? (options.tabBarIcon as any)({ focused: isFocused, color: isFocused ? '#8b5cf6' : '#9ca3af', size: 24 }) : null;
 
           if (isCenter) {
             return (
@@ -171,10 +171,10 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#3b82f6', // Primary color
+    backgroundColor: '#8b5cf6', // Primary Purple
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: "#3b82f6",
+    shadowColor: "#8b5cf6",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   labelFocused: {
-    color: '#3b82f6',
+    color: '#8b5cf6', // Primary Purple
     fontWeight: '600',
   },
 });
