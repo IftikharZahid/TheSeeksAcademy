@@ -44,6 +44,14 @@ const path = `
   Z
 `;
 
+  const focusedRoute = state.routes[state.index];
+  const focusedDescriptor = descriptors[focusedRoute.key];
+  const focusedOptions = focusedDescriptor.options;
+
+  if ((focusedOptions.tabBarStyle as any)?.display === 'none') {
+    return null;
+  }
+
   return (
     <View style={[styles.container, { height: TOTAL_HEIGHT }]}>
       <Svg width={width} height={TOTAL_HEIGHT} style={styles.svg}>

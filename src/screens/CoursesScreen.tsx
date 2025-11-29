@@ -1,10 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Course } from '../data/courses';
+import { useNavigation } from '@react-navigation/native';
 import { useCourses } from '../context/CoursesContext';
+import { Course } from '../data/courses';
 
 export const CoursesScreen: React.FC = () => {
+  const navigation = useNavigation();
   const { courses, toggleLike, isLiked } = useCourses();
 
   const renderCourse = ({ item }: { item: Course }) => {
@@ -35,7 +37,16 @@ export const CoursesScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backIcon}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>My Courses</Text>
+        <View style={styles.spacer} />
+      </View>
+
       <FlatList
         data={courses}
         keyExtractor={(item) => item.id}
@@ -44,7 +55,8 @@ export const CoursesScreen: React.FC = () => {
         contentContainerStyle={styles.listContent}
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
-        key={2} // Force re-render when changing numColumns
+        style={styles.list}
+        key={2}
       />
     </SafeAreaView>
   );
@@ -53,7 +65,41 @@ export const CoursesScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#ffffff',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    position: 'relative',
+  },
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backIcon: {
+    fontSize: 24,
+    color: '#000000',
+    fontWeight: '400',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000000',
+  },
+  spacer: {
+    width: 40,
+  },
+  list: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
   },
   listContent: {
     padding: 16,
@@ -86,7 +132,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1f2937',
     marginBottom: 4,
-    height: 40, // Fixed height for 2 lines to ensure alignment
+    height: 40,
   },
   teacherName: {
     fontSize: 12,
@@ -112,10 +158,10 @@ const styles = StyleSheet.create({
   },
   likeText: {
     fontSize: 12,
-    color: '#9ca3af', // Gray heart/text when inactive
+    color: '#9ca3af',
   },
   likeTextActive: {
-    color: '#ef4444', // Red when active
+    color: '#ef4444',
   },
   enrollButton: {
     backgroundColor: '#3b82f6',

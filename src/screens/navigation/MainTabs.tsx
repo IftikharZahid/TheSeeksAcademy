@@ -1,10 +1,11 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
+import { Text } from 'react-native';
 import { HomeStack } from './HomeStack';
 import { CoursesScreen } from '../CoursesScreen';
 import { MessagesScreen } from '../MessagesScreen';
 import { ProfileScreen } from '../ProfileScreen';
-import { Text } from 'react-native';
 import { TopHeader } from '../../components/TopHeader';
 import { NoticeboardSection } from './NoticeBoard';
 import { CustomTabBar } from '../../components/CustomTabBar';
@@ -31,8 +32,19 @@ export const MainTabs: React.FC = () => {
       <Tab.Screen
         name="Home"
         component={HomeStack}
-        options={{
-          tabBarIcon: () => <Text>🏠</Text>,
+        options={({ route }) => {
+          const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeScreen';
+          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'CoursesScreen'];
+          if (hiddenRoutes.includes(routeName)) {
+            return { 
+              headerShown: false,
+              tabBarStyle: { display: 'none' },
+              tabBarIcon: () => <Text>🏠</Text>
+            };
+          }
+          return {
+            tabBarIcon: () => <Text>🏠</Text>,
+          };
         }}
       />
       <Tab.Screen
