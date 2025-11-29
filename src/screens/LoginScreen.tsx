@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from '../../App';
 
 const { width } = Dimensions.get('window');
@@ -27,6 +28,24 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    loadCredentials();
+  }, []);
+
+  const loadCredentials = async () => {
+    try {
+      const savedEmail = await AsyncStorage.getItem('user_email');
+      const savedPassword = await AsyncStorage.getItem('user_password');
+      if (savedEmail && savedPassword) {
+        setEmail(savedEmail);
+        setPassword(savedPassword);
+        setRememberMe(true);
+      }
+    } catch (error) {
+      console.error('Failed to load credentials', error);
+    }
+  };
+
   const handleLogin = async () => {
     if (!email.trim()) {
       Alert.alert('Error', 'Please enter your email');
@@ -38,19 +57,28 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
     }
 
     setIsLoading(true);
-    try {
-      setTimeout(() => {
-        setIsLoading(false);
-        navigation.replace('Main');
-      }, 1000);
-    } catch (err) {
+    
+    // Simulate API call delay
+    setTimeout(async () => {
       setIsLoading(false);
-      Alert.alert('Login Failed', 'Invalid email or password. Please try again.');
-    }
-  };
-
-  const handleQuickLogin = () => {
-    navigation.replace('Main');
+      // Strict check for credentials
+      if (email.trim() === 'IftikharXahid@gmail.com' && password === '78600') {
+        try {
+          if (rememberMe) {
+            await AsyncStorage.setItem('user_email', email.trim());
+            await AsyncStorage.setItem('user_password', password);
+          } else {
+            await AsyncStorage.removeItem('user_email');
+            await AsyncStorage.removeItem('user_password');
+          }
+        } catch (error) {
+          console.error('Failed to save credentials', error);
+        }
+        navigation.replace('Main');
+      } else {
+        Alert.alert('Error', 'Email/Password is incorrect');
+      }
+    }, 1000);
   };
 
   const handleForgotPassword = () => {
@@ -168,16 +196,6 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
           >
             <Text style={styles.loginButtonText}>
               {isLoading ? 'Signing in...' : 'Sign In'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Quick Test Login (Subtle) */}
-          <TouchableOpacity
-            onPress={handleQuickLogin}
-            style={styles.quickLoginButton}
-          >
-            <Text style={styles.quickLoginButtonText}>
-              🚀 Quick Test Login
             </Text>
           </TouchableOpacity>
 
@@ -376,16 +394,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '700',
     fontSize: 16,
-  },
-  quickLoginButton: {
-    paddingVertical: 12,
-    marginBottom: 24,
-    alignItems: 'center',
-  },
-  quickLoginButtonText: {
-    color: '#d97706',
-    fontWeight: '600',
-    fontSize: 14,
   },
   signupContainer: {
     flexDirection: 'row',
