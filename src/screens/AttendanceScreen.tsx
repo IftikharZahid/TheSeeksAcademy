@@ -8,10 +8,11 @@ import {
   TouchableOpacity,
   Modal,
   Dimensions,
+  Easing,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
+import Svg, { Circle, Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 
 const { width } = Dimensions.get("window");
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -23,17 +24,43 @@ export const AttendanceScreen: React.FC = () => {
         MONTH DATA
   ------------------------------ */
   const months = [
-    "January 2025", "February 2025", "March 2025",
-    "April 2025", "May 2025", "June 2025",
-    "July 2025", "August 2025", "September 2025",
-    "October 2025", "November 2025", "December 2025",
+    "January 2025",
+    "February 2025",
+    "March 2025",
+    "April 2025",
+    "May 2025",
+    "June 2025",
+    "July 2025",
+    "August 2025",
+    "September 2025",
+    "October 2025",
+    "November 2025",
+    "December 2025",
   ];
   const [monthIndex, setMonthIndex] = useState(10); // Default: November
   const selectedMonth = months[monthIndex];
   const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [animating, setAnimating] = useState(false);
 
   /* -----------------------------
-        SAMPLE ATTENDANCE DATA
+        SAMPLE ATTENDANCE DATA (MAP)
+        key format: 'YYYY-MM-DD' -> status
+  ------------------------------ */
+  // Replace these with your backend data
+  const attendanceMap: Record<string, "present" | "absent" | "late"> = {
+    "2025-11-18": "present",
+    "2025-11-19": "late",
+    "2025-11-20": "absent",
+    "2025-11-21": "present",
+    "2025-11-22": "present",
+    "2025-11-23": "present",
+    "2025-11-24": "absent",
+    "2025-11-25": "present",
+    "2025-11-26": "present",
+  };
+
+  /* -----------------------------
+        SUMMARY / DAILY LOGS
   ------------------------------ */
   const summary = {
     present: 22,
@@ -42,25 +69,40 @@ export const AttendanceScreen: React.FC = () => {
     percentage: 85,
   };
 
-  /* -----------------------------
-        WEEKLY QUICK INFO
-  ------------------------------ */
-  const weeklyData = [
-    { day: "Mon", date: "18", status: "present", timeIn: "08:00 AM", timeOut: "02:00 PM" },
-    { day: "Tue", date: "19", status: "late", timeIn: "08:30 AM", timeOut: "02:00 PM" },
-    { day: "Wed", date: "20", status: "absent" },
-    { day: "Thu", date: "21", status: "present", timeIn: "08:00 AM", timeOut: "02:00 PM" },
-    { day: "Fri", date: "22", status: "present", timeIn: "08:05 AM", timeOut: "02:00 PM" },
-    { day: "Sat", date: "23", status: "present", timeIn: "08:00 AM", timeOut: "12:00 PM" },
-    { day: "Sun", date: "24", status: "absent" },
+  const dailyLogs = [
+    { date: "21 Nov, Tue", status: "present", timeIn: "08:00 AM", timeOut: "02:00 PM" },
+    { date: "20 Nov, Mon", status: "absent" },
+    { date: "19 Nov, Sun", status: "late", timeIn: "08:30 AM", timeOut: "02:00 PM" },
   ];
 
   /* -----------------------------
-        MONTHLY CALENDAR GENERATOR
+        UTILITIES
   ------------------------------ */
-  const generateMonthCalendar = (year: number, monthIndex: number) => {
-    const firstDay = new Date(year, monthIndex, 1);
-    const lastDay = new Date(year, monthIndex + 1, 0);
+  const getColor = (status?: string) => {
+    if (!status) return "#D1D5DB"; // neutral
+    switch (status.toLowerCase()) {
+      case "present":
+        return "#10B981";
+      case "absent":
+        return "#EF4444";
+      case "late":
+        return "#F59E0B";
+      default:
+        return "#D1D5DB";
+    }
+  };
+
+  /* -----------------------------
+        CALENDAR GENERATION
+  ------------------------------ */
+  const yearFromLabel = (label: string) => {
+    const parts = label.split(" ");
+    return parseInt(parts[1], 10) || new Date().getFullYear();
+  };
+
+  const generateMonthCalendar = (year: number, mIndex: number) => {
+    const firstDay = new Date(year, mIndex, 1);
+    const lastDay = new Date(year, mIndex + 1, 0);
 
     const startDay = firstDay.getDay(); // 0 = Sun
     const totalDays = lastDay.getDate();
@@ -73,9 +115,9 @@ export const AttendanceScreen: React.FC = () => {
 
       for (let col = 0; col < 7; col++) {
         if (row === 0 && col < startDay) {
-          week.push(null); // Empty cells before start
+          week.push(null);
         } else if (dayCounter > totalDays) {
-          week.push(null); // After last day
+          week.push(null);
         } else {
           week.push(dayCounter);
           dayCounter++;
@@ -88,32 +130,46 @@ export const AttendanceScreen: React.FC = () => {
     return calendar;
   };
 
-  const monthCalendar = generateMonthCalendar(2025, monthIndex);
+  const currentYear = yearFromLabel(selectedMonth);
+  const monthCalendar = generateMonthCalendar(currentYear, monthIndex);
 
   /* -----------------------------
-        DAILY LOGS
+        TODAY HIGHLIGHT
   ------------------------------ */
-  const dailyLogs = [
-    { date: "21 Nov, Tue", status: "present", timeIn: "08:00 AM", timeOut: "02:00 PM" },
-    { date: "20 Nov, Mon", status: "absent" },
-    { date: "19 Nov, Sun", status: "late", timeIn: "08:30 AM", timeOut: "02:00 PM" },
-  ];
-
-  const getColor = (status?: string) => {
-    if (!status) return "#F59E0B";
-    switch (status.toLowerCase()) {
-      case "present": return "#10B981";
-      case "absent": return "#EF4444";
-      case "late": return "#F59E0B";
-      default: return "#F59E0B";
-    }
-  };
+  const today = new Date();
+  const todayYear = today.getFullYear();
+  const todayMonth = today.getMonth();
+  const todayDate = today.getDate();
+  const isCalendarMonthToday = todayYear === currentYear && todayMonth === monthIndex;
 
   /* -----------------------------
         MODAL
   ------------------------------ */
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<any>(null);
+  const [selectedDayInfo, setSelectedDayInfo] = useState<any>(null);
+
+  const openDayModal = (year: number, month: number, day: number) => {
+    const mm = (month + 1).toString().padStart(2, "0");
+    const dd = day.toString().padStart(2, "0");
+    const key = `${year}-${mm}-${dd}`;
+    const status = attendanceMap[key] ?? "unknown";
+    const match = dailyLogs.find((d) => {
+      // rough match by day number
+      return d.date.includes(`${day}`) || d.date.includes(`${dd}`);
+    });
+
+    setSelectedDayInfo({
+      year,
+      month,
+      day,
+      status,
+      timeIn: match?.timeIn,
+      timeOut: match?.timeOut,
+      label: `${day} ${months[month].split(" ")[0]} ${year}`,
+    });
+
+    setModalVisible(true);
+  };
 
   /* -----------------------------
         PROGRESS RING ANIMATION
@@ -126,8 +182,9 @@ export const AttendanceScreen: React.FC = () => {
   useEffect(() => {
     Animated.timing(progress, {
       toValue: summary.percentage,
-      duration: 1500,
-      useNativeDriver: false, // strokeDashoffset is not supported by native driver
+      duration: 1200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
     }).start();
   }, []);
 
@@ -137,11 +194,43 @@ export const AttendanceScreen: React.FC = () => {
   });
 
   /* -----------------------------
-        UI LAYOUT START
+        MONTH SWITCH ANIMATION (SLIDE + FADE)
+  ------------------------------ */
+  const animTranslate = useRef(new Animated.Value(0)).current;
+  const animOpacity = useRef(new Animated.Value(1)).current;
+
+  const changeMonth = (newIndex: number) => {
+    if (animating || newIndex === monthIndex) return;
+    setAnimating(true);
+    const direction = newIndex > monthIndex ? -1 : 1; // left for next, right for prev
+    animTranslate.setValue(direction * width * 0.25); // start offset
+    animOpacity.setValue(0);
+    // run parallel slide in + fade in
+    setTimeout(() => setDropdownVisible(false), 100); // close dropdown if open
+    Animated.parallel([
+      Animated.timing(animTranslate, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(animOpacity, {
+        toValue: 1,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setMonthIndex(newIndex);
+      setAnimating(false);
+    });
+  };
+
+  /* -----------------------------
+        RENDER
   ------------------------------ */
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -152,19 +241,17 @@ export const AttendanceScreen: React.FC = () => {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
-
         <Text style={styles.subtitle}>Monthly calendar view</Text>
 
         {/* MONTH DROPDOWN */}
         <View style={styles.dropdownContainer}>
           <TouchableOpacity
-            onPress={() => setDropdownVisible(!dropdownVisible)}
+            onPress={() => setDropdownVisible((s) => !s)}
             style={styles.dropdownButton}
+            disabled={animating}
           >
             <Text style={styles.dropdownText}>{selectedMonth}</Text>
-            <Text style={styles.dropdownArrow}>
-              {dropdownVisible ? "▲" : "▼"}
-            </Text>
+            <Text style={styles.dropdownArrow}>{dropdownVisible ? "▲" : "▼"}</Text>
           </TouchableOpacity>
 
           {dropdownVisible && (
@@ -173,10 +260,7 @@ export const AttendanceScreen: React.FC = () => {
                 <TouchableOpacity
                   key={m}
                   style={styles.dropdownItem}
-                  onPress={() => {
-                    setDropdownVisible(false);
-                    setMonthIndex(i);
-                  }}
+                  onPress={() => changeMonth(i)}
                 >
                   <Text style={styles.dropdownItemText}>{m}</Text>
                 </TouchableOpacity>
@@ -216,88 +300,94 @@ export const AttendanceScreen: React.FC = () => {
                 strokeDashoffset={strokeDashoffset}
                 strokeLinecap="round"
                 fill="transparent"
-                rotation="-90"
-                origin="80, 80"
+                transform="rotate(-90 80 80)"
               />
             </Svg>
 
             <View style={styles.centerTextContainer}>
-              <Text style={styles.percentageTextBig}>
-                {summary.percentage}%
-              </Text>
+              <Text style={styles.percentageTextBig}>{summary.percentage}%</Text>
               <Text style={styles.percentageLabel}>Present</Text>
             </View>
           </View>
         </View>
 
-        {/* -----------------------------
-              FULL GRID CALENDAR
-        ------------------------------ */ }
-        <Text style={styles.sectionTitle}>Monthly Calendar</Text>
-
-        {/* WEEK DAY HEADERS */}
-        <View style={styles.calendarRow}>
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-            <Text key={d} style={styles.calendarHeader}>
-              {d}
-            </Text>
-          ))}
-        </View>
-
-        {/* CALENDAR GRID */}
-        {monthCalendar.map((week, rowIndex) => (
-          <View key={rowIndex} style={styles.calendarRow}>
-            {week.map((day, colIndex) => (
-              <TouchableOpacity
-                key={colIndex}
-                style={styles.calendarCell}
-                disabled={!day}
-                onPress={() => {
-                  if (day) {
-                    const match = weeklyData.find((x) => parseInt(x.date) === day);
-                    setSelectedDay(match || { date: day.toString(), status: "unknown" });
-                    setModalVisible(true);
-                  }
-                }}
-              >
-                <Text
-                  style={[
-                    styles.calendarDate,
-                    {
-                      color: day
-                        ? "#1f2937"
-                        : "transparent",
-                    },
-                  ]}
-                >
-                  {day}
-                </Text>
-              </TouchableOpacity>
+        {/* Animated calendar container */}
+        <Animated.View
+          style={{
+            transform: [{ translateX: animTranslate }],
+            opacity: animOpacity,
+          }}
+        >
+          {/* WEEKDAY HEADERS */}
+          <Text style={styles.sectionTitle}>Monthly Calendar</Text>
+          <View style={styles.calendarRow}>
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+              <Text key={d} style={styles.calendarHeader}>
+                {d}
+              </Text>
             ))}
           </View>
-        ))}
+
+          {/* CALENDAR GRID */}
+          {monthCalendar.map((week, rowIndex) => (
+            <View key={rowIndex} style={styles.calendarRow}>
+              {week.map((day, colIndex) => {
+                const showDay = typeof day === "number";
+                // determine attendance key
+                const mm = (monthIndex + 1).toString().padStart(2, "0");
+                const dd = showDay ? day.toString().padStart(2, "0") : null;
+                const key = showDay ? `${currentYear}-${mm}-${dd}` : null;
+                const status = key ? attendanceMap[key] : undefined;
+
+                const isToday = isCalendarMonthToday && showDay && day === todayDate;
+
+                return (
+                  <TouchableOpacity
+                    key={colIndex}
+                    style={styles.calendarCell}
+                    disabled={!showDay}
+                    onPress={() => showDay && openDayModal(currentYear, monthIndex, day)}
+                  >
+                    <View style={{ alignItems: "center" }}>
+                      {/* highlight background for today */}
+                      {isToday ? (
+                        <View style={styles.todayOuter}>
+                          <View style={styles.todayInner}>
+                            <Text style={[styles.calendarDate, { color: "#fff" }]}>{day}</Text>
+                          </View>
+                        </View>
+                      ) : (
+                        <Text style={[styles.calendarDate, { color: showDay ? "#1f2937" : "transparent" }]}>
+                          {showDay ? day : ""}
+                        </Text>
+                      )}
+
+                      {/* attendance marker */}
+                      {status && (
+                        <View style={[styles.marker, { backgroundColor: getColor(status) }]} />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
+        </Animated.View>
 
         {/* MONTH SUMMARY */}
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>Monthly Summary</Text>
-
           <View style={styles.summaryRow}>
             <View style={styles.summaryBox}>
               <Text style={styles.summaryNumber}>{summary.present}</Text>
               <Text style={styles.summaryLabel}>Present</Text>
             </View>
-
             <View style={styles.summaryBox}>
-              <Text style={[styles.summaryNumber, { color: "#EF4444" }]}>
-                {summary.absent}
-              </Text>
+              <Text style={[styles.summaryNumber, { color: "#EF4444" }]}>{summary.absent}</Text>
               <Text style={styles.summaryLabel}>Absent</Text>
             </View>
-
             <View style={styles.summaryBox}>
-              <Text style={[styles.summaryNumber, { color: "#F59E0B" }]}>
-                {summary.late}
-              </Text>
+              <Text style={[styles.summaryNumber, { color: "#F59E0B" }]}>{summary.late}</Text>
               <Text style={styles.summaryLabel}>Late</Text>
             </View>
           </View>
@@ -305,85 +395,45 @@ export const AttendanceScreen: React.FC = () => {
 
         {/* DAILY LOGS */}
         <Text style={styles.sectionTitle}>Daily Records</Text>
-
-        {dailyLogs.map((log, index) => (
-          <View key={index} style={styles.logCard}>
+        {dailyLogs.map((log, i) => (
+          <View key={i} style={styles.logCard}>
             <View style={styles.logHeader}>
               <Text style={styles.logDate}>{log.date}</Text>
-
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: getColor(log.status) },
-                ]}
-              >
-                <Text style={styles.badgeText}>
-                  {log.status.toUpperCase()}
-                </Text>
+              <View style={[styles.statusBadge, { backgroundColor: getColor(log.status) }]}>
+                <Text style={styles.badgeText}>{log.status.toUpperCase()}</Text>
               </View>
             </View>
-
-            {log.timeIn && (
-              <Text style={styles.logText}>Time In: {log.timeIn}</Text>
-            )}
-            {log.timeOut && (
-              <Text style={styles.logText}>Time Out: {log.timeOut}</Text>
-            )}
+            {log.timeIn && <Text style={styles.logText}>Time In: {log.timeIn}</Text>}
+            {log.timeOut && <Text style={styles.logText}>Time Out: {log.timeOut}</Text>}
           </View>
         ))}
-
       </ScrollView>
 
-      {/* -----------------------------
-              DAY DETAIL MODAL
-      ------------------------------ */ }
+      {/* DAY DETAIL MODAL */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {selectedDay?.day || "Date"}, {selectedDay?.date}
-            </Text>
+            <Text style={styles.modalTitle}>{selectedDayInfo?.label || "Date"}</Text>
 
-            <View
-              style={[
-                styles.modalStatusBadge,
-                { backgroundColor: getColor(selectedDay?.status) },
-              ]}
-            >
+            <View style={[styles.modalStatusBadge, { backgroundColor: getColor(selectedDayInfo?.status) }]}>
               <Text style={styles.modalStatusText}>
-                {selectedDay?.status?.toUpperCase() || "UNKNOWN"}
+                {selectedDayInfo?.status?.toUpperCase() || "UNKNOWN"}
               </Text>
             </View>
 
-            {selectedDay?.timeIn && (
-              <Text style={styles.modalText}>
-                Time In: {selectedDay?.timeIn}
-              </Text>
+            {selectedDayInfo?.timeIn && <Text style={styles.modalText}>Time In: {selectedDayInfo.timeIn}</Text>}
+            {selectedDayInfo?.timeOut && <Text style={styles.modalText}>Time Out: {selectedDayInfo.timeOut}</Text>}
+
+            {!selectedDayInfo?.timeIn && selectedDayInfo?.status === "unknown" && (
+              <Text style={styles.modalText}>No attendance information available.</Text>
             )}
 
-            {selectedDay?.timeOut && (
-              <Text style={styles.modalText}>
-                Time Out: {selectedDay?.timeOut}
-              </Text>
-            )}
-
-            {!selectedDay?.timeIn &&
-              selectedDay?.status === "unknown" && (
-                <Text style={styles.modalText}>
-                  No attendance information available.
-                </Text>
-              )}
-
-            <TouchableOpacity
-              onPress={() => setModalVisible(false)}
-              style={styles.modalCloseButton}
-            >
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseButton}>
               <Text style={styles.modalCloseText}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-
     </SafeAreaView>
   );
 };
@@ -430,7 +480,7 @@ const styles = StyleSheet.create({
 
   sectionTitle: { fontSize: 18, fontWeight: "700", marginLeft: 16, marginBottom: 10 },
 
-  /* FULL GRID CALENDAR */
+  /* CALENDAR */
   calendarRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -445,13 +495,39 @@ const styles = StyleSheet.create({
   },
   calendarCell: {
     width: width / 7 - 12,
-    height: 50,
+    height: 64,
     justifyContent: "center",
     alignItems: "center",
   },
   calendarDate: {
     fontSize: 16,
     fontWeight: "600",
+  },
+
+  /* today highlight */
+  todayOuter: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#1E66FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  todayInner: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#1E66FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  /* marker dot */
+  marker: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 6,
   },
 
   /* SUMMARY */
@@ -514,3 +590,5 @@ const styles = StyleSheet.create({
   },
   modalCloseText: { color: "#fff", fontWeight: "700" },
 });
+
+export default AttendanceScreen;

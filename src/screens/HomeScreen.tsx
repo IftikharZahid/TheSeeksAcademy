@@ -43,9 +43,6 @@ export const HomeScreen: React.FC = () => {
   const scrollViewRef = useRef<ScrollView>(null);
   const [activeSlide, setActiveSlide] = useState(0);
 
-  const featuredCourses = courses.filter(c => isLiked(c.id));
-  const displayCourses = featuredCourses.length > 0 ? featuredCourses : courses.slice(0, 5);
-
   // Auto-scroll slides
   useEffect(() => {
     const interval = setInterval(() => {
@@ -133,10 +130,8 @@ export const HomeScreen: React.FC = () => {
 
           {/* Featured Courses */}
           <View style={styles.featuredSection}>
-            <Text style={styles.featuredTitle}>
-              {featuredCourses.length > 0 ? 'Your Selected Courses' : 'Featured Courses'}
-            </Text>
-            <DeckSwiper data={displayCourses} />
+            <Text style={styles.featuredTitle}>Featured Courses</Text>
+            <DeckSwiper data={courses} />
           </View>
         </View>
       </ScrollView>
