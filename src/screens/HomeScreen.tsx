@@ -11,21 +11,27 @@ const { width } = Dimensions.get('window');
 const slides = [
   {
     id: 1,
-    title: 'Admissions Open',
-    subtitle: 'Apply now for Spring 2026 — limited seats',
+    title: 'Admissions Open 👨‍🎓',
+    subtitle: 'Apply now for Session 2026-27 — limited seats',
     color: '#3b82f6',
   },
   {
     id: 2,
-    title: 'French Coaching',
-    subtitle: 'Class Started! Join our French language course',
+    title: 'Test Series Started ✍',
+    subtitle: 'Join our Test series to prepare for your exams',
     color: '#8b5cf6',
   },
   {
     id: 3,
-    title: 'Scholarships Available',
+    title: 'Scholarships Available 📚',
     subtitle: 'Merit-based scholarships up to 50%',
     color: '#10b981',
+  },
+  {
+    id: 4,
+    title: 'Pass Guarantee 🐥',
+    subtitle: 'Pass in all exams with our expert guidance',
+    color: '#b91078ff',
   },
 ];
 

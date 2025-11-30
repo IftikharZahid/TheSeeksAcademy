@@ -18,8 +18,8 @@ export const WelcomeScreen: React.FC = () => {
   const features = [
     { id: 1, text: 'Personalized Coaching', icon: '🎓' },
     { id: 2, text: 'Video & Chat Support', icon: '📹' },
-    { id: 3, text: 'Coach Reviews & Ratings', icon: '📋' },
-    { id: 4, text: 'Secure Payments', icon: '💳' },
+    { id: 3, text: 'Teacher Reviews & Ratings', icon: '📋' },
+    { id: 4, text: 'Passing guarantee', icon: '✅' },
   ];
 
   return (
@@ -95,31 +95,31 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   illustrationContainer: {
-    marginTop: 20,
-    marginBottom: 30,
+    marginTop: 10,
+    marginBottom: 10,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
     width: width,
-    height: 280,
+    height: 240,
   },
   circleBackground: {
     position: 'absolute',
-    width: 230,
-    height: 230,
+    width: 210,
+    height: 210,
     borderRadius: 115,
     backgroundColor: '#f3f4f6', // Light gray/purple tint
     top: 20,
   },
   phoneFrame: {
-    width: 120,
-    height: 250,
+    width: 110,
+    height: 220,
     backgroundColor: '#ffffff',
     borderRadius: 20,
     borderWidth: 4,
     borderColor: '#1f2937', // Dark frame
     alignItems: 'center',
-    paddingTop: 20,
+    paddingTop: 15,
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -158,22 +158,22 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     width: '100%',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   headline: {
     fontSize: 28,
     fontWeight: '800',
     color: '#1f2937',
     textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 36,
+    marginBottom: 10,
+    lineHeight: 30,
   },
   subheadline: {
     fontSize: 15,
     color: '#6b7280',
     textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 22,
+    marginBottom: 15,
+    lineHeight: 28,
   },
   featureList: {
     width: '90%',
