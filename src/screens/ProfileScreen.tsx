@@ -3,11 +3,15 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Dimensions
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { LogoutIcon } from '../components/LogoutIcon';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { ProfileStackParamList } from './navigation/ProfileStack';
 
 const { width } = Dimensions.get('window');
 
+type ProfileScreenNavigationProp = NativeStackNavigationProp<ProfileStackParamList, 'ProfileScreen'>;
+
 export const ProfileScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<ProfileScreenNavigationProp>();
 
   const handleLogout = () => {
     navigation.dispatch(
@@ -107,7 +111,19 @@ export const ProfileScreen: React.FC = () => {
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Settings</Text>
           <View style={styles.card}>
-            <TouchableOpacity style={styles.settingRow}>
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => navigation.navigate('SimTrackerScreen')}
+            >
+              <Text style={styles.settingText}>📱 SIM Tracker</Text>
+              <Text style={styles.chevron}>›</Text>
+            </TouchableOpacity>
+            <View style={styles.divider} />
+
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => navigation.navigate('ChangePasswordScreen')}
+            >
               <Text style={styles.settingText}>🔒 Change Password</Text>
               <Text style={styles.chevron}>›</Text>
             </TouchableOpacity>

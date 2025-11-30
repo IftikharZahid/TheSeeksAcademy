@@ -3,9 +3,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { Text } from 'react-native';
 import { HomeStack } from './HomeStack';
+import { ProfileStack } from './ProfileStack';
 import { CoursesScreen } from '../CoursesScreen';
 import { MessagesScreen } from '../MessagesScreen';
-import { ProfileScreen } from '../ProfileScreen';
 import { TopHeader } from '../../components/TopHeader';
 import { NoticesScreen } from '../NoticesScreen';
 import { CustomTabBar } from '../../components/CustomTabBar';
@@ -34,7 +34,7 @@ export const MainTabs: React.FC = () => {
         component={HomeStack}
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeScreen';
-          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'CoursesScreen'];
+          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'CoursesScreen', 'StaffInfoScreen', 'SettingsScreen'];
           if (hiddenRoutes.includes(routeName)) {
             return { 
               headerShown: false,
@@ -58,6 +58,7 @@ export const MainTabs: React.FC = () => {
         name="Messages"
         component={MessagesScreen}
         options={{
+          headerShown: false,
           tabBarIcon: () => <Text>💬</Text>,
         }}
       />
@@ -70,10 +71,21 @@ export const MainTabs: React.FC = () => {
       />
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
-        options={{
-          headerShown: false,
-          tabBarIcon: () => <Text>👤</Text>,
+        component={ProfileStack}
+        options={({ route }) => {
+          const routeName = getFocusedRouteNameFromRoute(route) ?? 'ProfileScreen';
+          const hiddenRoutes = ['SimTrackerScreen', 'ChangePasswordScreen'];
+          if (hiddenRoutes.includes(routeName)) {
+            return { 
+              headerShown: false,
+              tabBarStyle: { display: 'none' },
+              tabBarIcon: () => <Text>👤</Text>
+            };
+          }
+          return {
+            headerShown: false,
+            tabBarIcon: () => <Text>👤</Text>,
+          };
         }}
       />
     </Tab.Navigator>

@@ -39,14 +39,19 @@ export const TopHeader: React.FC<{ title?: string; onBell?: () => void; notifica
             <Text style={styles.greetingText}>{getGreeting()}</Text>
           </View>
         </View>
-        <TouchableOpacity onPress={handleBellPress} style={styles.bellButton}>
-          <Text style={{ fontSize: 20 }}>🔔</Text>
-          {count > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{count > 9 ? '9+' : count}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        <View style={styles.rightSection}>
+          <TouchableOpacity onPress={handleBellPress} style={styles.iconButton}>
+            <Text style={{ fontSize: 20 }}>🔔</Text>
+            {count > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{count > 9 ? '9+' : count}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Home', { screen: 'SettingsScreen' })} style={styles.iconButton}>
+            <Text style={{ fontSize: 20 }}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -90,7 +95,12 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginTop: 2,
   },
-  bellButton: {
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  iconButton: {
     padding: 8,
     position: 'relative',
   },

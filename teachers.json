@@ -1,0 +1,75 @@
+{
+  "staff": {
+    "1": {
+      "name": "Sir Sajid Javed",
+      "qualification": "PhD Arabic",
+      "subject": "Islamiat",
+      "experience": "10 Years",
+      "image": "https://i.pravatar.cc/150?img=5"
+    },
+    "2": {
+      "name": "Sir Amir Shabbir",
+      "qualification": "MSC Physics",
+      "subject": "Physics",
+      "experience": "8 Years",
+      "image": "https://i.pravatar.cc/150?img=12"
+    },
+    "3": {
+      "name": "Sir Abdul Rehman",
+      "qualification": "MSC Chemistry",
+      "subject": "Chemistry",
+      "experience": "5 Years",
+      "image": "https://i.pravatar.cc/150?img=15"
+    },
+    "4": {
+      "name": "Sir Zulqarnian",
+      "qualification": "MSC Mathematics",
+      "subject": "Mathematics",
+      "experience": "10 Years",
+      "image": "https://i.pravatar.cc/150?img=20"
+    },
+    "5": {
+      "name": "Sir Iftikhar Zahid",
+      "qualification": "MSC Computer Science",
+      "subject": "Computer Science",
+      "experience": "12 Years",
+      "image": "https://i.pravatar.cc/150?img=30"
+    },
+    "6": {
+      "name": "Miss Zainab",
+      "qualification": "MSC English",
+      "subject": "Biology",
+      "experience": "6 Years",
+      "image": "https://i.pravatar.cc/150?img=32"
+    }
+    ,
+    "7": {
+      "name": "Miss Maryam",
+      "qualification": "MSC Biology",
+      "subject": "Biology",
+      "experience": "6 Years",
+      "image": "https://i.pravatar.cc/150?img=32"
+    },
+    "8": {
+      "name": "Miss Asra Adeeb",
+      "qualification": " MSC Physics",
+      "subject": "Physics",
+      "experience": "6 Years",
+      "image": "https://i.pravatar.cc/150?img=32"
+    },
+    "9": {
+      "name": "Miss Zainab",
+      "qualification": "MSC Chemistry",
+      "subject": "Chemistry",
+      "experience": "6 Years",
+      "image": "https://i.pravatar.cc/150?img=32"
+    },
+    "10": {
+      "name": "Miss Nida",
+      "qualification": "MSC English",
+      "subject": "English",
+      "experience": "6 Years",
+      "image": "https://i.pravatar.cc/150?img=32"
+    }
+  }
+}

@@ -1,104 +1,67 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { HomeStackParamList } from './navigation/HomeStack';
+import teachersData from '../../teachers.json';
+
+interface Teacher {
+  id: string;
+  name: string;
+  subject: string;
+  qualification: string;
+  experience: string;
+  image: string;
+  color?: string;
+}
+
+type TeachersScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'TeachersScreen'>;
 
 export const TeachersScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<TeachersScreenNavigationProp>();
   const [activeTab, setActiveTab] = useState('All');
+  const [staff, setStaff] = useState<Teacher[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const staff = [
-    {
-      id: 1,
-      name: "Sir Abdullah",
-      subject: "Mathematics",
-      qualification: "MS Mathematics",
-      experience: "10 Years",
-      image: "https://i.pravatar.cc/150?img=5",
-      color: "#FEF3C7",
-    },
-    {
-      id: 2,
-      name: "Ms. Aisha",
-      subject: "English",
-      qualification: "MA English Lit",
-      experience: "7 Years",
-      image: "https://i.pravatar.cc/150?img=48",
-      color: "#DBEAFE",
-    },
-    {
-      id: 3,
-      name: "Sir Hamza",
-      subject: "Physics",
-      qualification: "PhD Physics",
-      experience: "5 Years",
-      image: "https://i.pravatar.cc/150?img=12",
-      color: "#E0E7FF",
-    },
-    {
-      id: 4,
-      name: "Miss Zainab",
-      subject: "Computer Science",
-      qualification: "MS CS",
-      experience: "8 Years",
-      image: "https://i.pravatar.cc/150?img=32",
-      color: "#FCE7F3",
-    },
-    {
-      id: 5,
-      name: "Dr. Khan",
-      subject: "Chemistry",
-      qualification: "PhD Chemistry",
-      experience: "12 Years",
-      image: "https://i.pravatar.cc/150?img=13",
-      color: "#D1FAE5",
-    },
-    {
-      id: 6,
-      name: "Ms. Fatima",
-      subject: "Biology",
-      qualification: "MS Biology",
-      experience: "6 Years",
-      image: "https://i.pravatar.cc/150?img=44",
-      color: "#FEF3C7",
-    },
-    {
-      id: 7,
-      name: "Sir Usman",
-      subject: "History",
-      qualification: "MA History",
-      experience: "9 Years",
-      image: "https://i.pravatar.cc/150?img=15",
-      color: "#DBEAFE",
-    },
-    {
-      id: 8,
-      name: "Ms. Sarah",
-      subject: "Web Development",
-      qualification: "BS Software Eng",
-      experience: "4 Years",
-      image: "https://i.pravatar.cc/150?img=47",
-      color: "#E0E7FF",
-    },
-    {
-      id: 9,
-      name: "Dr. Hassan",
-      subject: "Networking",
-      qualification: "PhD Networks",
-      experience: "11 Years",
-      image: "https://i.pravatar.cc/150?img=8",
-      color: "#FCE7F3",
-    },
-    {
-      id: 10,
-      name: "Miss Nida",
-      subject: "Artificial Intelligence",
-      qualification: "MS AI",
-      experience: "5 Years",
-      image: "https://i.pravatar.cc/150?img=45",
-      color: "#D1FAE5",
-    },
+  // Define color palette for teacher cards
+  const colors = [
+    "#FEF3C7", "#DBEAFE", "#E0E7FF", "#FCE7F3", 
+    "#D1FAE5", "#FEF3C7", "#DBEAFE", "#E0E7FF", 
+    "#FCE7F3", "#D1FAE5"
   ];
+
+  // Fetch teachers from JSON file
+  useEffect(() => {
+    fetchTeachers();
+  }, []);
+
+  const fetchTeachers = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Simulate API delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Convert teachers data from JSON to array
+      const teachersArray: Teacher[] = Object.entries(teachersData.staff).map(
+        ([id, teacher], index) => ({
+          id,
+          ...teacher,
+          color: colors[index % colors.length],
+        })
+      );
+
+      setStaff(teachersArray);
+    } catch (err) {
+      console.error('Error fetching teachers:', err);
+      setError('Failed to load teachers. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Group teachers by subject and count them
   const subjectCounts = staff.reduce((acc: { [key: string]: number }, teacher) => {
@@ -142,32 +105,57 @@ export const TeachersScreen: React.FC = () => {
         </ScrollView>
       </View>
 
-      {/* Teacher Cards Grid */}
-      <ScrollView 
-        style={styles.scrollView} 
-        showsVerticalScrollIndicator={false} 
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
-        <View style={styles.cardsGrid}>
-          {filteredStaff.map((teacher) => (
-            <View key={teacher.id} style={[styles.card, { backgroundColor: teacher.color }]}>
-              {/* Teacher Image */}
-              <View style={styles.imageContainer}>
-                <Image source={{ uri: teacher.image }} style={styles.teacherImage} />
-              </View>
-
-              {/* Subject */}
-              <Text style={styles.subject} numberOfLines={1}>{teacher.subject}</Text>
-              
-              {/* Qualification */}
-              <Text style={styles.qualification} numberOfLines={1}>{teacher.qualification}</Text>
-              
-              {/* Teacher Name */}
-              <Text style={styles.teacherName} numberOfLines={1}>By {teacher.name}</Text>
-            </View>
-          ))}
+      {/* Loading State */}
+      {loading && (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#8b5cf6" />
+          <Text style={styles.loadingText}>Loading teachers...</Text>
         </View>
-      </ScrollView>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>⚠️ {error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchTeachers}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Teacher Cards Grid */}
+      {!loading && !error && (
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false} 
+          contentContainerStyle={{ paddingBottom: 100 }}
+        >
+          <View style={styles.cardsGrid}>
+            {filteredStaff.map((teacher) => (
+              <TouchableOpacity 
+                key={teacher.id} 
+                style={[styles.card, { backgroundColor: teacher.color }]}
+                onPress={() => navigation.navigate('StaffInfoScreen', { teacher })}
+                activeOpacity={0.8}
+              >
+                {/* Teacher Image */}
+                <View style={styles.imageContainer}>
+                  <Image source={{ uri: teacher.image }} style={styles.teacherImage} />
+                </View>
+
+                {/* Subject */}
+                <Text style={styles.subject} numberOfLines={1}>{teacher.subject}</Text>
+                
+                {/* Qualification */}
+                <Text style={styles.qualification} numberOfLines={1}>{teacher.qualification}</Text>
+                
+                {/* Teacher Name */}
+                <Text style={styles.teacherName} numberOfLines={1}>By {teacher.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -283,5 +271,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#9CA3AF',
     textAlign: 'center',
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 15,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  errorText: {
+    fontSize: 15,
+    color: '#ef4444',
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#8b5cf6',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: '#8b5cf6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
