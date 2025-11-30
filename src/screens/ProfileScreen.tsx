@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, CommonActions } from '@react-navigation/native';
-import { LogoutIcon } from '../components/LogoutIcon';
+
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from './navigation/ProfileStack';
 
@@ -13,14 +13,7 @@ type ProfileScreenNavigationProp = NativeStackNavigationProp<ProfileStackParamLi
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
 
-  const handleLogout = () => {
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      })
-    );
-  };
+
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
@@ -30,9 +23,7 @@ export const ProfileScreen: React.FC = () => {
         <View style={styles.header}>
           <View style={styles.circleBackground} />
           
-          <TouchableOpacity style={styles.headerLogoutBtn} onPress={handleLogout}>
-            <LogoutIcon size={20} color="#ef4444" />
-          </TouchableOpacity>
+
           
           <View style={styles.avatarContainer}>
             <Image
@@ -44,9 +35,7 @@ export const ProfileScreen: React.FC = () => {
           <Text style={styles.name}>Iftikhar Zahid</Text>
           <Text style={styles.role}>Student – The Seeks Academy</Text>
 
-          <TouchableOpacity style={styles.editBtn}>
-            <Text style={styles.editBtnText}>Edit Profile</Text>
-          </TouchableOpacity>
+          <View style={styles.headerDivider} />
         </View>
 
         {/* Personal Info */}
@@ -107,52 +96,7 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Settings */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Settings</Text>
-          <View style={styles.card}>
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={() => navigation.navigate('SimTrackerScreen')}
-            >
-              <Text style={styles.settingText}>📱 SIM Tracker</Text>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-            <View style={styles.divider} />
 
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={() => navigation.navigate('ChangePasswordScreen')}
-            >
-              <Text style={styles.settingText}>🔒 Change Password</Text>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-            <View style={styles.divider} />
-
-            <TouchableOpacity style={styles.settingRow}>
-              <Text style={styles.settingText}>📊 Attendance Log</Text>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-            <View style={styles.divider} />
-
-            <TouchableOpacity style={styles.settingRow}>
-              <Text style={styles.settingText}>📝 Assignments</Text>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-            <View style={styles.divider} />
-
-            <TouchableOpacity style={styles.settingRow}>
-              <Text style={styles.settingText}>💬 Messages</Text>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-            <View style={styles.divider} />
-
-            <TouchableOpacity style={styles.settingRow}>
-              <Text style={styles.settingText}>🔔 Notification Settings</Text>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
       </ScrollView>
     </SafeAreaView>
@@ -183,22 +127,7 @@ const styles = StyleSheet.create({
     zIndex: -1,
   },
 
-  headerLogoutBtn: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    backgroundColor: '#ffffff',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
+
 
   avatarContainer: {
     padding: 4,
@@ -231,22 +160,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  editBtn: {
-    backgroundColor: "#8b5cf6", // Primary Purple
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 25,
-    shadowColor: '#8b5cf6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  editBtnText: {
-    color: "#ffffff",
-    fontWeight: "700",
-    fontSize: 14,
+  headerDivider: {
+    width: '80%',
+    height: 1,
+    backgroundColor: '#e5e7eb',
+    marginTop: 16,
+    marginBottom: 8,
   },
 
   sectionContainer: {
@@ -299,22 +218,5 @@ const styles = StyleSheet.create({
     backgroundColor: "#f3f4f6",
   },
 
-  settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
 
-  settingText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#374151",
-  },
-
-  chevron: {
-    fontSize: 18,
-    color: "#9ca3af",
-    fontWeight: "600",
-  },
 });

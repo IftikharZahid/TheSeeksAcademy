@@ -1,12 +1,21 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark, toggleTheme } = useTheme();
+
+  const handleLogout = () => {
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      })
+    );
+  };
 
 
   return (
@@ -21,6 +30,64 @@ export const SettingsScreen: React.FC = () => {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Account Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Account</Text>
+          
+          <View style={[styles.card, { backgroundColor: theme.card }]}>
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => navigation.navigate('SimTrackerScreen' as never)}
+            >
+              <View style={styles.settingLeft}>
+                <Text style={styles.settingIcon}>📱</Text>
+                <Text style={[styles.settingText, { color: theme.text }]}>SIM Tracker</Text>
+              </View>
+              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
+            </TouchableOpacity>
+
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+            <TouchableOpacity style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Text style={styles.settingIcon}>📊</Text>
+                <Text style={[styles.settingText, { color: theme.text }]}>Attendance Log</Text>
+              </View>
+              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
+            </TouchableOpacity>
+
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+            <TouchableOpacity style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Text style={styles.settingIcon}>📝</Text>
+                <Text style={[styles.settingText, { color: theme.text }]}>Assignments</Text>
+              </View>
+              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
+            </TouchableOpacity>
+
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+            <TouchableOpacity style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Text style={styles.settingIcon}>💬</Text>
+                <Text style={[styles.settingText, { color: theme.text }]}>Messages</Text>
+              </View>
+              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
+            </TouchableOpacity>
+
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+            <TouchableOpacity style={styles.settingRow}>
+              <View style={styles.settingLeft}>
+                <Text style={styles.settingIcon}>🔔</Text>
+                <Text style={[styles.settingText, { color: theme.text }]}>Notification Settings</Text>
+              </View>
+              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* General Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>General</Text>
@@ -72,7 +139,10 @@ export const SettingsScreen: React.FC = () => {
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Preferences</Text>
           
           <View style={[styles.card, { backgroundColor: theme.card }]}>
-            <TouchableOpacity style={styles.settingRow}>
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => navigation.navigate('AboutScreen' as never)}
+            >
               <View style={styles.settingLeft}>
                 <Text style={styles.settingIcon}>ℹ️</Text>
                 <Text style={[styles.settingText, { color: theme.text }]}>About The App</Text>
@@ -103,8 +173,9 @@ export const SettingsScreen: React.FC = () => {
         </View>
 
         {/* Delete Account Button */}
-        <TouchableOpacity style={styles.deleteButton}>
-          <Text style={styles.deleteButtonText}>Delete Account</Text>
+        {/* Logout Button */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
 
         <View style={{ height: 40 }} />
@@ -206,7 +277,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f3f4f6',
     marginHorizontal: 16,
   },
-  deleteButton: {
+  logoutButton: {
     marginHorizontal: 16,
     marginTop: 32,
     paddingVertical: 16,
@@ -219,7 +290,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  deleteButtonText: {
+  logoutButtonText: {
     fontSize: 16,
     fontWeight: '800',
     color: '#ffffff',
