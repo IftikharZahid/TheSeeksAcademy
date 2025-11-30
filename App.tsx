@@ -1,9 +1,9 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { CoursesProvider } from './src/context/CoursesContext';
+import { ThemeProvider } from './src/context/ThemeContext';
 
 import { LoginScreen } from './src/screens/LoginScreen';
 import { SignupScreen } from './src/screens/SignupScreen';
@@ -22,9 +22,8 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   return (
-    <>
-      <StatusBar barStyle="dark-content" />
-      <SafeAreaProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
         <CoursesProvider>
           <NavigationContainer>
             <Stack.Navigator initialRouteName="Welcome" screenOptions={{ headerShown: false }}>
@@ -36,7 +35,7 @@ export default function App() {
             </Stack.Navigator>
           </NavigationContainer>
         </CoursesProvider>
-      </SafeAreaProvider>
-    </>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

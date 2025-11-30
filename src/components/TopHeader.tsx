@@ -3,9 +3,11 @@ import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { notices } from '../screens/NoticesScreen';
+import { useTheme } from '../context/ThemeContext';
 
 export const TopHeader: React.FC<{ title?: string; onBell?: () => void; notificationCount?: number }> = ({ title = 'Home', onBell, notificationCount }) => {
   const navigation = useNavigation<any>();
+  const { theme } = useTheme();
   
   const handleBellPress = () => {
     if (onBell) {
@@ -28,15 +30,15 @@ export const TopHeader: React.FC<{ title?: string; onBell?: () => void; notifica
   const count = notificationCount !== undefined ? notificationCount : notices.length;
 
   return (
-    <SafeAreaView edges={['top']} style={styles.safeArea}>
-      <View style={styles.container}>
+    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.leftSection}>
           <View style={styles.avatar}>
             <Image source={require('../assets/profile.jpg')} style={styles.avatarImage} />
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>Iftikhar Zahid</Text>
-            <Text style={styles.greetingText}>{getGreeting()}</Text>
+            <Text style={[styles.userName, { color: theme.text }]}>Iftikhar Zahid</Text>
+            <Text style={[styles.greetingText, { color: theme.textSecondary }]}>{getGreeting()}</Text>
           </View>
         </View>
         <View style={styles.rightSection}>

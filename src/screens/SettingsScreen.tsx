@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../context/ThemeContext';
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation();
-  const [darkMode, setDarkMode] = useState(false);
+  const { theme, isDark, toggleTheme } = useTheme();
+
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundSecondary }]} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.primary }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
@@ -21,45 +23,45 @@ export const SettingsScreen: React.FC = () => {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* General Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>General</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>General</Text>
           
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.card }]}>
             <TouchableOpacity 
               style={styles.settingRow}
               onPress={() => navigation.navigate('ChangePasswordScreen' as never)}
             >
               <View style={styles.settingLeft}>
                 <Text style={styles.settingIcon}>🔑</Text>
-                <Text style={styles.settingText}>Change Password</Text>
+                <Text style={[styles.settingText, { color: theme.text }]}>Change Password</Text>
               </View>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
             </TouchableOpacity>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-            <View style={styles.settingRow}>
+            <View style={[styles.settingRow, { backgroundColor: theme.card }]}>
               <View style={styles.settingLeft}>
                 <Text style={styles.settingIcon}>☀️</Text>
-                <Text style={styles.settingText}>Dark Mode</Text>
+                <Text style={[styles.settingText, { color: theme.text }]}>Dark Mode</Text>
               </View>
               <Switch
-                value={darkMode}
-                onValueChange={setDarkMode}
-                trackColor={{ false: '#e5e7eb', true: '#c4b5fd' }}
-                thumbColor={darkMode ? '#8b5cf6' : '#f9fafb'}
+                value={isDark}
+                onValueChange={toggleTheme}
+                trackColor={{ false: theme.border, true: theme.primaryLight }}
+                thumbColor={isDark ? theme.primary : theme.background}
               />
             </View>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
             <TouchableOpacity style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Text style={styles.settingIcon}>🌐</Text>
-                <Text style={styles.settingText}>Language</Text>
+                <Text style={[styles.settingText, { color: theme.text }]}>Language</Text>
               </View>
               <View style={styles.settingRight}>
-                <Text style={styles.languageValue}>English</Text>
-                <Text style={styles.chevron}>›</Text>
+                <Text style={[styles.languageValue, { color: theme.textSecondary }]}>English</Text>
+                <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -67,35 +69,35 @@ export const SettingsScreen: React.FC = () => {
 
         {/* Preferences Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Preferences</Text>
           
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: theme.card }]}>
             <TouchableOpacity style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Text style={styles.settingIcon}>ℹ️</Text>
-                <Text style={styles.settingText}>About The App</Text>
+                <Text style={[styles.settingText, { color: theme.text }]}>About The App</Text>
               </View>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
             </TouchableOpacity>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
             <TouchableOpacity style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Text style={styles.settingIcon}>🛡️</Text>
-                <Text style={styles.settingText}>Privacy & Policy</Text>
+                <Text style={[styles.settingText, { color: theme.text }]}>Privacy & Policy</Text>
               </View>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
             </TouchableOpacity>
 
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
             <TouchableOpacity style={styles.settingRow}>
               <View style={styles.settingLeft}>
                 <Text style={styles.settingIcon}>📞</Text>
-                <Text style={styles.settingText}>Help Center</Text>
+                <Text style={[styles.settingText, { color: theme.text }]}>Help Center</Text>
               </View>
-              <Text style={styles.chevron}>›</Text>
+              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
             </TouchableOpacity>
           </View>
         </View>
