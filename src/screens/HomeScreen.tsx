@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useCourses } from '../context/CoursesContext';
 import { DeckSwiper } from '../components/DeckSwiper';
+import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -40,6 +41,7 @@ const quickItems = [
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { courses, isLiked } = useCourses();
+  const { theme, isDark } = useTheme();
   const scrollViewRef = useRef<ScrollView>(null);
   const [activeSlide, setActiveSlide] = useState(0);
 
@@ -65,8 +67,8 @@ export const HomeScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right']}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.background} />
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
         
         <View style={styles.content}>
@@ -87,7 +89,7 @@ export const HomeScreen: React.FC = () => {
                   <Text style={styles.bannerTitle}>{slide.title}</Text>
                   <Text style={styles.bannerSubtitle}>{slide.subtitle}</Text>
                   <TouchableOpacity style={styles.applyButton}>
-                    <Text style={styles.applyButtonText}>Get Started!</Text>
+                    <Text style={[styles.applyButtonText, { color: slide.color }]}>Get Started!</Text>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -120,17 +122,17 @@ export const HomeScreen: React.FC = () => {
                   if (q.key === 'timetable') navigation.navigate('TimetableScreen');
                   if (q.key === 'attendance') navigation.navigate('AttendanceScreen');
                 }} 
-                style={styles.quickActionCard}
+                style={[styles.quickActionCard, { backgroundColor: theme.card, borderColor: theme.border }]}
               >
                 <Text style={styles.quickActionEmoji}>{q.emoji}</Text>
-                <Text style={styles.quickActionLabel}>{q.label}</Text>
+                <Text style={[styles.quickActionLabel, { color: theme.text }]}>{q.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           {/* Featured Courses */}
           <View style={styles.featuredSection}>
-            <Text style={styles.featuredTitle}>Featured Courses</Text>
+            <Text style={[styles.featuredTitle, { color: theme.text }]}>Featured Courses</Text>
             <DeckSwiper data={courses} />
           </View>
         </View>
@@ -142,7 +144,6 @@ export const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   container: {
     flex: 1,
@@ -179,7 +180,6 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   applyButtonText: {
-    color: '#3b82f6',
     fontWeight: '700',
     fontSize: 14,
   },
@@ -207,14 +207,12 @@ const styles = StyleSheet.create({
   },
   quickActionCard: {
     width: '31%',
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#f3f4f6',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -230,7 +228,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     fontSize: 12,
-    color: '#374151',
   },
   featuredSection: {
     marginTop: 10,
@@ -238,7 +235,6 @@ const styles = StyleSheet.create({
   featuredTitle: {
     fontWeight: '700',
     fontSize: 18,
-    color: '#1f2937',
     marginBottom: 12,
   },
 });

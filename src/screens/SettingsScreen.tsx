@@ -21,11 +21,12 @@ export const SettingsScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundSecondary }]} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.primary }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>‹</Text>
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: theme.background }]}>
+          <Text style={[styles.backIcon, { color: theme.text }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Settings</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -152,7 +153,10 @@ export const SettingsScreen: React.FC = () => {
 
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-            <TouchableOpacity style={styles.settingRow}>
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => navigation.navigate('PrivacyPolicyScreen' as never)}
+            >
               <View style={styles.settingLeft}>
                 <Text style={styles.settingIcon}>🛡️</Text>
                 <Text style={[styles.settingText, { color: theme.text }]}>Privacy & Policy</Text>
@@ -162,7 +166,10 @@ export const SettingsScreen: React.FC = () => {
 
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-            <TouchableOpacity style={styles.settingRow}>
+            <TouchableOpacity 
+              style={styles.settingRow}
+              onPress={() => navigation.navigate('HelpCenterScreen' as never)}
+            >
               <View style={styles.settingLeft}>
                 <Text style={styles.settingIcon}>📞</Text>
                 <Text style={[styles.settingText, { color: theme.text }]}>Help Center</Text>
@@ -193,26 +200,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#8b5cf6',
+    borderBottomWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   backButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
   backIcon: {
-    fontSize: 32,
-    color: '#ffffff',
-    fontWeight: '600',
-    marginTop: -4,
+    fontSize: 30,
+    fontWeight: '700',
+    marginTop: -3,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
-    color: '#ffffff',
+    letterSpacing: 0.3,
   },
   content: {
     flex: 1,

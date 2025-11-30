@@ -10,31 +10,40 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCourses } from '../context/CoursesContext';
 import { Course } from '../data/courses';
+import { useTheme } from '../context/ThemeContext';
 
 const CourseCard = memo(
   ({ item, liked }: { item: Course; liked: boolean }) => {
     const [localLiked, setLocalLiked] = React.useState(liked);
+    const { theme } = useTheme();
 
     const handleToggle = () => {
       setLocalLiked((prev) => !prev);
     };
 
     return (
-      <TouchableOpacity style={styles.courseCard} activeOpacity={0.9}>
-        <Image source={{ uri: item.image }} style={styles.courseImage} />
+      <TouchableOpacity 
+        style={[styles.courseCard, { backgroundColor: theme.card, borderColor: theme.border }]} 
+        activeOpacity={0.9}
+      >
+        <Image source={{ uri: item.image }} style={[styles.courseImage, { backgroundColor: theme.border }]} />
 
         <View style={styles.courseInfo}>
-          <Text style={styles.courseName} numberOfLines={2}>
+          <Text style={[styles.courseName, { color: theme.text }]} numberOfLines={2}>
             {item.name}
           </Text>
 
-          <Text style={styles.teacherName} numberOfLines={1}>
+          <Text style={[styles.teacherName, { color: theme.textSecondary }]} numberOfLines={1}>
             {item.teacher}
           </Text>
 
           <View style={styles.actionButtons}>
             <TouchableOpacity
-              style={[styles.likeButton, localLiked && styles.likeButtonActive]}
+              style={[
+                styles.likeButton, 
+                { backgroundColor: theme.background, borderColor: theme.border },
+                localLiked && styles.likeButtonActive
+              ]}
               onPress={handleToggle}
             >
               <Text style={[styles.likeText, localLiked && styles.likeTextActive]}>
@@ -42,7 +51,7 @@ const CourseCard = memo(
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.enrollButton}>
+            <TouchableOpacity style={[styles.enrollButton, { backgroundColor: theme.primary }]}>
               <Text style={styles.enrollText}>More Detail...</Text>
             </TouchableOpacity>
           </View>
@@ -54,6 +63,7 @@ const CourseCard = memo(
 
 export const CoursesScreen: React.FC = () => {
   const { courses, isLiked } = useCourses();
+  const { theme } = useTheme();
 
   const renderCourse = useCallback(
     ({ item }: { item: Course }) => {
@@ -69,7 +79,7 @@ export const CoursesScreen: React.FC = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['left', 'right']}>
       <FlatList
         data={courses}
         keyExtractor={(item) => item.id}
@@ -78,7 +88,7 @@ export const CoursesScreen: React.FC = () => {
         contentContainerStyle={styles.listContent}
         numColumns={2}
         columnWrapperStyle={styles.columnWrapper}
-        style={styles.list}
+        style={[styles.list, { backgroundColor: theme.background }]}
 
         // ⚡ Optimization props
         initialNumToRender={6}
@@ -96,9 +106,9 @@ export const CoursesScreen: React.FC = () => {
 const CARD_WIDTH = '48%';
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ffffff' },
+  container: { flex: 1 },
 
-  list: { flex: 1, backgroundColor: '#ffffff' },
+  list: { flex: 1 },
 
   listContent: {
     paddingHorizontal: 16,
@@ -111,12 +121,10 @@ const styles = StyleSheet.create({
 
   courseCard: {
     width: CARD_WIDTH,
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     marginBottom: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#f3f4f6',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -127,7 +135,6 @@ const styles = StyleSheet.create({
   courseImage: {
     width: '100%',
     height: 110,
-    backgroundColor: '#e5e7eb',
   },
 
   courseInfo: { padding: 10 },
@@ -135,14 +142,12 @@ const styles = StyleSheet.create({
   courseName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1f2937',
     marginBottom: 4,
     height: 40,
   },
 
   teacherName: {
     fontSize: 12,
-    color: '#6b7280',
     marginBottom: 8,
   },
 
@@ -155,9 +160,7 @@ const styles = StyleSheet.create({
   likeButton: {
     padding: 6,
     borderRadius: 6,
-    backgroundColor: '#f3f4f6',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
   },
 
   likeButtonActive: {
@@ -175,7 +178,6 @@ const styles = StyleSheet.create({
   },
 
   enrollButton: {
-    backgroundColor: '#8b5cf6',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 6,

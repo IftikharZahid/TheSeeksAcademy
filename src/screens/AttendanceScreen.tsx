@@ -13,12 +13,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import Svg, { Circle, Defs, LinearGradient, Stop, Rect } from "react-native-svg";
+import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get("window");
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export const AttendanceScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { theme, isDark } = useTheme();
 
   /* -----------------------------
         MONTH DATA
@@ -79,7 +81,7 @@ export const AttendanceScreen: React.FC = () => {
         UTILITIES
   ------------------------------ */
   const getColor = (status?: string) => {
-    if (!status) return "#D1D5DB"; // neutral
+    if (!status) return isDark ? theme.textSecondary : "#D1D5DB"; // neutral
     switch (status.toLowerCase()) {
       case "present":
         return "#10B981";
@@ -88,7 +90,7 @@ export const AttendanceScreen: React.FC = () => {
       case "late":
         return "#F59E0B";
       default:
-        return "#D1D5DB";
+        return isDark ? theme.textSecondary : "#D1D5DB";
     }
   };
 
@@ -230,39 +232,39 @@ export const AttendanceScreen: React.FC = () => {
         RENDER
   ------------------------------ */
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={["top", "left", "right"]}>
       {/* HEADER */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.background }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={[styles.backIcon, { color: theme.text }]}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Attendance</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Attendance</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
-        <Text style={styles.subtitle}>Monthly calendar view</Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Monthly calendar view</Text>
 
         {/* MONTH DROPDOWN */}
         <View style={styles.dropdownContainer}>
           <TouchableOpacity
             onPress={() => setDropdownVisible((s) => !s)}
-            style={styles.dropdownButton}
+            style={[styles.dropdownButton, { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border }]}
             disabled={animating}
           >
-            <Text style={styles.dropdownText}>{selectedMonth}</Text>
-            <Text style={styles.dropdownArrow}>{dropdownVisible ? "▲" : "▼"}</Text>
+            <Text style={[styles.dropdownText, { color: theme.text }]}>{selectedMonth}</Text>
+            <Text style={[styles.dropdownArrow, { color: theme.textSecondary }]}>{dropdownVisible ? "▲" : "▼"}</Text>
           </TouchableOpacity>
 
           {dropdownVisible && (
-            <View style={styles.dropdownList}>
+            <View style={[styles.dropdownList, { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border }]}>
               {months.map((m, i) => (
                 <TouchableOpacity
                   key={m}
                   style={styles.dropdownItem}
                   onPress={() => changeMonth(i)}
                 >
-                  <Text style={styles.dropdownItemText}>{m}</Text>
+                  <Text style={[styles.dropdownItemText, { color: theme.text }]}>{m}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -275,7 +277,7 @@ export const AttendanceScreen: React.FC = () => {
             <Svg width={160} height={160}>
               <Defs>
                 <LinearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-                  <Stop offset="0" stopColor="#8b5cf6" />
+                  <Stop offset="0" stopColor={theme.primary} />
                   <Stop offset="0.5" stopColor="#a78bfa" />
                   <Stop offset="1" stopColor="#c4b5fd" />
                 </LinearGradient>
@@ -285,7 +287,7 @@ export const AttendanceScreen: React.FC = () => {
                 cx="80"
                 cy="80"
                 r={RADIUS}
-                stroke="#E5E7EB"
+                stroke={isDark ? theme.border : "#E5E7EB"}
                 strokeWidth={STROKE_WIDTH}
                 fill="transparent"
               />
@@ -305,8 +307,8 @@ export const AttendanceScreen: React.FC = () => {
             </Svg>
 
             <View style={styles.centerTextContainer}>
-              <Text style={styles.percentageTextBig}>{summary.percentage}%</Text>
-              <Text style={styles.percentageLabel}>Present</Text>
+              <Text style={[styles.percentageTextBig, { color: theme.primary }]}>{summary.percentage}%</Text>
+              <Text style={[styles.percentageLabel, { color: theme.textSecondary }]}>Present</Text>
             </View>
           </View>
         </View>
@@ -319,10 +321,10 @@ export const AttendanceScreen: React.FC = () => {
           }}
         >
           {/* WEEKDAY HEADERS */}
-          <Text style={styles.sectionTitle}>Monthly Calendar</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Monthly Calendar</Text>
           <View style={styles.calendarRow}>
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-              <Text key={d} style={styles.calendarHeader}>
+              <Text key={d} style={[styles.calendarHeader, { color: theme.textSecondary }]}>
                 {d}
               </Text>
             ))}
@@ -344,7 +346,7 @@ export const AttendanceScreen: React.FC = () => {
 
                 // Determine background color and text color
                 let bgColor = "transparent";
-                let textColor = showDay ? "#1f2937" : "transparent";
+                let textColor = showDay ? (isDark ? theme.text : "#1f2937") : "transparent";
 
                 if (showDay) {
                   if (isSunday) {
@@ -360,7 +362,7 @@ export const AttendanceScreen: React.FC = () => {
                         bgColor = "#F59E0B"; // Amber
                         textColor = "#ffffff";
                       } else if (isToday) {
-                        bgColor = "#8b5cf6"; // Purple (Primary)
+                        bgColor = theme.primary; // Purple (Primary)
                         textColor = "#ffffff";
                       }
                   }
@@ -377,7 +379,7 @@ export const AttendanceScreen: React.FC = () => {
                       <View style={[
                         styles.dayCircle, 
                         { backgroundColor: bgColor },
-                        isSunday && !isToday && styles.sundayBackground
+                        isSunday && !isToday && { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2' }
                       ]}>
                         <Text style={[
                           styles.calendarDate, 
@@ -397,36 +399,36 @@ export const AttendanceScreen: React.FC = () => {
         </Animated.View>
 
         {/* MONTH SUMMARY */}
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Monthly Summary</Text>
+        <View style={[styles.summaryCard, { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border }]}>
+          <Text style={[styles.summaryTitle, { color: theme.text }]}>Monthly Summary</Text>
           <View style={styles.summaryRow}>
             <View style={styles.summaryBox}>
               <Text style={styles.summaryNumber}>{summary.present}</Text>
-              <Text style={styles.summaryLabel}>Present</Text>
+              <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Present</Text>
             </View>
             <View style={styles.summaryBox}>
               <Text style={[styles.summaryNumber, { color: "#EF4444" }]}>{summary.absent}</Text>
-              <Text style={styles.summaryLabel}>Absent</Text>
+              <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Absent</Text>
             </View>
             <View style={styles.summaryBox}>
               <Text style={[styles.summaryNumber, { color: "#F59E0B" }]}>{summary.late}</Text>
-              <Text style={styles.summaryLabel}>Late</Text>
+              <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Late</Text>
             </View>
           </View>
         </View>
 
         {/* DAILY LOGS */}
-        <Text style={styles.sectionTitle}>Daily Records</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Daily Records</Text>
         {dailyLogs.map((log, i) => (
-          <View key={i} style={styles.logCard}>
+          <View key={i} style={[styles.logCard, { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border }]}>
             <View style={styles.logHeader}>
-              <Text style={styles.logDate}>{log.date}</Text>
+              <Text style={[styles.logDate, { color: theme.text }]}>{log.date}</Text>
               <View style={[styles.statusBadge, { backgroundColor: getColor(log.status) }]}>
                 <Text style={styles.badgeText}>{log.status.toUpperCase()}</Text>
               </View>
             </View>
-            {log.timeIn && <Text style={styles.logText}>Time In: {log.timeIn}</Text>}
-            {log.timeOut && <Text style={styles.logText}>Time Out: {log.timeOut}</Text>}
+            {log.timeIn && <Text style={[styles.logText, { color: theme.textSecondary }]}>Time In: {log.timeIn}</Text>}
+            {log.timeOut && <Text style={[styles.logText, { color: theme.textSecondary }]}>Time Out: {log.timeOut}</Text>}
           </View>
         ))}
       </ScrollView>
@@ -434,8 +436,8 @@ export const AttendanceScreen: React.FC = () => {
       {/* DAY DETAIL MODAL */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{selectedDayInfo?.label || "Date"}</Text>
+          <View style={[styles.modalContent, { backgroundColor: isDark ? theme.card : '#fff' }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>{selectedDayInfo?.label || "Date"}</Text>
 
             <View style={[styles.modalStatusBadge, { backgroundColor: getColor(selectedDayInfo?.status) }]}>
               <Text style={styles.modalStatusText}>
@@ -443,14 +445,14 @@ export const AttendanceScreen: React.FC = () => {
               </Text>
             </View>
 
-            {selectedDayInfo?.timeIn && <Text style={styles.modalText}>Time In: {selectedDayInfo.timeIn}</Text>}
-            {selectedDayInfo?.timeOut && <Text style={styles.modalText}>Time Out: {selectedDayInfo.timeOut}</Text>}
+            {selectedDayInfo?.timeIn && <Text style={[styles.modalText, { color: theme.textSecondary }]}>Time In: {selectedDayInfo.timeIn}</Text>}
+            {selectedDayInfo?.timeOut && <Text style={[styles.modalText, { color: theme.textSecondary }]}>Time Out: {selectedDayInfo.timeOut}</Text>}
 
             {!selectedDayInfo?.timeIn && selectedDayInfo?.status === "unknown" && (
-              <Text style={styles.modalText}>No attendance information available.</Text>
+              <Text style={[styles.modalText, { color: theme.textSecondary }]}>No attendance information available.</Text>
             )}
 
-            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseButton}>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={[styles.modalCloseButton, { backgroundColor: theme.primary }]}>
               <Text style={styles.modalCloseText}>Close</Text>
             </TouchableOpacity>
           </View>
@@ -464,52 +466,48 @@ export const AttendanceScreen: React.FC = () => {
         STYLES
 ------------------------------ */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#ffffff" },
+  container: { flex: 1 },
 
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     padding: 16,
   },
-  backIcon: { fontSize: 24, fontWeight: "700", color: "#1f2937" },
-  headerTitle: { fontSize: 20, fontWeight: "700", color: "#1f2937" },
-  subtitle: { textAlign: "center", color: "#6B7280", marginBottom: 15 },
+  backIcon: { fontSize: 24, fontWeight: "700" },
+  headerTitle: { fontSize: 20, fontWeight: "700" },
+  subtitle: { textAlign: "center", marginBottom: 15 },
 
   dropdownContainer: { marginHorizontal: 16 },
   dropdownButton: {
-    backgroundColor: "#fff",
     padding: 14,
     borderRadius: 12,
     flexDirection: "row",
     justifyContent: "space-between",
     borderWidth: 1,
-    borderColor: '#f3f4f6',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
   },
-  dropdownText: { fontSize: 15, fontWeight: "600", color: "#1f2937" },
-  dropdownArrow: { fontSize: 16, color: "#6b7280" },
+  dropdownText: { fontSize: 15, fontWeight: "600" },
+  dropdownArrow: { fontSize: 16 },
   dropdownList: {
     marginTop: 6,
-    backgroundColor: "#fff",
     borderRadius: 10,
     elevation: 4,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
   },
   dropdownItem: { padding: 12 },
-  dropdownItemText: { fontSize: 14, color: "#1f2937" },
+  dropdownItemText: { fontSize: 14 },
 
   progressContainer: { alignItems: "center", marginVertical: 20 },
   circleWrapper: { width: 160, height: 160, justifyContent: "center", alignItems: "center" },
   centerTextContainer: { position: "absolute", alignItems: "center" },
-  percentageTextBig: { fontSize: 30, fontWeight: "700", color: "#8b5cf6" },
-  percentageLabel: { color: "#6B7280" },
+  percentageTextBig: { fontSize: 30, fontWeight: "700" },
+  percentageLabel: { },
 
-  sectionTitle: { fontSize: 18, fontWeight: "700", marginLeft: 16, marginBottom: 10, color: "#1f2937" },
+  sectionTitle: { fontSize: 18, fontWeight: "700", marginLeft: 16, marginBottom: 10 },
 
   /* CALENDAR */
   calendarRow: {
@@ -521,7 +519,6 @@ const styles = StyleSheet.create({
     width: width / 7 - 12,
     textAlign: "center",
     fontWeight: "700",
-    color: "#6B7280",
     paddingVertical: 4,
   },
   calendarCell: {
@@ -545,47 +542,35 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   sundayBackground: {
-    backgroundColor: '#FEF2F2', // Light red background for Sundays
+    // backgroundColor: '#FEF2F2', // Light red background for Sundays - Handled inline for dark mode support
   },
-
-  /* marker dot - REMOVED as we use background color now */
-  // marker: {
-  //   width: 8,
-  //   height: 8,
-  //   borderRadius: 4,
-  //   marginTop: 6,
-  // },
 
   /* SUMMARY */
   summaryCard: {
-    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 16,
     marginHorizontal: 16,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
   },
-  summaryTitle: { fontSize: 16, fontWeight: "700", marginBottom: 10, color: "#1f2937" },
+  summaryTitle: { fontSize: 16, fontWeight: "700", marginBottom: 10 },
   summaryRow: { flexDirection: "row", justifyContent: "space-between" },
   summaryBox: { alignItems: "center", flex: 1 },
   summaryNumber: { fontSize: 22, fontWeight: "700", color: "#10B981" },
-  summaryLabel: { fontSize: 12, color: "#6B7280" },
+  summaryLabel: { fontSize: 12 },
 
   /* DAILY LOGS */
   logCard: {
-    backgroundColor: "#fff",
     padding: 16,
     borderRadius: 12,
     marginHorizontal: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -593,10 +578,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   logHeader: { flexDirection: "row", justifyContent: "space-between" },
-  logDate: { fontSize: 15, fontWeight: "700", color: "#1f2937" },
+  logDate: { fontSize: 15, fontWeight: "700" },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
   badgeText: { color: "#fff", fontWeight: "700" },
-  logText: { marginTop: 6, color: "#4B5563" },
+  logText: { marginTop: 6 },
 
   /* MODAL */
   modalOverlay: {
@@ -607,12 +592,11 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: width * 0.85,
-    backgroundColor: "#fff",
     padding: 20,
     borderRadius: 16,
   },
-  modalTitle: { fontSize: 18, fontWeight: "700", color: "#1f2937" },
-  modalText: { marginTop: 8, color: "#4B5563" },
+  modalTitle: { fontSize: 18, fontWeight: "700" },
+  modalText: { marginTop: 8 },
   modalStatusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -623,7 +607,6 @@ const styles = StyleSheet.create({
   modalStatusText: { color: "#fff", fontWeight: "700" },
   modalCloseButton: {
     padding: 12,
-    backgroundColor: "#8b5cf6",
     borderRadius: 10,
     alignItems: "center",
     marginTop: 20,

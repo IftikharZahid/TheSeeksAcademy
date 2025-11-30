@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Clipboard, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../context/ThemeContext';
 
 interface RecordItem {
   Mobile: string;
@@ -19,6 +20,7 @@ interface ApiResponse {
 
 const SimTrackerScreen = () => {
   const navigation = useNavigation();
+  const { theme, isDark } = useTheme();
   const [input, setInput] = useState('');
   const [records, setRecords] = useState<RecordItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -64,28 +66,32 @@ const SimTrackerScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
         <TouchableOpacity 
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: theme.card, shadowColor: theme.shadow }]}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backButtonText}>‹</Text>
+          <Text style={[styles.backButtonText, { color: theme.text }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>SIM Tracker</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>SIM Tracker</Text>
         <View style={styles.placeholder} />
       </View>
 
       {/* Content */}
       <View style={styles.content}>
-        <Text style={styles.description}>
+        <Text style={[styles.description, { color: theme.textSecondary }]}>
           Enter CNIC or phone number to fetch records
         </Text>
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, { 
+            backgroundColor: isDark ? theme.card : '#fafafa', 
+            borderColor: theme.border,
+            color: theme.text 
+          }]}
           placeholder="Enter CNIC or phone number"
           placeholderTextColor="#9ca3af"
           value={input}
@@ -99,7 +105,7 @@ const SimTrackerScreen = () => {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <TouchableOpacity 
-          style={[styles.button, loading && styles.buttonDisabled]} 
+          style={[styles.button, { backgroundColor: theme.primary, shadowColor: theme.primary }, loading && styles.buttonDisabled]} 
           onPress={fetchDetails}
           disabled={loading}
         >
@@ -110,11 +116,11 @@ const SimTrackerScreen = () => {
 
         <ScrollView style={{ marginTop: 20 }}>
           {records.map((item, index) => (
-            <View key={index} style={styles.resultCard}>
+            <View key={index} style={[styles.resultCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <View style={styles.titleRow}>
-                <Text style={styles.resultTitle}>Record {index + 1}</Text>
+                <Text style={[styles.resultTitle, { color: theme.primary }]}>Record {index + 1}</Text>
                 <TouchableOpacity 
-                  style={styles.copyButton}
+                  style={[styles.copyButton, { backgroundColor: isDark ? theme.background : '#f3f4f6' }]}
                   onPress={() => copyToClipboard(item, index)}
                 >
                   <Text style={styles.copyIcon}>📋</Text>
@@ -122,32 +128,32 @@ const SimTrackerScreen = () => {
               </View>
               
               <View style={styles.resultRow}>
-                <Text style={styles.resultLabel}>Name:</Text>
-                <Text style={styles.resultValue}>{item.Name}</Text>
+                <Text style={[styles.resultLabel, { color: theme.textSecondary }]}>Name:</Text>
+                <Text style={[styles.resultValue, { color: theme.text }]}>{item.Name}</Text>
               </View>
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
               <View style={styles.resultRow}>
-                <Text style={styles.resultLabel}>Phone:</Text>
-                <Text style={styles.resultValue}>{item.Mobile}</Text>
+                <Text style={[styles.resultLabel, { color: theme.textSecondary }]}>Phone:</Text>
+                <Text style={[styles.resultValue, { color: theme.text }]}>{item.Mobile}</Text>
               </View>
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
               <View style={styles.resultRow}>
-                <Text style={styles.resultLabel}>CNIC:</Text>
-                <Text style={styles.resultValue}>{item.CNIC}</Text>
+                <Text style={[styles.resultLabel, { color: theme.textSecondary }]}>CNIC:</Text>
+                <Text style={[styles.resultValue, { color: theme.text }]}>{item.CNIC}</Text>
               </View>
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
               <View style={styles.resultRow}>
-                <Text style={styles.resultLabel}>Address:</Text>
-                <Text style={styles.resultValue}>{item.Address}</Text>
+                <Text style={[styles.resultLabel, { color: theme.textSecondary }]}>Address:</Text>
+                <Text style={[styles.resultValue, { color: theme.text }]}>{item.Address}</Text>
               </View>
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
               <View style={styles.resultRow}>
-                <Text style={styles.resultLabel}>Country:</Text>
-                <Text style={styles.resultValue}>{item.Country}</Text>
+                <Text style={[styles.resultLabel, { color: theme.textSecondary }]}>Country:</Text>
+                <Text style={[styles.resultValue, { color: theme.text }]}>{item.Country}</Text>
               </View>
             </View>
           ))}
@@ -162,7 +168,6 @@ const styles = StyleSheet.create({
   // Container
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
 
   // Header Section
@@ -172,10 +177,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 3,
@@ -185,10 +187,8 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -196,14 +196,12 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 30,
-    color: '#374151',
     fontWeight: '700',
     marginTop: -3,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#1f2937',
     letterSpacing: 0.3,
   },
   placeholder: {
@@ -218,7 +216,6 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 15,
-    color: '#6b7280',
     marginBottom: 24,
     textAlign: 'center',
     fontWeight: '500',
@@ -228,13 +225,10 @@ const styles = StyleSheet.create({
   // Input Field
   input: {
     borderWidth: 1.5,
-    borderColor: '#e5e7eb',
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 15,
-    color: '#1f2937',
-    backgroundColor: '#fafafa',
     marginBottom: 10,
     fontWeight: '500',
     shadowColor: '#000',
@@ -253,12 +247,10 @@ const styles = StyleSheet.create({
 
   // Button
   button: {
-    backgroundColor: '#8b5cf6',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#8b5cf6',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
@@ -278,11 +270,9 @@ const styles = StyleSheet.create({
   // Result Cards
   resultCard: {
     marginBottom: 16,
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
@@ -298,7 +288,6 @@ const styles = StyleSheet.create({
   resultTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#8b5cf6',
     textAlign: 'left',
     letterSpacing: 0.3,
     flex: 1,
@@ -307,7 +296,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -329,7 +317,6 @@ const styles = StyleSheet.create({
   },
   resultLabel: {
     fontSize: 14,
-    color: '#6b7280',
     fontWeight: '600',
     width: 85,
     textAlign: 'left',
@@ -338,14 +325,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '700',
-    color: '#1f2937',
     textAlign: 'left',
     paddingLeft: 12,
     lineHeight: 20,
   },
   divider: {
     height: 1,
-    backgroundColor: '#f3f4f6',
     marginVertical: 4,
   },
 });

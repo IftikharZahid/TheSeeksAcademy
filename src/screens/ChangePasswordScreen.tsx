@@ -3,9 +3,11 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { AuthAPI } from '../api/api';
+import { useTheme } from '../context/ThemeContext';
 
 const ChangePasswordScreen = () => {
   const navigation = useNavigation();
+  const { theme, isDark } = useTheme();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -113,16 +115,16 @@ const ChangePasswordScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
         <TouchableOpacity 
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: isDark ? theme.card : '#f3f4f6' }]}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backButtonText}>‹</Text>
+          <Text style={[styles.backButtonText, { color: theme.text }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Change Password</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Change Password</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -138,18 +140,26 @@ const ChangePasswordScreen = () => {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.description}>
+          <Text style={[styles.description, { color: theme.textSecondary }]}>
             Enter your current password and choose a new password
           </Text>
 
           {/* Current Password */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Current Password</Text>
+            <Text style={[styles.label, { color: theme.text }]}>Current Password</Text>
             <View style={styles.passwordInputWrapper}>
               <TextInput
-                style={[styles.input, errors.currentPassword && styles.inputError]}
+                style={[
+                  styles.input, 
+                  { 
+                    backgroundColor: isDark ? theme.card : '#fafafa',
+                    borderColor: theme.border,
+                    color: theme.text
+                  },
+                  errors.currentPassword && styles.inputError
+                ]}
                 placeholder="Enter current password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={theme.textSecondary}
                 value={currentPassword}
                 onChangeText={(text) => {
                   setCurrentPassword(text);
@@ -172,12 +182,20 @@ const ChangePasswordScreen = () => {
 
           {/* New Password */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>New Password</Text>
+            <Text style={[styles.label, { color: theme.text }]}>New Password</Text>
             <View style={styles.passwordInputWrapper}>
               <TextInput
-                style={[styles.input, errors.newPassword && styles.inputError]}
+                style={[
+                  styles.input, 
+                  { 
+                    backgroundColor: isDark ? theme.card : '#fafafa',
+                    borderColor: theme.border,
+                    color: theme.text
+                  },
+                  errors.newPassword && styles.inputError
+                ]}
                 placeholder="Enter new password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={theme.textSecondary}
                 value={newPassword}
                 onChangeText={(text) => {
                   setNewPassword(text);
@@ -200,12 +218,20 @@ const ChangePasswordScreen = () => {
 
           {/* Confirm Password */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Confirm New Password</Text>
+            <Text style={[styles.label, { color: theme.text }]}>Confirm New Password</Text>
             <View style={styles.passwordInputWrapper}>
               <TextInput
-                style={[styles.input, errors.confirmPassword && styles.inputError]}
+                style={[
+                  styles.input, 
+                  { 
+                    backgroundColor: isDark ? theme.card : '#fafafa',
+                    borderColor: theme.border,
+                    color: theme.text
+                  },
+                  errors.confirmPassword && styles.inputError
+                ]}
                 placeholder="Re-enter new password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={theme.textSecondary}
                 value={confirmPassword}
                 onChangeText={(text) => {
                   setConfirmPassword(text);
@@ -228,7 +254,7 @@ const ChangePasswordScreen = () => {
 
           {/* Update Button */}
           <TouchableOpacity
-            style={[styles.updateButton, loading && styles.buttonDisabled]}
+            style={[styles.updateButton, { backgroundColor: theme.primary }, loading && styles.buttonDisabled]}
             onPress={handleUpdatePassword}
             disabled={loading}
           >
@@ -238,11 +264,11 @@ const ChangePasswordScreen = () => {
           </TouchableOpacity>
 
           {/* Password Requirements */}
-          <View style={styles.requirementsCard}>
-            <Text style={styles.requirementsTitle}>Password Requirements:</Text>
-            <Text style={styles.requirementText}>• At least 6 characters long</Text>
-            <Text style={styles.requirementText}>• Different from current password</Text>
-            <Text style={styles.requirementText}>• Passwords must match</Text>
+          <View style={[styles.requirementsCard, { backgroundColor: isDark ? theme.card : '#f9fafb', borderColor: theme.border }]}>
+            <Text style={[styles.requirementsTitle, { color: theme.text }]}>Password Requirements:</Text>
+            <Text style={[styles.requirementText, { color: theme.textSecondary }]}>• At least 6 characters long</Text>
+            <Text style={[styles.requirementText, { color: theme.textSecondary }]}>• Different from current password</Text>
+            <Text style={[styles.requirementText, { color: theme.textSecondary }]}>• Passwords must match</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -254,7 +280,6 @@ const styles = StyleSheet.create({
   // Container
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
 
   // Header Section
@@ -264,9 +289,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -277,7 +300,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -288,14 +310,12 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 30,
-    color: '#374151',
     fontWeight: '700',
     marginTop: -3,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#1f2937',
     letterSpacing: 0.3,
   },
   placeholder: {
@@ -318,7 +338,6 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 15,
-    color: '#6b7280',
     marginBottom: 32,
     textAlign: 'center',
     fontWeight: '500',
@@ -332,7 +351,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#374151',
     marginBottom: 8,
     marginLeft: 2,
   },
@@ -341,14 +359,11 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1.5,
-    borderColor: '#e5e7eb',
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
     paddingRight: 50,
     fontSize: 15,
-    color: '#1f2937',
-    backgroundColor: '#fafafa',
     fontWeight: '500',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -383,7 +398,6 @@ const styles = StyleSheet.create({
 
   // Update Button
   updateButton: {
-    backgroundColor: '#8b5cf6',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
@@ -408,22 +422,18 @@ const styles = StyleSheet.create({
 
   // Requirements Card
   requirementsCard: {
-    backgroundColor: '#f9fafb',
     borderRadius: 14,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
     marginBottom: 32,
   },
   requirementsTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#374151',
     marginBottom: 12,
   },
   requirementText: {
     fontSize: 14,
-    color: '#6b7280',
     marginBottom: 6,
     fontWeight: '500',
     lineHeight: 20,

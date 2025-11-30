@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../context/ThemeContext';
 
 interface Subject {
   id: string;
@@ -62,6 +63,7 @@ const tabs = ['All Exams', 'Quarterly', 'Half yearly', 'Annual'];
 
 export const ResultsScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { theme, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState('All Exams');
 
   const filteredExams = activeTab === 'All Exams' 
@@ -69,19 +71,19 @@ export const ResultsScreen: React.FC = () => {
     : exams.filter(exam => exam.category === activeTab);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       {/* Simple Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.background }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={[styles.backIcon, { color: theme.text }]}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Results</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>My Results</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Student Card */}
-        <View style={styles.studentCard}>
+        <View style={[styles.studentCard, { backgroundColor: theme.primary }]}>
           <View style={styles.studentCardContent}>
             <View style={styles.studentAvatar}>
               <Image 
@@ -101,7 +103,7 @@ export const ResultsScreen: React.FC = () => {
         </View>
 
         {/* Exams Results Section */}
-        <Text style={styles.sectionTitle}>Exams Results</Text>
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Exams Results</Text>
 
         {/* Tabs */}
         <View style={styles.tabsContainer}>
@@ -110,9 +112,17 @@ export const ResultsScreen: React.FC = () => {
               <TouchableOpacity
                 key={tab}
                 onPress={() => setActiveTab(tab)}
-                style={[styles.tab, activeTab === tab && styles.tabActive]}
+                style={[
+                  styles.tab, 
+                  { backgroundColor: isDark ? theme.card : '#f3f4f6' },
+                  activeTab === tab && { backgroundColor: theme.primary }
+                ]}
               >
-                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                <Text style={[
+                  styles.tabText, 
+                  { color: theme.textSecondary },
+                  activeTab === tab && styles.tabTextActive
+                ]}>
                   {tab}
                 </Text>
               </TouchableOpacity>
@@ -123,14 +133,14 @@ export const ResultsScreen: React.FC = () => {
         {/* Exam Cards */}
         <View style={styles.examsContainer}>
           {filteredExams.map((exam, examIndex) => (
-            <View key={exam.id} style={styles.examCard}>
+            <View key={exam.id} style={[styles.examCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
               {/* Exam Header */}
-              <View style={styles.examHeader}>
+              <View style={[styles.examHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
                 <View>
-                  <Text style={styles.examTitle}>{exam.title}</Text>
-                  <Text style={styles.examDate}>{exam.dateRange}</Text>
+                  <Text style={[styles.examTitle, { color: theme.text }]}>{exam.title}</Text>
+                  <Text style={[styles.examDate, { color: theme.textSecondary }]}>{exam.dateRange}</Text>
                 </View>
-                <View style={styles.statusBadge}>
+                <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#d1fae5' }]}>
                   <Text style={styles.statusIcon}>✓</Text>
                   <Text style={styles.statusText}>{exam.status}</Text>
                 </View>
@@ -149,19 +159,19 @@ export const ResultsScreen: React.FC = () => {
                     </View>
 
                     {/* Subject Card */}
-                    <View style={styles.subjectCard}>
+                    <View style={[styles.subjectCard, { backgroundColor: theme.card, borderColor: '#f97316' }]}>
                       <View style={styles.subjectInfo}>
                         <View style={styles.subjectDateRow}>
                           <Text style={styles.dateIcon}>📅</Text>
-                          <Text style={styles.subjectDate}>{subject.date}</Text>
+                          <Text style={[styles.subjectDate, { color: theme.textSecondary }]}>{subject.date}</Text>
                         </View>
                         <View style={styles.subjectNameRow}>
                           <Text style={styles.subjectIcon}>📚</Text>
-                          <Text style={styles.subjectName}>{subject.name}</Text>
+                          <Text style={[styles.subjectName, { color: theme.text }]}>{subject.name}</Text>
                         </View>
                       </View>
                       <View style={styles.scoreSection}>
-                        <Text style={styles.scoreValue}>{subject.score}</Text>
+                        <Text style={[styles.scoreValue, { color: theme.text }]}>{subject.score}</Text>
                         <Text style={styles.scoreStatus}>{subject.status}</Text>
                       </View>
                     </View>
@@ -179,7 +189,6 @@ export const ResultsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   header: {
     flexDirection: 'row',
@@ -187,7 +196,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#ffffff',
   },
   backButton: {
     width: 40,
@@ -197,16 +205,13 @@ const styles = StyleSheet.create({
   },
   backIcon: {
     fontSize: 24,
-    color: '#1f2937',
     fontWeight: '600',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1f2937',
   },
   studentCard: {
-    backgroundColor: '#8b5cf6',
     marginHorizontal: 16,
     marginTop: 8,
     borderRadius: 16,
@@ -258,7 +263,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1f2937',
     marginHorizontal: 16,
     marginTop: 24,
     marginBottom: 12,
@@ -273,15 +277,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-  },
-  tabActive: {
-    backgroundColor: '#8b5cf6',
   },
   tabText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#9ca3af',
   },
   tabTextActive: {
     color: '#ffffff',
@@ -291,10 +290,8 @@ const styles = StyleSheet.create({
   },
   examCard: {
     marginBottom: 20,
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -307,24 +304,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
   },
   examTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1f2937',
   },
   examDate: {
     fontSize: 12,
-    color: '#9ca3af',
     marginTop: 4,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#d1fae5',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -371,10 +363,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 12,
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#f97316',
   },
   subjectInfo: {
     flex: 1,
@@ -390,7 +380,6 @@ const styles = StyleSheet.create({
   },
   subjectDate: {
     fontSize: 12,
-    color: '#6b7280',
   },
   subjectNameRow: {
     flexDirection: 'row',
@@ -403,7 +392,6 @@ const styles = StyleSheet.create({
   subjectName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1f2937',
   },
   scoreSection: {
     alignItems: 'flex-end',
@@ -411,7 +399,6 @@ const styles = StyleSheet.create({
   scoreValue: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1f2937',
   },
   scoreStatus: {
     fontSize: 11,

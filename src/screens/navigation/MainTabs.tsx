@@ -34,7 +34,7 @@ export const MainTabs: React.FC = () => {
         component={HomeStack}
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeScreen';
-          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'CoursesScreen', 'StaffInfoScreen', 'SettingsScreen', 'SimTrackerScreen', 'ChangePasswordScreen', 'AboutScreen'];
+          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'CoursesScreen', 'StaffInfoScreen', 'SettingsScreen', 'SimTrackerScreen', 'ChangePasswordScreen', 'AboutScreen', 'PrivacyPolicyScreen', 'HelpCenterScreen'];
           if (hiddenRoutes.includes(routeName)) {
             return { 
               headerShown: false,
@@ -59,6 +59,7 @@ export const MainTabs: React.FC = () => {
         component={MessagesScreen}
         options={{
           headerShown: false,
+          tabBarStyle: { display: 'none' },
           tabBarIcon: () => <Text>💬</Text>,
         }}
       />

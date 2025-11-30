@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../context/ThemeContext';
 
 export interface Notice {
   id: string;
@@ -84,6 +85,7 @@ export const notices: Notice[] = [
 ];
 
 export const NoticesScreen: React.FC = () => {
+  const { theme } = useTheme();
 
   const getTagColor = (type: string) => {
     switch (type) {
@@ -95,7 +97,7 @@ export const NoticesScreen: React.FC = () => {
   };
 
   const renderNotice = ({ item }: { item: Notice }) => (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       
       {/* Tag */}
       <View
@@ -106,15 +108,15 @@ export const NoticesScreen: React.FC = () => {
         </Text>
       </View>
 
-      <Text style={styles.title}>{item.title}</Text>
-      <Text style={styles.message}>{item.message}</Text>
+      <Text style={[styles.title, { color: theme.text }]}>{item.title}</Text>
+      <Text style={[styles.message, { color: theme.textSecondary }]}>{item.message}</Text>
 
-      <Text style={styles.date}>{item.date}</Text>
+      <Text style={[styles.date, { color: theme.textTertiary }]}>{item.date}</Text>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['left', 'right']}>
       <View style={styles.content}>
         <FlatList
           data={notices}
@@ -132,7 +134,6 @@ export const NoticesScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   content: {
     flex: 1,
@@ -140,12 +141,10 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: '#ffffff',
     padding: 16,
     borderRadius: 12,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -170,20 +169,17 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1f2937',
     marginBottom: 6,
   },
 
   message: {
     fontSize: 13,
-    color: '#4b5563',
     marginBottom: 10,
     lineHeight: 20,
   },
 
   date: {
     fontSize: 11,
-    color: '#9ca3af',
     marginTop: 4,
   },
 });

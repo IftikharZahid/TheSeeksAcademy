@@ -5,6 +5,7 @@ import { useNavigation, CommonActions } from '@react-navigation/native';
 
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from './navigation/ProfileStack';
+import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -12,92 +13,85 @@ type ProfileScreenNavigationProp = NativeStackNavigationProp<ProfileStackParamLi
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
-
-
+  const { theme } = useTheme();
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-
-        {/* Header Section */}
-        <View style={styles.header}>
-          <View style={styles.circleBackground} />
-          
-
-          
-          <View style={styles.avatarContainer}>
-            <Image
-              source={require('../assets/profile.jpg')}
-              style={styles.avatar}
-            />
-          </View>
-
-          <Text style={styles.name}>Iftikhar Zahid</Text>
-          <Text style={styles.role}>Student – The Seeks Academy</Text>
-
-          <View style={styles.headerDivider} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundSecondary }]} edges={['left', 'right']}>
+      {/* Header Section */}
+      <View style={styles.header}>
+        <View style={styles.circleBackground} />
+        
+        <View style={styles.avatarContainer}>
+          <Image
+            source={require('../assets/profile.jpg')}
+            style={styles.avatar}
+          />
         </View>
 
+        <Text style={[styles.name, { color: theme.text }]}>Iftikhar Zahid</Text>
+        <Text style={[styles.role, { color: theme.textSecondary }]}>Student – The Seeks Academy</Text>
+
+        <View style={styles.headerDivider} />
+      </View>
+
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         {/* Personal Info */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Personal Information</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Full Name</Text>
-              <Text style={styles.infoValue}>Iftikhar Zahid</Text>
+              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Full Name</Text>
+              <Text style={[styles.infoValue, { color: theme.text }]}>Iftikhar Zahid</Text>
             </View>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>IftikharXahhid@gmail.com</Text>
+              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Email</Text>
+              <Text style={[styles.infoValue, { color: theme.text }]}>IftikharXahhid@gmail.com</Text>
             </View>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Phone</Text>
-              <Text style={styles.infoValue}>+92 300 7971374</Text>
+              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Phone</Text>
+              <Text style={[styles.infoValue, { color: theme.text }]}>+92 300 7971374</Text>
             </View>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Date of Birth</Text>
-              <Text style={styles.infoValue}>12 Aug 2000</Text>
+              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Date of Birth</Text>
+              <Text style={[styles.infoValue, { color: theme.text }]}>12 Aug 2000</Text>
             </View>
           </View>
         </View>
 
         {/* Academic Info */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Academic Information</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Academic Information</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Roll Number</Text>
-              <Text style={styles.infoValue}>SA-2025-001</Text>
+              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Roll Number</Text>
+              <Text style={[styles.infoValue, { color: theme.text }]}>SA-2025-001</Text>
             </View>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Class</Text>
-              <Text style={styles.infoValue}>BSCS</Text>
+              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Class</Text>
+              <Text style={[styles.infoValue, { color: theme.text }]}>BSCS</Text>
             </View>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Section</Text>
-              <Text style={styles.infoValue}>A</Text>
+              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Section</Text>
+              <Text style={[styles.infoValue, { color: theme.text }]}>A</Text>
             </View>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Session</Text>
-              <Text style={styles.infoValue}>2024 – 2028</Text>
+              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Session</Text>
+              <Text style={[styles.infoValue, { color: theme.text }]}>2024 – 2028</Text>
             </View>
           </View>
         </View>
-
-
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -112,9 +106,9 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     paddingTop: 40,
-    paddingBottom: 30,
+    paddingBottom: 20,
     position: 'relative',
-    marginBottom: 10,
+    marginBottom: 5,
   },
 
   circleBackground: {
@@ -122,12 +116,10 @@ const styles = StyleSheet.create({
     width: width * 1.2,
     height: width * 1.2,
     borderRadius: (width * 1.2) / 2,
-    backgroundColor: '#f3f4f6', // Light gray/purple tint matching Welcome screen
+    backgroundColor: '#8b5cf6', // Light gray/purple tint matching Welcome screen
     top: -width * 0.8,
     zIndex: -1,
   },
-
-
 
   avatarContainer: {
     padding: 4,
@@ -138,7 +130,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    marginBottom: 16,
+    marginBottom: 15,
   },
 
   avatar: {
@@ -164,13 +156,13 @@ const styles = StyleSheet.create({
     width: '80%',
     height: 1,
     backgroundColor: '#e5e7eb',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop:1,
+    marginBottom: 1,
   },
 
   sectionContainer: {
     paddingHorizontal: 20,
-    marginBottom: 24,
+    marginBottom: 20,
   },
 
   sectionTitle: {
@@ -217,6 +209,4 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#f3f4f6",
   },
-
-
 });

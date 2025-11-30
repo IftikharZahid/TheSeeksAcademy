@@ -19,7 +19,11 @@
 - **Communication**:
   - **NoticeBoard**: Stay updated with important announcements (Alerts, Fees, Exams).
   - **Messages**: Receive updates from the admin and teachers.
-- **Profile**: Manage personal information and app settings with a secure logout.
+  - **WhatsApp Integration**: Direct contact with the developer via WhatsApp.
+- **Profile & Settings**:
+  - **Profile**: Manage personal information.
+  - **Settings**: Configure app preferences, view developer info, and secure logout.
+  - **About Screen**: View developer details and portfolio.
 
 ## 🛠️ Tech Stack
 
@@ -27,7 +31,7 @@
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
 - **Navigation**: [React Navigation](https://reactnavigation.org/) (Stack & Bottom Tabs)
 - **Styling**: [NativeWind](https://www.nativewind.dev/) (Tailwind CSS for React Native)
-- **Icons**: React Native Vector Icons / Lucide React Native
+- **Icons**: React Native Vector Icons / Lucide React Native / React Native SVG
 
 ## 🚀 Getting Started
 

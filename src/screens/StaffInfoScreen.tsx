@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -24,21 +25,22 @@ export const StaffInfoScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<StaffInfoRouteProp>();
   const { teacher } = route.params;
+  const { theme, isDark } = useTheme();
   const [isFavorite, setIsFavorite] = useState(false);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
         <TouchableOpacity 
-          style={styles.headerButton}
+          style={[styles.headerButton, { backgroundColor: isDark ? theme.backgroundSecondary : '#f3f4f6' }]}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backIcon}>‹</Text>
+          <Text style={[styles.backIcon, { color: theme.text }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Teacher Details</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Teacher Details</Text>
         <TouchableOpacity 
-          style={styles.headerButton}
+          style={[styles.headerButton, { backgroundColor: isDark ? theme.backgroundSecondary : '#f3f4f6' }]}
           onPress={() => setIsFavorite(!isFavorite)}
         >
           <Text style={styles.favoriteIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
@@ -47,36 +49,36 @@ export const StaffInfoScreen: React.FC = () => {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Profile Section */}
-        <View style={styles.profileSection}>
-          <View style={styles.imageContainer}>
+        <View style={[styles.profileSection, { backgroundColor: isDark ? theme.backgroundSecondary : '#f9fafb' }]}>
+          <View style={[styles.imageContainer, { backgroundColor: theme.card }]}>
             <Image source={{ uri: teacher.image }} style={styles.profileImage} />
           </View>
-          <Text style={styles.name}>{teacher.name}</Text>
+          <Text style={[styles.name, { color: theme.text }]}>{teacher.name}</Text>
           <Text style={styles.role}>{teacher.subject} Teacher</Text>
 
           {/* Stats */}
-          <View style={styles.statsContainer}>
+          <View style={[styles.statsContainer, { backgroundColor: theme.card }]}>
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>5+</Text>
-              <Text style={styles.statLabel}>Courses</Text>
+              <Text style={[styles.statValue, { color: theme.text }]}>5+</Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Courses</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>{teacher.experience}</Text>
-              <Text style={styles.statLabel}>Experience</Text>
+              <Text style={[styles.statValue, { color: theme.text }]}>{teacher.experience}</Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Experience</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>200+</Text>
-              <Text style={styles.statLabel}>Students</Text>
+              <Text style={[styles.statValue, { color: theme.text }]}>200+</Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Students</Text>
             </View>
           </View>
         </View>
 
         {/* About Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About Teacher</Text>
-          <Text style={styles.aboutText}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>About Teacher</Text>
+          <Text style={[styles.aboutText, { color: theme.textSecondary }]}>
             {teacher.name} is a highly experienced {teacher.subject} teacher with {teacher.experience} of excellence in education. 
             {'\n\n'}
             With a {teacher.qualification}, they bring deep knowledge and passion to every class. Known for making complex concepts easy to understand, they have helped hundreds of students achieve their academic goals.
@@ -87,27 +89,27 @@ export const StaffInfoScreen: React.FC = () => {
 
         {/* Qualification */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Qualification</Text>
-          <View style={styles.qualificationCard}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Qualification</Text>
+          <View style={[styles.qualificationCard, { backgroundColor: isDark ? theme.backgroundSecondary : '#f9fafb', borderColor: theme.border }]}>
             <Text style={styles.qualificationIcon}>🎓</Text>
             <View style={styles.qualificationInfo}>
-              <Text style={styles.qualificationTitle}>{teacher.qualification}</Text>
-              <Text style={styles.qualificationSubtitle}>Specialized in {teacher.subject}</Text>
+              <Text style={[styles.qualificationTitle, { color: theme.text }]}>{teacher.qualification}</Text>
+              <Text style={[styles.qualificationSubtitle, { color: theme.textSecondary }]}>Specialized in {teacher.subject}</Text>
             </View>
           </View>
         </View>
 
         {/* Availability */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Availability</Text>
-          <View style={styles.availabilityCard}>
-            <Text style={styles.availabilityText}>📅 Mon - Fri: 8:00am - 5:00pm</Text>
-            <Text style={styles.availabilityText}>📅 Sat: 9:00am - 1:00pm</Text>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Availability</Text>
+          <View style={[styles.availabilityCard, { backgroundColor: isDark ? theme.backgroundSecondary : '#f9fafb', borderColor: theme.border }]}>
+            <Text style={[styles.availabilityText, { color: theme.text }]}>📅 Mon - Fri: 8:00am - 5:00pm</Text>
+            <Text style={[styles.availabilityText, { color: theme.text }]}>📅 Sat: 9:00am - 1:00pm</Text>
           </View>
         </View>
 
         {/* Contact Button */}
-        <TouchableOpacity style={styles.contactButton}>
+        <TouchableOpacity style={[styles.contactButton, { backgroundColor: theme.primary, shadowColor: theme.primary }]}>
           <Text style={styles.contactButtonText}>📧 Contact Teacher</Text>
         </TouchableOpacity>
 

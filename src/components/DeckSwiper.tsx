@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, Image, StyleSheet, Dimensions, Animated, PanResponder } from 'react-native';
+import { useTheme } from '../context/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.85;
@@ -17,6 +18,7 @@ interface DeckSwiperProps {
 }
 
 export const DeckSwiper: React.FC<DeckSwiperProps> = ({ data }) => {
+  const { theme, isDark } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
   const position = useRef(new Animated.ValueXY()).current;
   
@@ -71,7 +73,7 @@ export const DeckSwiper: React.FC<DeckSwiperProps> = ({ data }) => {
   if (data.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No courses available</Text>
+        <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No courses available</Text>
       </View>
     );
   }
@@ -83,11 +85,11 @@ export const DeckSwiper: React.FC<DeckSwiperProps> = ({ data }) => {
     <View style={styles.container}>
       {/* Next card (background) */}
       {nextCard && (
-        <View style={[styles.card, styles.nextCard]}>
+        <View style={[styles.card, styles.nextCard, { backgroundColor: theme.card }]}>
           <Image source={{ uri: nextCard.image }} style={styles.cardImage} />
           <View style={styles.cardContent}>
-            <Text style={styles.cardTitle} numberOfLines={2}>{nextCard.name}</Text>
-            <Text style={styles.cardSubtitle} numberOfLines={1}>{nextCard.teacher}</Text>
+            <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={2}>{nextCard.name}</Text>
+            <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>{nextCard.teacher}</Text>
           </View>
         </View>
       )}
@@ -97,6 +99,7 @@ export const DeckSwiper: React.FC<DeckSwiperProps> = ({ data }) => {
         {...panResponder.panHandlers}
         style={[
           styles.card,
+          { backgroundColor: theme.card },
           {
             transform: [
               { translateX: position.x },
@@ -108,8 +111,8 @@ export const DeckSwiper: React.FC<DeckSwiperProps> = ({ data }) => {
       >
         <Image source={{ uri: currentCard.image }} style={styles.cardImage} />
         <View style={styles.cardContent}>
-          <Text style={styles.cardTitle} numberOfLines={2}>{currentCard.name}</Text>
-          <Text style={styles.cardSubtitle} numberOfLines={1}>{currentCard.teacher}</Text>
+          <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={2}>{currentCard.name}</Text>
+          <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>{currentCard.teacher}</Text>
         </View>
 
         {/* Swipe indicators */}

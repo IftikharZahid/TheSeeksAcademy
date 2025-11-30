@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from './navigation/HomeStack';
 import teachersData from '../../teachers.json';
+import { useTheme } from '../context/ThemeContext';
 
 interface Teacher {
   id: string;
@@ -20,6 +21,7 @@ type TeachersScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList
 
 export const TeachersScreen: React.FC = () => {
   const navigation = useNavigation<TeachersScreenNavigationProp>();
+  const { theme, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState('All');
   const [staff, setStaff] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,26 +80,34 @@ export const TeachersScreen: React.FC = () => {
     : staff.filter(teacher => teacher.subject === activeTab);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.background }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={[styles.backIcon, { color: theme.text }]}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Our Teachers</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Our Teachers</Text>
         <View style={{ width: 40 }} />
       </View>
 
       {/* Tabs with teacher counts */}
-      <View style={styles.tabsContainer}>
+      <View style={[styles.tabsContainer, { backgroundColor: theme.background }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {subjectTabs.map((tab) => (
             <TouchableOpacity
               key={tab}
               onPress={() => setActiveTab(tab)}
-              style={[styles.tab, activeTab === tab && styles.tabActive]}
+              style={[
+                styles.tab, 
+                { backgroundColor: isDark ? theme.card : '#F3F4F6' },
+                activeTab === tab && { backgroundColor: theme.primary }
+              ]}
             >
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+              <Text style={[
+                styles.tabText, 
+                { color: theme.textSecondary },
+                activeTab === tab && styles.tabTextActive
+              ]}>
                 {tab}
               </Text>
             </TouchableOpacity>
@@ -108,8 +118,8 @@ export const TeachersScreen: React.FC = () => {
       {/* Loading State */}
       {loading && (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color="#8b5cf6" />
-          <Text style={styles.loadingText}>Loading teachers...</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading teachers...</Text>
         </View>
       )}
 
@@ -117,7 +127,7 @@ export const TeachersScreen: React.FC = () => {
       {error && !loading && (
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>⚠️ {error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchTeachers}>
+          <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary, shadowColor: theme.primary }]} onPress={fetchTeachers}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -126,7 +136,7 @@ export const TeachersScreen: React.FC = () => {
       {/* Teacher Cards Grid */}
       {!loading && !error && (
         <ScrollView 
-          style={styles.scrollView} 
+          style={[styles.scrollView, { backgroundColor: theme.background }]} 
           showsVerticalScrollIndicator={false} 
           contentContainerStyle={{ paddingBottom: 100 }}
         >
@@ -134,23 +144,29 @@ export const TeachersScreen: React.FC = () => {
             {filteredStaff.map((teacher) => (
               <TouchableOpacity 
                 key={teacher.id} 
-                style={[styles.card, { backgroundColor: teacher.color }]}
+                style={[
+                  styles.card, 
+                  { 
+                    backgroundColor: isDark ? theme.card : teacher.color,
+                    borderColor: theme.border
+                  }
+                ]}
                 onPress={() => navigation.navigate('StaffInfoScreen', { teacher })}
                 activeOpacity={0.8}
               >
                 {/* Teacher Image */}
-                <View style={styles.imageContainer}>
+                <View style={[styles.imageContainer, { borderColor: isDark ? theme.border : 'rgba(255,255,255,0.8)' }]}>
                   <Image source={{ uri: teacher.image }} style={styles.teacherImage} />
                 </View>
 
                 {/* Subject */}
-                <Text style={styles.subject} numberOfLines={1}>{teacher.subject}</Text>
+                <Text style={[styles.subject, { color: theme.text }]} numberOfLines={1}>{teacher.subject}</Text>
                 
                 {/* Qualification */}
-                <Text style={styles.qualification} numberOfLines={1}>{teacher.qualification}</Text>
+                <Text style={[styles.qualification, { color: theme.textSecondary }]} numberOfLines={1}>{teacher.qualification}</Text>
                 
                 {/* Teacher Name */}
-                <Text style={styles.teacherName} numberOfLines={1}>By {teacher.name}</Text>
+                <Text style={[styles.teacherName, { color: theme.textSecondary }]} numberOfLines={1}>By {teacher.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -163,7 +179,6 @@ export const TeachersScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
   },
   header: {
     flexDirection: 'row',
@@ -171,7 +186,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#ffffff',
   },
   backButton: {
     width: 40,
@@ -181,16 +195,13 @@ const styles = StyleSheet.create({
   },
   backIcon: {
     fontSize: 24,
-    color: '#1f2937',
     fontWeight: '600',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1f2937',
   },
   tabsContainer: {
-    backgroundColor: '#ffffff',
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
@@ -199,22 +210,16 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginRight: 8,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-  },
-  tabActive: {
-    backgroundColor: '#8b5cf6',
   },
   tabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6B7280',
   },
   tabTextActive: {
     color: '#ffffff',
   },
   scrollView: {
     flex: 1,
-    backgroundColor: "#ffffff",
     paddingHorizontal: 16,
   },
   cardsGrid: {
@@ -230,7 +235,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#f3f4f6',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -246,7 +250,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
     borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.8)',
   },
   teacherImage: {
     width: 70,
@@ -256,20 +259,17 @@ const styles = StyleSheet.create({
   subject: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1F2937',
     textAlign: 'center',
     marginBottom: 4,
   },
   qualification: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
     textAlign: 'center',
     marginBottom: 8,
   },
   teacherName: {
     fontSize: 12,
-    color: '#9CA3AF',
     textAlign: 'center',
   },
   centerContainer: {
@@ -281,7 +281,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 15,
-    color: '#6B7280',
     fontWeight: '500',
   },
   errorText: {
@@ -292,11 +291,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#8b5cf6',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
-    shadowColor: '#8b5cf6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

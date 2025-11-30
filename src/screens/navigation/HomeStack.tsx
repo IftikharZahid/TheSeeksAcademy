@@ -12,6 +12,8 @@ import { SettingsScreen } from '../SettingsScreen';
 import SimTrackerScreen from '../SimTrackerScreen';
 import ChangePasswordScreen from '../ChangePasswordScreen';
 import { AboutScreen } from '../AboutScreen';
+import { PrivacyPolicyScreen } from '../PrivacyPolicyScreen';
+import { HelpCenterScreen } from '../HelpCenterScreen';
 
 export type HomeStackParamList = {
   HomeScreen: undefined;
@@ -24,6 +26,8 @@ export type HomeStackParamList = {
   SimTrackerScreen: undefined;
   ChangePasswordScreen: undefined;
   AboutScreen: undefined;
+  PrivacyPolicyScreen: undefined;
+  HelpCenterScreen: undefined;
   StaffInfoScreen: {
     teacher: {
       id: string;
@@ -51,6 +55,8 @@ export const HomeStack: React.FC = () => {
       <Stack.Screen name="SimTrackerScreen" component={SimTrackerScreen} />
       <Stack.Screen name="ChangePasswordScreen" component={ChangePasswordScreen} />
       <Stack.Screen name="AboutScreen" component={AboutScreen} />
+      <Stack.Screen name="PrivacyPolicyScreen" component={PrivacyPolicyScreen} />
+      <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
       <Stack.Screen name="StaffInfoScreen" component={StaffInfoScreen} />
     </Stack.Navigator>
   );

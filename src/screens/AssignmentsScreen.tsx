@@ -2,9 +2,11 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../context/ThemeContext';
 
 export const AssignmentsScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { theme, isDark } = useTheme();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [activeFilter, setActiveFilter] = React.useState('All');
 
@@ -156,22 +158,27 @@ export const AssignmentsScreen: React.FC = () => {
   });
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       {/* Simple Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.background }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={[styles.backIcon, { color: theme.text }]}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Assignments</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Assignments</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView style={[styles.scrollView, { backgroundColor: theme.background }]} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
 
         {/* Search Bar */}
         <TextInput
           placeholder="Search assignment..."
-          style={styles.searchInput}
+          placeholderTextColor={theme.textSecondary}
+          style={[styles.searchInput, { 
+            backgroundColor: isDark ? theme.card : '#fff', 
+            borderColor: theme.border,
+            color: theme.text
+          }]}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
@@ -181,10 +188,18 @@ export const AssignmentsScreen: React.FC = () => {
         {["All", "Pending", "Submitted", "Late"].map((f) => (
           <TouchableOpacity 
             key={f} 
-            style={[styles.filterBtn, activeFilter === f && styles.filterBtnActive]}
+            style={[
+              styles.filterBtn, 
+              { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border },
+              activeFilter === f && { backgroundColor: theme.primary, borderColor: theme.primary }
+            ]}
             onPress={() => setActiveFilter(f)}
           >
-            <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>{f}</Text>
+            <Text style={[
+              styles.filterText, 
+              { color: theme.textSecondary },
+              activeFilter === f && styles.filterTextActive
+            ]}>{f}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -192,23 +207,23 @@ export const AssignmentsScreen: React.FC = () => {
       {/* Assignments */}
       <View style={{ marginTop: 10 }}>
         {filteredAssignments.map((a) => (
-          <View key={a.id} style={styles.card}>
+          <View key={a.id} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
 
             {/* Subject Row */}
             <View style={styles.subjectRow}>
               <Text style={styles.subjectIcon}>{a.icon}</Text>
               <View>
-                <Text style={styles.subjectText}>{a.subject}</Text>
-                <Text style={styles.teacherText}>{a.teacher}</Text>
+                <Text style={[styles.subjectText, { color: theme.text }]}>{a.subject}</Text>
+                <Text style={[styles.teacherText, { color: theme.textSecondary }]}>{a.teacher}</Text>
               </View>
             </View>
 
             {/* Title */}
-            <Text style={styles.assignmentTitle}>{a.title}</Text>
+            <Text style={[styles.assignmentTitle, { color: theme.text }]}>{a.title}</Text>
 
             {/* Deadline + Status */}
             <View style={styles.deadlineRow}>
-              <Text style={styles.deadline}>Due: {a.deadline}</Text>
+              <Text style={[styles.deadline, { color: theme.textSecondary }]}>Due: {a.deadline}</Text>
 
               <View style={[styles.statusBadge, { backgroundColor: a.color }]}>
                 <Text style={styles.statusText}>{a.status}</Text>
@@ -222,7 +237,7 @@ export const AssignmentsScreen: React.FC = () => {
       </ScrollView>
 
       {/* Floating Button (Outside ScrollView) */}
-      <TouchableOpacity style={styles.fab}>
+      <TouchableOpacity style={[styles.fab, { backgroundColor: theme.primary, shadowColor: theme.primary }]}>
         <Text style={{ color: "#fff", fontSize: 24 }}>＋</Text>
       </TouchableOpacity>
 
@@ -233,7 +248,6 @@ export const AssignmentsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
   },
   header: {
     flexDirection: 'row',
@@ -241,7 +255,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#ffffff',
   },
   backButton: {
     width: 40,
@@ -251,28 +264,23 @@ const styles = StyleSheet.create({
   },
   backIcon: {
     fontSize: 24,
-    color: '#1f2937',
     fontWeight: '600',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1f2937',
   },
   scrollView: {
     flex: 1,
-    backgroundColor: "#ffffff",
     padding: 16,
   },
 
   searchInput: {
-    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 12,
     fontSize: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -289,10 +297,8 @@ const styles = StyleSheet.create({
   filterBtn: {
     paddingVertical: 6,
     paddingHorizontal: 14,
-    backgroundColor: "#fff",
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -300,15 +306,9 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
 
-  filterBtnActive: {
-    backgroundColor: "#8b5cf6",
-    borderColor: "#8b5cf6",
-  },
-
   filterText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#6b7280",
   },
 
   filterTextActive: {
@@ -316,12 +316,10 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: "#fff",
     padding: 16,
     borderRadius: 14,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -342,18 +340,15 @@ const styles = StyleSheet.create({
   subjectText: {
     fontSize: 15,
     fontWeight: "700",
-    color: '#1f2937',
   },
 
   teacherText: {
     fontSize: 12,
-    color: "#6B7280",
   },
 
   assignmentTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: '#1f2937',
     marginTop: 10,
     marginBottom: 15,
   },
@@ -366,7 +361,6 @@ const styles = StyleSheet.create({
 
   deadline: {
     fontSize: 13,
-    color: "#4B5563",
   },
 
   statusBadge: {
@@ -385,14 +379,12 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#8b5cf6",
     alignItems: "center",
     justifyContent: "center",
     position: "absolute",
     bottom: 40,
     right: 20,
     elevation: 8,
-    shadowColor: "#8b5cf6",
     shadowOffset: {
       width: 0,
       height: 4,

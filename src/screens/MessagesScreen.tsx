@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../context/ThemeContext';
 
 interface Message {
   id: string;
@@ -14,6 +15,7 @@ interface Message {
 
 export const MessagesScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { theme, isDark } = useTheme();
   const [message, setMessage] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -96,7 +98,6 @@ export const MessagesScreen: React.FC = () => {
       text: 'Will do! Thanks for the reminder.',
       type: 'sent',
       timestamp: 'Sat, 01:10 AM',
-      isRead: true,
     },
     {
       id: '13',
@@ -127,24 +128,24 @@ export const MessagesScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border, borderBottomWidth: 1 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>‹</Text>
+          <Text style={[styles.backIcon, { color: theme.text }]}>‹</Text>
         </TouchableOpacity>
         
         <View style={styles.profileInfo}>
           <View style={styles.profileImageContainer}>
             <Image 
               source={require('../assets/profile.jpg')} 
-              style={styles.profileImage} 
+              style={[styles.profileImage, { borderColor: theme.background }]} 
             />
-            <View style={styles.onlineIndicator} />
+            <View style={[styles.onlineIndicator, { borderColor: theme.background }]} />
           </View>
           <View style={styles.nameContainer}>
-            <Text style={styles.name}>Iftikhar Zahid</Text>
-            <Text style={styles.status}>Online</Text>
+            <Text style={[styles.name, { color: theme.text }]}>Iftikhar Zahid</Text>
+            <Text style={[styles.status, { color: theme.textSecondary }]}>Online</Text>
           </View>
         </View>
 
@@ -169,7 +170,7 @@ export const MessagesScreen: React.FC = () => {
             <View key={msg.id}>
               {msg.type === 'voice' ? (
                 <View style={[styles.messageRow, styles.messageRowSent]}>
-                  <View style={[styles.messageBubble, styles.sentBubble, styles.voiceBubble]}>
+                  <View style={[styles.messageBubble, styles.sentBubble, styles.voiceBubble, { backgroundColor: theme.primary, shadowColor: theme.primary }]}>
                     <TouchableOpacity 
                       style={styles.playButton}
                       onPress={() => setIsPlaying(!isPlaying)}
@@ -191,7 +192,7 @@ export const MessagesScreen: React.FC = () => {
                   </View>
                   <View style={styles.messageFooter}>
                     <Text style={styles.timestamp}>{msg.timestamp}</Text>
-                    {msg.isRead && <Text style={styles.checkmarks}>✓✓</Text>}
+                    {msg.isRead && <Text style={[styles.checkmarks, { color: theme.primary }]}>✓✓</Text>}
                   </View>
                 </View>
               ) : (
@@ -201,11 +202,13 @@ export const MessagesScreen: React.FC = () => {
                 ]}>
                   <View style={[
                     styles.messageBubble,
-                    msg.type === 'sent' ? styles.sentBubble : styles.receivedBubble
+                    msg.type === 'sent' 
+                      ? [styles.sentBubble, { backgroundColor: theme.primary, shadowColor: theme.primary }] 
+                      : [styles.receivedBubble, { backgroundColor: isDark ? theme.card : '#ffffff' }]
                   ]}>
                     <Text style={[
                       styles.messageText,
-                      msg.type === 'sent' && styles.sentText
+                      msg.type === 'sent' ? styles.sentText : { color: theme.text }
                     ]}>
                       {msg.text}
                     </Text>
@@ -213,7 +216,7 @@ export const MessagesScreen: React.FC = () => {
                   <View style={styles.messageFooter}>
                     <Text style={styles.timestamp}>{msg.timestamp}</Text>
                     {msg.type === 'sent' && msg.isRead && (
-                      <Text style={styles.checkmarks}>✓✓</Text>
+                      <Text style={[styles.checkmarks, { color: theme.primary }]}>✓✓</Text>
                     )}
                   </View>
                 </View>
@@ -228,13 +231,13 @@ export const MessagesScreen: React.FC = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { backgroundColor: isDark ? theme.card : '#ffffff', borderTopColor: theme.border }]}>
           <TouchableOpacity style={styles.attachButton}>
             <Text style={styles.attachIcon}>📎</Text>
           </TouchableOpacity>
           
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: isDark ? theme.background : '#f9fafb', color: theme.text }]}
             placeholder="Type message..."
             placeholderTextColor="#9ca3af"
             value={message}
@@ -243,16 +246,21 @@ export const MessagesScreen: React.FC = () => {
           />
           
           {message.trim() ? (
-            <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
+            <TouchableOpacity style={[styles.sendButton, { backgroundColor: theme.primary, shadowColor: theme.primary }]} onPress={handleSend}>
               <Text style={styles.sendIcon}>➤</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.voiceButton}>
+            <TouchableOpacity style={[styles.voiceButton, { backgroundColor: theme.primary, shadowColor: theme.primary }]}>
               <Text style={styles.voiceIcon}>🎤</Text>
             </TouchableOpacity>
           )}
         </View>
       </KeyboardAvoidingView>
+
+      {/* Floating Button */}
+      <TouchableOpacity style={[styles.fab, { backgroundColor: theme.primary, shadowColor: theme.primary }]}>
+        <Text style={{ color: "#fff", fontSize: 24 }}>＋</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -260,15 +268,12 @@ export const MessagesScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#8b5cf6',
-    shadowColor: '#8b5cf6',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -283,7 +288,6 @@ const styles = StyleSheet.create({
   },
   backIcon: {
     fontSize: 32,
-    color: '#ffffff',
     fontWeight: '600',
     marginTop: -4,
   },
@@ -301,7 +305,6 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: '#ffffff',
   },
   onlineIndicator: {
     position: 'absolute',
@@ -312,7 +315,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: '#10b981',
     borderWidth: 2,
-    borderColor: '#8b5cf6',
   },
   nameContainer: {
     flex: 1,
@@ -320,12 +322,10 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#ffffff',
     marginBottom: 2,
   },
   status: {
     fontSize: 12,
-    color: '#e8e5ff',
     fontWeight: '500',
   },
   headerActions: {
@@ -368,16 +368,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sentBubble: {
-    backgroundColor: '#8b5cf6',
     borderBottomRightRadius: 4,
-    shadowColor: '#8b5cf6',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 2,
   },
   receivedBubble: {
-    backgroundColor: '#ffffff',
     borderBottomLeftRadius: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -388,7 +385,6 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#374151',
   },
   sentText: {
     color: '#ffffff',
@@ -405,7 +401,6 @@ const styles = StyleSheet.create({
   },
   checkmarks: {
     fontSize: 12,
-    color: '#8b5cf6',
   },
   voiceBubble: {
     flexDirection: 'row',
@@ -451,10 +446,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
     gap: 12,
+    marginBottom: 40,
   },
   attachButton: {
     width: 36,
@@ -465,25 +459,32 @@ const styles = StyleSheet.create({
   attachIcon: {
     fontSize: 20,
     transform: [{ rotate: '-45deg' }],
+    // height: 20,
+    // width: 20,
+    // color: '#ffffff',
+    // backgroundColor: '#10b981',
+    // borderRadius: 10,
+    // justifyContent: 'center',
+    // alignItems: 'center',
+    // shadowOffset: { width: 0, height: 4 },
+    // shadowOpacity: 0.3,
+    // shadowRadius: 8,
+    // elevation: 4,
   },
   input: {
     flex: 1,
-    backgroundColor: '#f9fafb',
     borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 14,
-    color: '#374151',
     maxHeight: 100,
   },
   sendButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#8b5cf6',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#8b5cf6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -497,10 +498,8 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#8b5cf6',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#8b5cf6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -508,5 +507,22 @@ const styles = StyleSheet.create({
   },
   voiceIcon: {
     fontSize: 24,
+  },
+  fab: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "absolute",
+    bottom: 90,
+    right: 20,
+    elevation: 8,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
 });

@@ -14,13 +14,15 @@ import {
   Dimensions,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from './navigation/AppNavigator';
+import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Signup'>;
 
 export const SignupScreen: React.FC<Props> = ({ navigation }) => {
+  const { theme, isDark } = useTheme();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -50,9 +52,9 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.background} />
       
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -61,24 +63,24 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
       >
         {/* Illustration Section */}
         <View style={styles.illustrationContainer}>
-          <View style={styles.circleBackground} />
-          <View style={styles.phoneFrame}>
+          <View style={[styles.circleBackground, { backgroundColor: isDark ? theme.backgroundSecondary : '#f3f4f6' }]} />
+          <View style={[styles.phoneFrame, { backgroundColor: theme.card, borderColor: theme.text }]}>
             <Image 
-              source={require('../assets/profile.jpg')} 
+              source={require('../../assets/icon.png')} 
               style={styles.logoImage} 
               resizeMode="contain"
             />
             {/* Mock UI lines */}
-            <View style={styles.mockLineLong} />
-            <View style={styles.mockLineShort} />
-            <View style={styles.mockLineMedium} />
+            <View style={[styles.mockLineLong, { backgroundColor: theme.border }]} />
+            <View style={[styles.mockLineShort, { backgroundColor: theme.border }]} />
+            <View style={[styles.mockLineMedium, { backgroundColor: theme.border }]} />
           </View>
         </View>
 
         {/* Header Text */}
         <View style={styles.headerContainer}>
-          <Text style={styles.headerTitle}>Create Account</Text>
-          <Text style={styles.headerSubtitle}>Join The Seeks Academy today</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Create Account</Text>
+          <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>Join The Seeks Academy today</Text>
         </View>
 
         {/* Form Container */}
@@ -86,64 +88,64 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
           
           {/* Name Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Full Name</Text>
-            <View style={styles.inputContainer}>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Full Name</Text>
+            <View style={[styles.inputContainer, { backgroundColor: isDark ? theme.background : '#f9fafb', borderColor: theme.border }]}>
               <Text style={styles.inputIcon}>👤</Text>
               <TextInput
                 value={name}
                 onChangeText={setName}
                 placeholder="Enter your full name"
-                placeholderTextColor="#9ca3af"
-                style={styles.textInput}
+                placeholderTextColor={theme.textTertiary}
+                style={[styles.textInput, { color: theme.text }]}
               />
             </View>
           </View>
 
           {/* Email Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email Address</Text>
-            <View style={styles.inputContainer}>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Email Address</Text>
+            <View style={[styles.inputContainer, { backgroundColor: isDark ? theme.background : '#f9fafb', borderColor: theme.border }]}>
               <Text style={styles.inputIcon}>📧</Text>
               <TextInput
                 value={email}
                 onChangeText={setEmail}
                 placeholder="Enter your email"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={theme.textTertiary}
                 keyboardType="email-address"
                 autoCapitalize="none"
-                style={styles.textInput}
+                style={[styles.textInput, { color: theme.text }]}
               />
             </View>
           </View>
 
           {/* Password Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Password</Text>
-            <View style={styles.inputContainer}>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Password</Text>
+            <View style={[styles.inputContainer, { backgroundColor: isDark ? theme.background : '#f9fafb', borderColor: theme.border }]}>
               <Text style={styles.inputIcon}>🔒</Text>
               <TextInput
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Create a password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={theme.textTertiary}
                 secureTextEntry
-                style={styles.textInput}
+                style={[styles.textInput, { color: theme.text }]}
               />
             </View>
           </View>
 
           {/* Confirm Password Input */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Confirm Password</Text>
-            <View style={styles.inputContainer}>
+            <Text style={[styles.inputLabel, { color: theme.text }]}>Confirm Password</Text>
+            <View style={[styles.inputContainer, { backgroundColor: isDark ? theme.background : '#f9fafb', borderColor: theme.border }]}>
               <Text style={styles.inputIcon}>🔐</Text>
               <TextInput
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 placeholder="Confirm your password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={theme.textTertiary}
                 secureTextEntry
-                style={styles.textInput}
+                style={[styles.textInput, { color: theme.text }]}
               />
             </View>
           </View>
@@ -154,6 +156,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
             disabled={isLoading}
             style={[
               styles.signupButton,
+              { backgroundColor: theme.primary, shadowColor: theme.primary },
               isLoading && styles.signupButtonDisabled
             ]}
           >
@@ -164,9 +167,9 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
           {/* Login Link */}
           <View style={styles.loginContainer}>
-            <Text style={styles.loginPrompt}>Already have an account? </Text>
+            <Text style={[styles.loginPrompt, { color: theme.textSecondary }]}>Already have an account? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginLink}>Sign In</Text>
+              <Text style={[styles.loginLink, { color: theme.primary }]}>Sign In</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -178,7 +181,6 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   scrollContent: {
     flexGrow: 1,
@@ -198,16 +200,13 @@ const styles = StyleSheet.create({
     width: 220,
     height: 220,
     borderRadius: 110,
-    backgroundColor: '#f3f4f6',
     top: 10,
   },
   phoneFrame: {
     width: 120,
     height: 220,
-    backgroundColor: '#ffffff',
     borderRadius: 18,
     borderWidth: 3,
-    borderColor: '#1f2937',
     alignItems: 'center',
     paddingTop: 24,
     elevation: 4,
@@ -225,14 +224,12 @@ const styles = StyleSheet.create({
   mockLineLong: {
     width: '80%',
     height: 6,
-    backgroundColor: '#e5e7eb',
     borderRadius: 3,
     marginBottom: 6,
   },
   mockLineShort: {
     width: '50%',
     height: 6,
-    backgroundColor: '#e5e7eb',
     borderRadius: 3,
     marginBottom: 6,
     alignSelf: 'flex-start',
@@ -241,7 +238,6 @@ const styles = StyleSheet.create({
   mockLineMedium: {
     width: '70%',
     height: 6,
-    backgroundColor: '#e5e7eb',
     borderRadius: 3,
     alignSelf: 'flex-start',
     marginLeft: 12,
@@ -254,12 +250,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#1f2937',
     marginBottom: 8,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#6b7280',
   },
   formContainer: {
     paddingHorizontal: 24,
@@ -268,15 +262,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   inputLabel: {
-    color: '#374151',
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
   },
   inputContainer: {
-    backgroundColor: '#f9fafb',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -290,15 +281,12 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    color: '#1f2937',
     fontSize: 16,
     padding: 0,
   },
   signupButton: {
-    backgroundColor: '#8b5cf6',
     borderRadius: 30,
     paddingVertical: 16,
-    shadowColor: '#8b5cf6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -306,7 +294,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   signupButtonDisabled: {
-    backgroundColor: '#c4b5fd',
+    opacity: 0.7,
   },
   signupButtonText: {
     color: '#ffffff',
@@ -320,11 +308,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loginPrompt: {
-    color: '#4b5563',
     fontSize: 14,
   },
   loginLink: {
-    color: '#8b5cf6',
     fontSize: 14,
     fontWeight: '700',
   },

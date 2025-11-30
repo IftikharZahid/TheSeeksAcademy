@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../context/ThemeContext';
 
 interface ClassSession {
   id: string;
@@ -70,24 +71,25 @@ const getTypeColor = (type: string) => {
 
 export const TimetableScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { theme, isDark } = useTheme();
   const [activeDay, setActiveDay] = useState('Monday');
 
   const currentSchedule = weekSchedule.find(s => s.day === activeDay) || weekSchedule[0];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       {/* Simple Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.background }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={[styles.backIcon, { color: theme.text }]}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Timetable</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>My Timetable</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Current Date Info */}
-        <View style={styles.dateCard}>
+        <View style={[styles.dateCard, { backgroundColor: theme.primary }]}>
           <Text style={styles.currentDate}>Week of July 3, 2025</Text>
           <Text style={styles.semester}>Spring Semester 2025</Text>
         </View>
@@ -99,9 +101,17 @@ export const TimetableScreen: React.FC = () => {
               <TouchableOpacity
                 key={day}
                 onPress={() => setActiveDay(day)}
-                style={[styles.tab, activeDay === day && styles.tabActive]}
+                style={[
+                  styles.tab, 
+                  { backgroundColor: isDark ? theme.card : '#f3f4f6' },
+                  activeDay === day && { backgroundColor: theme.primary }
+                ]}
               >
-                <Text style={[styles.tabText, activeDay === day && styles.tabTextActive]}>
+                <Text style={[
+                  styles.tabText, 
+                  { color: theme.textSecondary },
+                  activeDay === day && styles.tabTextActive
+                ]}>
                   {day}
                 </Text>
               </TouchableOpacity>
@@ -112,8 +122,8 @@ export const TimetableScreen: React.FC = () => {
         {/* Classes for Selected Day */}
         <View style={styles.scheduleContainer}>
           <View style={styles.scheduleHeader}>
-            <Text style={styles.scheduleTitle}>{currentSchedule.day}'s Classes</Text>
-            <Text style={styles.scheduleDate}>{currentSchedule.date}</Text>
+            <Text style={[styles.scheduleTitle, { color: theme.text }]}>{currentSchedule.day}'s Classes</Text>
+            <Text style={[styles.scheduleDate, { color: theme.textSecondary }]}>{currentSchedule.date}</Text>
           </View>
 
           {/* Timeline Classes */}
@@ -129,26 +139,32 @@ export const TimetableScreen: React.FC = () => {
                 </View>
 
                 {/* Class Card */}
-                <View style={[styles.classCard, { borderColor: getTypeColor(classItem.type) }]}>
+                <View style={[
+                  styles.classCard, 
+                  { 
+                    backgroundColor: theme.card,
+                    borderColor: getTypeColor(classItem.type) 
+                  }
+                ]}>
                   <View style={styles.classHeader}>
                     <View style={[styles.typeBadge, { backgroundColor: `${getTypeColor(classItem.type)}20` }]}>
                       <Text style={[styles.typeText, { color: getTypeColor(classItem.type) }]}>
                         {classItem.type}
                       </Text>
                     </View>
-                    <Text style={styles.timeText}>🕐 {classItem.time}</Text>
+                    <Text style={[styles.timeText, { color: theme.textSecondary }]}>🕐 {classItem.time}</Text>
                   </View>
                   
-                  <Text style={styles.subjectName}>{classItem.subject}</Text>
+                  <Text style={[styles.subjectName, { color: theme.text }]}>{classItem.subject}</Text>
                   
                   <View style={styles.classDetails}>
                     <View style={styles.detailRow}>
                       <Text style={styles.detailIcon}>📍</Text>
-                      <Text style={styles.detailText}>{classItem.room}</Text>
+                      <Text style={[styles.detailText, { color: theme.textSecondary }]}>{classItem.room}</Text>
                     </View>
                     <View style={styles.detailRow}>
                       <Text style={styles.detailIcon}>👨‍🏫</Text>
-                      <Text style={styles.detailText}>{classItem.instructor}</Text>
+                      <Text style={[styles.detailText, { color: theme.textSecondary }]}>{classItem.instructor}</Text>
                     </View>
                   </View>
                 </View>
@@ -158,7 +174,7 @@ export const TimetableScreen: React.FC = () => {
 
           {currentSchedule.classes.length === 0 && (
             <View style={styles.noClassesContainer}>
-              <Text style={styles.noClassesText}>🎉 No classes scheduled for this day!</Text>
+              <Text style={[styles.noClassesText, { color: theme.textSecondary }]}>🎉 No classes scheduled for this day!</Text>
             </View>
           )}
         </View>
@@ -170,7 +186,6 @@ export const TimetableScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   header: {
     flexDirection: 'row',
@@ -178,7 +193,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#ffffff',
   },
   backButton: {
     width: 40,
@@ -188,16 +202,13 @@ const styles = StyleSheet.create({
   },
   backIcon: {
     fontSize: 24,
-    color: '#1f2937',
     fontWeight: '600',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1f2937',
   },
   dateCard: {
-    backgroundColor: '#8b5cf6',
     marginHorizontal: 16,
     marginTop: 8,
     borderRadius: 16,
@@ -224,15 +235,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     marginRight: 8,
-    backgroundColor: '#f3f4f6',
-  },
-  tabActive: {
-    backgroundColor: '#8b5cf6',
   },
   tabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#9ca3af',
   },
   tabTextActive: {
     color: '#ffffff',
@@ -249,11 +255,9 @@ const styles = StyleSheet.create({
   scheduleTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1f2937',
   },
   scheduleDate: {
     fontSize: 14,
-    color: '#6b7280',
   },
   classesContainer: {
     marginTop: 8,
@@ -283,7 +287,6 @@ const styles = StyleSheet.create({
   classCard: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     borderWidth: 1,
     elevation: 2,
@@ -309,13 +312,11 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 12,
-    color: '#6b7280',
     fontWeight: '600',
   },
   subjectName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1f2937',
     marginBottom: 12,
   },
   classDetails: {
@@ -331,7 +332,6 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 13,
-    color: '#6b7280',
   },
   noClassesContainer: {
     padding: 40,
@@ -339,7 +339,6 @@ const styles = StyleSheet.create({
   },
   noClassesText: {
     fontSize: 16,
-    color: '#9ca3af',
     textAlign: 'center',
   },
 });
