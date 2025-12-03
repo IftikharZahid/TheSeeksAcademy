@@ -1,14 +1,20 @@
-import React from 'react';
-import { View } from 'react-native';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useTheme } from '../../context/ThemeContext';
+import React from "react";
+import { View } from "react-native";
+import {
+  NavigationContainer,
+  DefaultTheme,
+  DarkTheme,
+} from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { useTheme } from "../../context/ThemeContext";
 
-import { LoginScreen } from '../LoginScreen';
-import { SignupScreen } from '../SignupScreen';
-import { WelcomeScreen } from '../WelcomeScreen';
-import { MainTabs } from './MainTabs';
-import { AdminDashboard } from '../AdminDashboard';
+import { LoginScreen } from "../LoginScreen";
+import { SignupScreen } from "../SignupScreen";
+import { WelcomeScreen } from "../WelcomeScreen";
+import { MainTabs } from "./MainTabs";
+import { AdminDashboard } from "../AdminDashboard";
+import { SchoolDashboard } from "../SchoolDashboard";
+import { HomeScreen } from "../HomeScreen";
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -16,6 +22,8 @@ export type RootStackParamList = {
   Signup: undefined;
   Main: undefined;
   Admin: undefined;
+  SchoolDashboard: undefined;
+  Home: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -24,7 +32,7 @@ export const AppNavigator: React.FC = () => {
   const { theme, isDark } = useTheme();
 
   const baseTheme = isDark ? DarkTheme : DefaultTheme;
-  
+
   const navigationTheme = {
     ...baseTheme,
     colors: {
@@ -41,12 +49,17 @@ export const AppNavigator: React.FC = () => {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <NavigationContainer theme={navigationTheme}>
-        <Stack.Navigator initialRouteName="Welcome" screenOptions={{ headerShown: false }}>
+        <Stack.Navigator
+          initialRouteName="Welcome"
+          screenOptions={{ headerShown: false }}
+        >
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Signup" component={SignupScreen} />
           <Stack.Screen name="Main" component={MainTabs} />
           <Stack.Screen name="Admin" component={AdminDashboard} />
+          <Stack.Screen name="SchoolDashboard" component={SchoolDashboard} />
+          <Stack.Screen name="Home" component={HomeScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </View>
