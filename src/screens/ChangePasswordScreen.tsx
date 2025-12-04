@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { AuthAPI } from '../api/api';
+import { auth } from '../api/firebaseConfig';
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { useTheme } from '../context/ThemeContext';
 
 const ChangePasswordScreen = () => {
@@ -68,9 +69,16 @@ const ChangePasswordScreen = () => {
     setLoading(true);
 
     try {
-      // First, verify the current password with the backend
+      const user = auth.currentUser;
+      if (!user || !user.email) {
+        Alert.alert('Error', 'No user logged in');
+        return;
+      }
+
+      // First, verify the current password
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
       try {
-        await AuthAPI.verifyPassword(currentPassword);
+        await reauthenticateWithCredential(user, credential);
       } catch (verifyError: any) {
         // Current password is incorrect
         setErrors({
@@ -83,31 +91,28 @@ const ChangePasswordScreen = () => {
       }
 
       // If verification succeeds, proceed with password change
-      const response = await AuthAPI.changePassword(currentPassword, newPassword);
+      await updatePassword(user, newPassword);
 
-      if (response.data.success) {
-        Alert.alert(
-          'Success!',
-          'Your password has been updated successfully.',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.goBack(),
-            },
-          ]
-        );
+      Alert.alert(
+        'Success!',
+        'Your password has been updated successfully.',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
 
-        // Reset form
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        setErrors({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      } else {
-        throw new Error(response.data.message || 'Failed to update password');
-      }
+      // Reset form
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setErrors({ currentPassword: '', newPassword: '', confirmPassword: '' });
+
     } catch (error: any) {
       console.error('Error updating password:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to update password. Please try again.';
+      const errorMessage = error.message || 'Failed to update password. Please try again.';
       Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);

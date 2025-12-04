@@ -6,11 +6,13 @@ import {
   TouchableOpacity,
   Image,
   StyleSheet,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCourses } from '../context/CoursesContext';
 import { Course } from '../data/courses';
 import { useTheme } from '../context/ThemeContext';
+import {LoaderKitView} from 'react-native-loader-kit';
 
 const CourseCard = memo(
   ({ item, liked }: { item: Course; liked: boolean }) => {
@@ -62,8 +64,15 @@ const CourseCard = memo(
 );
 
 export const CoursesScreen: React.FC = () => {
-  const { courses, isLiked } = useCourses();
+  const { courses, isLiked, refreshCourses, isLoading } = useCourses();
   const { theme } = useTheme();
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refreshCourses();
+    setRefreshing(false);
+  }, [refreshCourses]);
 
   const renderCourse = useCallback(
     ({ item }: { item: Course }) => {
@@ -78,24 +87,65 @@ export const CoursesScreen: React.FC = () => {
     [isLiked]
   );
 
+  const renderSkeleton = useCallback(() => {
+    return (
+      <View style={[styles.courseCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={[styles.courseImage, { backgroundColor: theme.border, justifyContent: 'center', alignItems: 'center' }]}>
+          <LoaderKitView
+            style={{ width: 50, height: 50 }}
+            name={'BallTrianglePath'}
+            animationSpeedMultiplier={1.0}
+            color={theme.primary}
+          />
+        </View>
+        <View style={styles.courseInfo}>
+          <View style={{ height: 14, width: '80%', backgroundColor: theme.border, marginBottom: 8, borderRadius: 4 }} />
+          <View style={{ height: 14, width: '60%', backgroundColor: theme.border, marginBottom: 12, borderRadius: 4 }} />
+          <View style={{ height: 12, width: '40%', backgroundColor: theme.border, marginBottom: 8, borderRadius: 4 }} />
+          
+          <View style={styles.actionButtons}>
+            <View style={{ width: 30, height: 30, backgroundColor: theme.border, borderRadius: 6 }} />
+            <View style={{ width: 80, height: 26, backgroundColor: theme.border, borderRadius: 6 }} />
+          </View>
+        </View>
+      </View>
+    );
+  }, [theme]);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['left', 'right']}>
-      <FlatList
-        data={courses}
-        keyExtractor={(item) => item.id}
-        renderItem={renderCourse}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        numColumns={2}
-        columnWrapperStyle={styles.columnWrapper}
-        style={[styles.list, { backgroundColor: theme.background }]}
+      {isLoading ? (
+        <FlatList
+          data={[1, 2, 3, 4, 5, 6]}
+          keyExtractor={(item) => item.toString()}
+          renderItem={renderSkeleton}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          numColumns={2}
+          columnWrapperStyle={styles.columnWrapper}
+          style={[styles.list, { backgroundColor: theme.background }]}
+        />
+      ) : (
+        <FlatList
+          data={courses}
+          keyExtractor={(item) => item.id}
+          renderItem={renderCourse}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          numColumns={2}
+          columnWrapperStyle={styles.columnWrapper}
+          style={[styles.list, { backgroundColor: theme.background }]}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+          }
 
-        // ⚡ Optimization props
-        initialNumToRender={6}
-        maxToRenderPerBatch={6}
-        windowSize={7}
-        removeClippedSubviews
-      />
+          // ⚡ Optimization props
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={7}
+          removeClippedSubviews
+        />
+      )}
     </SafeAreaView>
   );
 };

@@ -16,6 +16,8 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from './navigation/AppNavigator';
 import { useTheme } from '../context/ThemeContext';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { auth } from '../api/firebaseConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -40,13 +42,30 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
     }
 
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      
+      // Update profile with name
+      if (userCredential.user) {
+        await updateProfile(userCredential.user, {
+          displayName: name.trim()
+        });
+      }
+
       setIsLoading(false);
       Alert.alert('Success', 'Account created successfully!', [
         { text: 'OK', onPress: () => navigation.replace('Login') }
       ]);
-    }, 1500);
+    } catch (error: any) {
+      setIsLoading(false);
+      let errorMessage = 'Something went wrong';
+      if (error.code === 'auth/email-already-in-use') errorMessage = 'Email already in use';
+      if (error.code === 'auth/invalid-email') errorMessage = 'Invalid email address';
+      if (error.code === 'auth/weak-password') errorMessage = 'Password should be at least 6 characters';
+      
+      Alert.alert('Signup Failed', errorMessage);
+    }
   };
 
   return (

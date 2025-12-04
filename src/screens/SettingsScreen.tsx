@@ -3,18 +3,19 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch } from 're
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { signOut } from "firebase/auth";
+import { auth } from "../api/firebaseConfig";
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark, toggleTheme } = useTheme();
 
-  const handleLogout = () => {
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      })
-    );
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out: ", error);
+    }
   };
 
 

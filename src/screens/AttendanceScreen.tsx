@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Modal,
   Dimensions,
   Easing,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -21,6 +22,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 export const AttendanceScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
+  const [refreshing, setRefreshing] = useState(false);
 
   /* -----------------------------
         MONTH DATA
@@ -93,6 +95,14 @@ export const AttendanceScreen: React.FC = () => {
         return isDark ? theme.textSecondary : "#D1D5DB";
     }
   };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    // Mock refresh delay
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1500);
+  }, []);
 
   /* -----------------------------
         CALENDAR GENERATION
@@ -242,7 +252,12 @@ export const AttendanceScreen: React.FC = () => {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
+      <ScrollView 
+        contentContainerStyle={{ paddingBottom: 150 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+        }
+      >
         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Monthly calendar view</Text>
 
         {/* MONTH DROPDOWN */}

@@ -1,14 +1,62 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { notices } from '../screens/NoticesScreen';
 import { useTheme } from '../context/ThemeContext';
+import { auth, db } from '../api/firebaseConfig';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 export const TopHeader: React.FC<{ title?: string; onBell?: () => void; notificationCount?: number }> = ({ title = 'Home', onBell, notificationCount }) => {
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
+  const [profileData, setProfileData] = useState<any>(null);
+  const user = auth.currentUser;
   
+  useEffect(() => {
+    if (!user?.email) return;
+
+    const cacheKey = `user_profile_${user.email}`;
+    console.log("TopHeader: Setting up listener for", user.email);
+
+    // Load from cache immediately
+    const loadCache = async () => {
+      try {
+        const cachedProfile = await AsyncStorage.getItem(cacheKey);
+        if (cachedProfile) {
+          console.log("TopHeader: Loaded from cache");
+          setProfileData(JSON.parse(cachedProfile));
+        }
+      } catch (error) {
+        console.error("TopHeader: Error loading cache:", error);
+      }
+    };
+    loadCache();
+
+    // Real-time listener for profile data
+    const q = query(collection(db, "profile"), where("email", "==", user.email));
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      if (!querySnapshot.empty) {
+        const docData = querySnapshot.docs[0].data();
+        console.log("TopHeader: Data found", docData);
+        setProfileData(docData);
+        // Update cache
+        AsyncStorage.setItem(cacheKey, JSON.stringify(docData)).catch(err => 
+          console.error("TopHeader: Error saving to cache:", err)
+        );
+      } else {
+        console.log("TopHeader: No profile found for email:", user.email);
+        setProfileData(null);
+      }
+    }, (error) => {
+      console.error("TopHeader: Error fetching user data:", error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
   const handleBellPress = () => {
     if (onBell) {
       onBell();
@@ -28,16 +76,24 @@ export const TopHeader: React.FC<{ title?: string; onBell?: () => void; notifica
   };
 
   const count = notificationCount !== undefined ? notificationCount : notices.length;
+  
+  // Fallback logic
+  const displayName = profileData?.fullname || user?.displayName || 'Student';
+  const displayImage = profileData?.image || user?.photoURL;
 
   return (
     <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.leftSection}>
           <View style={styles.avatar}>
-            <Image source={require('../assets/profile.jpg')} style={styles.avatarImage} />
+            <Image 
+              source={displayImage ? { uri: displayImage } : require('../assets/default-profile.png')} 
+              defaultSource={require('../assets/default-profile.png')}
+              style={styles.avatarImage} 
+            />
           </View>
           <View style={styles.userInfo}>
-            <Text style={[styles.userName, { color: theme.text }]}>Iftikhar Zahid</Text>
+            <Text style={[styles.userName, { color: theme.text }]}>{displayName}</Text>
             <Text style={[styles.greetingText, { color: theme.textSecondary }]}>{getGreeting()}</Text>
           </View>
         </View>

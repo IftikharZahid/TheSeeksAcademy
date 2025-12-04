@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from './navigation/HomeStack';
 import teachersData from '../../teachers.json';
 import { useTheme } from '../context/ThemeContext';
+import { db } from '../api/firebaseConfig';
+import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
 
 interface Teacher {
   id: string;
@@ -26,6 +28,7 @@ export const TeachersScreen: React.FC = () => {
   const [staff, setStaff] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   // Define color palette for teacher cards
   const colors = [
@@ -34,27 +37,50 @@ export const TeachersScreen: React.FC = () => {
     "#FCE7F3", "#D1FAE5"
   ];
 
-  // Fetch teachers from JSON file
+  // Fetch teachers from Firebase
   useEffect(() => {
     fetchTeachers();
   }, []);
 
   const fetchTeachers = async () => {
     try {
-      setLoading(true);
+      if (!refreshing) setLoading(true);
       setError('');
       
-      // Simulate API delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const staffCollection = collection(db, "staff");
+      const querySnapshot = await getDocs(staffCollection);
       
-      // Convert teachers data from JSON to array
-      const teachersArray: Teacher[] = Object.entries(teachersData.staff).map(
-        ([id, teacher], index) => ({
-          id,
+      let teachersArray: Teacher[] = [];
+
+      if (querySnapshot.empty) {
+        console.log("Seeding staff collection...");
+        // Seed database if empty
+        const localTeachers = Object.entries(teachersData.staff).map(
+          ([id, teacher], index) => ({
+            id,
+            ...teacher,
+            color: colors[index % colors.length],
+          })
+        );
+
+        for (const teacher of localTeachers) {
+          // Use the ID from the JSON as the document ID
+          await setDoc(doc(db, "staff", teacher.id), teacher);
+          teachersArray.push(teacher);
+        }
+      } else {
+        // Fetch from Firestore
+        querySnapshot.forEach((doc) => {
+          const data = doc.data() as Omit<Teacher, 'id'>;
+          teachersArray.push({ id: doc.id, ...data });
+        });
+        
+        // Apply colors locally since we might not want to store UI state in DB
+        teachersArray = teachersArray.map((teacher, index) => ({
           ...teacher,
-          color: colors[index % colors.length],
-        })
-      );
+          color: colors[index % colors.length]
+        }));
+      }
 
       setStaff(teachersArray);
     } catch (err) {
@@ -64,6 +90,12 @@ export const TeachersScreen: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await fetchTeachers();
+    setRefreshing(false);
+  }, []);
 
   // Group teachers by subject and count them
   const subjectCounts = staff.reduce((acc: { [key: string]: number }, teacher) => {
@@ -116,7 +148,7 @@ export const TeachersScreen: React.FC = () => {
       </View>
 
       {/* Loading State */}
-      {loading && (
+      {loading && !refreshing && (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading teachers...</Text>
@@ -124,7 +156,7 @@ export const TeachersScreen: React.FC = () => {
       )}
 
       {/* Error State */}
-      {error && !loading && (
+      {error && !loading && !refreshing && (
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>⚠️ {error}</Text>
           <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary, shadowColor: theme.primary }]} onPress={fetchTeachers}>
@@ -134,11 +166,14 @@ export const TeachersScreen: React.FC = () => {
       )}
 
       {/* Teacher Cards Grid */}
-      {!loading && !error && (
+      {(!loading || refreshing) && !error && (
         <ScrollView 
           style={[styles.scrollView, { backgroundColor: theme.background }]} 
           showsVerticalScrollIndicator={false} 
           contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+          }
         >
           <View style={styles.cardsGrid}>
             {filteredStaff.map((teacher) => (

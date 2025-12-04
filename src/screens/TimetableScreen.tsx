@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
@@ -73,6 +73,15 @@ export const TimetableScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
   const [activeDay, setActiveDay] = useState('Monday');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    // Mock refresh delay
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1500);
+  }, []);
 
   const currentSchedule = weekSchedule.find(s => s.day === activeDay) || weekSchedule[0];
 
@@ -87,7 +96,12 @@ export const TimetableScreen: React.FC = () => {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView 
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+        }
+      >
         {/* Current Date Info */}
         <View style={[styles.dateCard, { backgroundColor: theme.primary }]}>
           <Text style={styles.currentDate}>Week of July 3, 2025</Text>

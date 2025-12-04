@@ -1,8 +1,16 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { auth, db } from '../api/firebaseConfig';
+import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+
+if (Platform.OS === 'android') {
+  if (UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
+}
 
 interface Subject {
   id: string;
@@ -17,47 +25,9 @@ interface Exam {
   title: string;
   category: string;
   dateRange: string;
-  status: 'Promoted' | 'Pending' | 'Failed';
+  status: 'Pass' | 'Fail' | 'Pending';
   subjects: Subject[];
 }
-
-const exams: Exam[] = [
-  {
-    id: '1',
-    title: '1st Midterm',
-    category: 'Quarterly',
-    dateRange: '15 Sep to 18 Sep',
-    status: 'Promoted',
-    subjects: [
-      { id: '1', name: 'Chemistry 1', date: '28/08/2019', score: 65, status: 'PASS' },
-      { id: '2', name: 'Physics 1', date: '28/08/2019', score: 56, status: 'PASS' },
-      { id: '3', name: 'Mathematics 1', date: '29/08/2019', score: 78, status: 'PASS' },
-    ],
-  },
-  {
-    id: '2',
-    title: '2nd Midterm',
-    category: 'Half yearly',
-    dateRange: '20 Oct to 23 Oct',
-    status: 'Promoted',
-    subjects: [
-      { id: '1', name: 'Chemistry 2', date: '20/10/2019', score: 72, status: 'PASS' },
-      { id: '2', name: 'Physics 2', date: '21/10/2019', score: 68, status: 'PASS' },
-    ],
-  },
-  {
-    id: '3',
-    title: 'Final Exam',
-    category: 'Annual',
-    dateRange: '10 Mar to 20 Mar',
-    status: 'Pending',
-    subjects: [
-      { id: '1', name: 'Chemistry Final', date: '10/03/2020', score: 85, status: 'PASS' },
-      { id: '2', name: 'Physics Final', date: '12/03/2020', score: 75, status: 'PASS' },
-      { id: '3', name: 'Math Final', date: '15/03/2020', score: 90, status: 'PASS' },
-    ],
-  },
-];
 
 const tabs = ['All Exams', 'Quarterly', 'Half yearly', 'Annual'];
 
@@ -65,10 +35,125 @@ export const ResultsScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState('All Exams');
+  const [refreshing, setRefreshing] = useState(false);
+  const [results, setResults] = useState<Exam[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedExams, setExpandedExams] = useState<Set<string>>(new Set());
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Pass':
+        return { bg: isDark ? 'rgba(16, 185, 129, 0.2)' : '#d1fae5', text: '#059669', icon: '✓' };
+      case 'Fail':
+        return { bg: isDark ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2', text: '#dc2626', icon: '✕' };
+      case 'Pending':
+        return { bg: isDark ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7', text: '#d97706', icon: '⏳' };
+      default:
+        return { bg: isDark ? 'rgba(107, 114, 128, 0.2)' : '#f3f4f6', text: '#4b5563', icon: '?' };
+    }
+  };
+
+  const fetchResults = useCallback(async () => {
+    const user = auth.currentUser;
+    if (!user?.email) return;
+
+    try {
+      const q = query(collection(db, "results"), where("studentEmail", "==", user.email));
+      const querySnapshot = await getDocs(q);
+      const fetchedResults: Exam[] = [];
+      querySnapshot.forEach((doc) => {
+        fetchedResults.push({ id: doc.id, ...doc.data() } as Exam);
+      });
+      setResults(fetchedResults);
+      // Expand all by default
+      setExpandedExams(new Set(fetchedResults.map(e => e.id)));
+    } catch (error) {
+      console.error("Error fetching results:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchResults();
+  }, [fetchResults]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchResults();
+    setRefreshing(false);
+  }, [fetchResults]);
+
+  const toggleExam = (id: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedExams(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const seedData = async () => {
+    const user = auth.currentUser;
+    if (!user?.email) return;
+
+    const sampleExams = [
+      {
+        studentEmail: user.email,
+        title: '1st Midterm',
+        category: 'Quarterly',
+        dateRange: '15 Sep to 18 Sep',
+        status: 'Pass',
+        subjects: [
+          { id: '1', name: 'Chemistry 1', date: '28/08/2019', score: 65, status: 'PASS' },
+          { id: '2', name: 'Physics 1', date: '28/08/2019', score: 56, status: 'PASS' },
+          { id: '3', name: 'Mathematics 1', date: '29/08/2019', score: 78, status: 'PASS' },
+        ],
+      },
+      {
+        studentEmail: user.email,
+        title: '2nd Midterm',
+        category: 'Half yearly',
+        dateRange: '20 Oct to 23 Oct',
+        status: 'Fail',
+        subjects: [
+          { id: '1', name: 'Chemistry 2', date: '20/10/2019', score: 32, status: 'FAIL' },
+          { id: '2', name: 'Physics 2', date: '21/10/2019', score: 40, status: 'FAIL' },
+        ],
+      },
+      {
+        studentEmail: user.email,
+        title: 'Final Exam',
+        category: 'Annual',
+        dateRange: '10 Mar to 20 Mar',
+        status: 'Pending',
+        subjects: [
+          { id: '1', name: 'Chemistry Final', date: '10/03/2020', score: 85, status: 'PASS' },
+          { id: '2', name: 'Physics Final', date: '12/03/2020', score: 75, status: 'PASS' },
+          { id: '3', name: 'Math Final', date: '15/03/2020', score: 90, status: 'PASS' },
+        ],
+      },
+    ];
+
+    try {
+      for (const exam of sampleExams) {
+        await addDoc(collection(db, "results"), exam);
+      }
+      alert('Data seeded! Pull to refresh.');
+      onRefresh();
+    } catch (error) {
+      console.error("Error seeding data:", error);
+      alert('Error seeding data');
+    }
+  };
 
   const filteredExams = activeTab === 'All Exams' 
-    ? exams 
-    : exams.filter(exam => exam.category === activeTab);
+    ? results 
+    : results.filter(exam => exam.category === activeTab);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
@@ -78,21 +163,28 @@ export const ResultsScreen: React.FC = () => {
           <Text style={[styles.backIcon, { color: theme.text }]}>←</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>My Results</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity onPress={seedData} style={{ padding: 8 }}>
+          <Text style={{ color: theme.primary, fontSize: 12 }}>Seed Data</Text>
+        </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView 
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+        }
+      >
         {/* Student Card */}
         <View style={[styles.studentCard, { backgroundColor: theme.primary }]}>
           <View style={styles.studentCardContent}>
             <View style={styles.studentAvatar}>
               <Image 
-                source={require('../assets/profile.jpg')} 
+                source={auth.currentUser?.photoURL ? { uri: auth.currentUser.photoURL } : require('../assets/profile.jpg')} 
                 style={styles.avatarImage}
               />
             </View>
             <View style={styles.studentInfo}>
-              <Text style={styles.studentName}>Iftikhar Zahid</Text>
+              <Text style={styles.studentName}>{auth.currentUser?.displayName || 'Student'}</Text>
               <Text style={styles.studentClass}>BSCS A</Text>
             </View>
             <View style={styles.percentageSection}>
@@ -132,54 +224,71 @@ export const ResultsScreen: React.FC = () => {
 
         {/* Exam Cards */}
         <View style={styles.examsContainer}>
-          {filteredExams.map((exam, examIndex) => (
-            <View key={exam.id} style={[styles.examCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              {/* Exam Header */}
-              <View style={[styles.examHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-                <View>
-                  <Text style={[styles.examTitle, { color: theme.text }]}>{exam.title}</Text>
-                  <Text style={[styles.examDate, { color: theme.textSecondary }]}>{exam.dateRange}</Text>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#d1fae5' }]}>
-                  <Text style={styles.statusIcon}>✓</Text>
-                  <Text style={styles.statusText}>{exam.status}</Text>
-                </View>
-              </View>
-
-              {/* Subjects */}
-              <View style={styles.subjectsContainer}>
-                {exam.subjects.map((subject, subjectIndex) => (
-                  <View key={subject.id} style={styles.subjectRow}>
-                    {/* Timeline Dot */}
-                    <View style={styles.timelineContainer}>
-                      <View style={styles.timelineDot} />
-                      {subjectIndex < exam.subjects.length - 1 && (
-                        <View style={styles.timelineLine} />
-                      )}
-                    </View>
-
-                    {/* Subject Card */}
-                    <View style={[styles.subjectCard, { backgroundColor: theme.card, borderColor: '#f97316' }]}>
-                      <View style={styles.subjectInfo}>
-                        <View style={styles.subjectDateRow}>
-                          <Text style={styles.dateIcon}>📅</Text>
-                          <Text style={[styles.subjectDate, { color: theme.textSecondary }]}>{subject.date}</Text>
-                        </View>
-                        <View style={styles.subjectNameRow}>
-                          <Text style={styles.subjectIcon}>📚</Text>
-                          <Text style={[styles.subjectName, { color: theme.text }]}>{subject.name}</Text>
-                        </View>
-                      </View>
-                      <View style={styles.scoreSection}>
-                        <Text style={[styles.scoreValue, { color: theme.text }]}>{subject.score}</Text>
-                        <Text style={styles.scoreStatus}>{subject.status}</Text>
-                      </View>
-                    </View>
+          {filteredExams.length === 0 && !loading ? (
+             <Text style={{ textAlign: 'center', marginTop: 20, color: theme.textSecondary }}>No results found.</Text>
+          ) : (
+            filteredExams.map((exam, examIndex) => {
+              const statusStyle = getStatusColor(exam.status);
+              return (
+              <View key={exam.id} style={[styles.examCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                {/* Exam Header */}
+                <TouchableOpacity 
+                  style={[styles.examHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}
+                  onPress={() => toggleExam(exam.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.examTitle, { color: theme.text }]}>{exam.title}</Text>
+                    <Text style={[styles.examDate, { color: theme.textSecondary }]}>{exam.dateRange}</Text>
                   </View>
-                ))}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+                      <Text style={[styles.statusIcon, { color: statusStyle.text }]}>{statusStyle.icon}</Text>
+                      <Text style={[styles.statusText, { color: statusStyle.text }]}>{exam.status}</Text>
+                    </View>
+                    <Text style={{ fontSize: 16, color: theme.textSecondary }}>
+                      {expandedExams.has(exam.id) ? '▲' : '▼'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Subjects */}
+                {expandedExams.has(exam.id) && (
+                  <View style={styles.subjectsContainer}>
+                    {exam.subjects.map((subject, subjectIndex) => (
+                      <View key={subjectIndex} style={styles.subjectRow}>
+                        {/* Timeline Dot */}
+                        <View style={styles.timelineContainer}>
+                          <View style={styles.timelineDot} />
+                          {subjectIndex < exam.subjects.length - 1 && (
+                            <View style={styles.timelineLine} />
+                          )}
+                        </View>
+
+                        {/* Subject Card */}
+                        <View style={[styles.subjectCard, { backgroundColor: theme.card, borderColor: '#f97316' }]}>
+                          <View style={styles.subjectInfo}>
+                            <View style={styles.subjectDateRow}>
+                              <Text style={styles.dateIcon}>📅</Text>
+                              <Text style={[styles.subjectDate, { color: theme.textSecondary }]}>{subject.date}</Text>
+                            </View>
+                            <View style={styles.subjectNameRow}>
+                              <Text style={styles.subjectIcon}>📚</Text>
+                              <Text style={[styles.subjectName, { color: theme.text }]}>{subject.name}</Text>
+                            </View>
+                          </View>
+                          <View style={styles.scoreSection}>
+                            <Text style={[styles.scoreValue, { color: theme.text }]}>{subject.score}</Text>
+                            <Text style={styles.scoreStatus}>{subject.status}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
-            </View>
-          ))}
+            )})
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

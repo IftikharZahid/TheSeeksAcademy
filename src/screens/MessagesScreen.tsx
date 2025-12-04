@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, RefreshControl } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { auth, db } from '../api/firebaseConfig';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 interface Message {
   id: string;
@@ -18,6 +21,48 @@ export const MessagesScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
   const [message, setMessage] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [profileData, setProfileData] = useState<any>(null);
+  
+  const userPhotoUrl = auth.currentUser?.photoURL;
+
+  React.useEffect(() => {
+    fetchUserData();
+  }, []);
+
+  const fetchUserData = async () => {
+    const user = auth.currentUser;
+    if (!user?.email) return;
+
+    const cacheKey = `user_profile_${user.email}`;
+
+    try {
+      // Try to load from cache first
+      const cachedProfile = await AsyncStorage.getItem(cacheKey);
+      if (cachedProfile) {
+        setProfileData(JSON.parse(cachedProfile));
+      }
+
+      const q = query(collection(db, "profile"), where("email", "==", user.email));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const data = querySnapshot.docs[0].data();
+        setProfileData(data);
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    }
+  };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    // Mock refresh delay
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 1500);
+  }, []);
 
   // Sample messages - Extended for scrolling test
   const messages: Message[] = [
@@ -138,13 +183,14 @@ export const MessagesScreen: React.FC = () => {
         <View style={styles.profileInfo}>
           <View style={styles.profileImageContainer}>
             <Image 
-              source={require('../assets/profile.jpg')} 
+              source={profileData?.image ? { uri: profileData.image } : (userPhotoUrl ? { uri: userPhotoUrl } : require('../assets/default-profile.png'))} 
+              defaultSource={require('../assets/default-profile.png')}
               style={[styles.profileImage, { borderColor: theme.background }]} 
             />
             <View style={[styles.onlineIndicator, { borderColor: theme.background }]} />
           </View>
           <View style={styles.nameContainer}>
-            <Text style={[styles.name, { color: theme.text }]}>Iftikhar Zahid</Text>
+            <Text style={[styles.name, { color: theme.text }]}>{profileData?.fullname || auth.currentUser?.displayName || 'User'}</Text>
             <Text style={[styles.status, { color: theme.textSecondary }]}>Online</Text>
           </View>
         </View>
@@ -159,78 +205,82 @@ export const MessagesScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Messages */}
-      <View style={styles.messagesWrapper}>
-        <ScrollView 
-          style={styles.messagesContainer}
-          contentContainerStyle={styles.messagesContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {messages.map((msg) => (
-            <View key={msg.id}>
-              {msg.type === 'voice' ? (
-                <View style={[styles.messageRow, styles.messageRowSent]}>
-                  <View style={[styles.messageBubble, styles.sentBubble, styles.voiceBubble, { backgroundColor: theme.primary, shadowColor: theme.primary }]}>
-                    <TouchableOpacity 
-                      style={styles.playButton}
-                      onPress={() => setIsPlaying(!isPlaying)}
-                    >
-                      <Text style={styles.playIcon}>{isPlaying ? '⏸' : '▶'}</Text>
-                    </TouchableOpacity>
-                    <View style={styles.waveform}>
-                      {[...Array(20)].map((_, i) => (
-                        <View 
-                          key={i} 
-                          style={[
-                            styles.waveformBar,
-                            { height: Math.random() * 20 + 8 }
-                          ]} 
-                        />
-                      ))}
-                    </View>
-                    <Text style={styles.duration}>{msg.duration}</Text>
-                  </View>
-                  <View style={styles.messageFooter}>
-                    <Text style={styles.timestamp}>{msg.timestamp}</Text>
-                    {msg.isRead && <Text style={[styles.checkmarks, { color: theme.primary }]}>✓✓</Text>}
-                  </View>
-                </View>
-              ) : (
-                <View style={[
-                  styles.messageRow,
-                  msg.type === 'sent' ? styles.messageRowSent : styles.messageRowReceived
-                ]}>
-                  <View style={[
-                    styles.messageBubble,
-                    msg.type === 'sent' 
-                      ? [styles.sentBubble, { backgroundColor: theme.primary, shadowColor: theme.primary }] 
-                      : [styles.receivedBubble, { backgroundColor: isDark ? theme.card : '#ffffff' }]
-                  ]}>
-                    <Text style={[
-                      styles.messageText,
-                      msg.type === 'sent' ? styles.sentText : { color: theme.text }
-                    ]}>
-                      {msg.text}
-                    </Text>
-                  </View>
-                  <View style={styles.messageFooter}>
-                    <Text style={styles.timestamp}>{msg.timestamp}</Text>
-                    {msg.type === 'sent' && msg.isRead && (
-                      <Text style={[styles.checkmarks, { color: theme.primary }]}>✓✓</Text>
-                    )}
-                  </View>
-                </View>
-              )}
-            </View>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Input Area */}
+      {/* Messages & Input wrapped in KeyboardAvoidingView */}
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
+        <View style={styles.messagesWrapper}>
+          <ScrollView 
+            style={styles.messagesContainer}
+            contentContainerStyle={styles.messagesContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+            }
+          >
+            {messages.map((msg) => (
+              <View key={msg.id}>
+                {msg.type === 'voice' ? (
+                  <View style={[styles.messageRow, styles.messageRowSent]}>
+                    <View style={[styles.messageBubble, styles.sentBubble, styles.voiceBubble, { backgroundColor: theme.primary, shadowColor: theme.primary }]}>
+                      <TouchableOpacity 
+                        style={styles.playButton}
+                        onPress={() => setIsPlaying(!isPlaying)}
+                      >
+                        <Text style={styles.playIcon}>{isPlaying ? '⏸' : '▶'}</Text>
+                      </TouchableOpacity>
+                      <View style={styles.waveform}>
+                        {[...Array(20)].map((_, i) => (
+                          <View 
+                            key={i} 
+                            style={[
+                              styles.waveformBar,
+                              { height: Math.random() * 20 + 8 }
+                            ]} 
+                          />
+                        ))}
+                      </View>
+                      <Text style={styles.duration}>{msg.duration}</Text>
+                    </View>
+                    <View style={styles.messageFooter}>
+                      <Text style={styles.timestamp}>{msg.timestamp}</Text>
+                      {msg.isRead && <Text style={[styles.checkmarks, { color: theme.primary }]}>✓✓</Text>}
+                    </View>
+                  </View>
+                ) : (
+                  <View style={[
+                    styles.messageRow,
+                    msg.type === 'sent' ? styles.messageRowSent : styles.messageRowReceived
+                  ]}>
+                    <View style={[
+                      styles.messageBubble,
+                      msg.type === 'sent' 
+                        ? [styles.sentBubble, { backgroundColor: theme.primary, shadowColor: theme.primary }] 
+                        : [styles.receivedBubble, { backgroundColor: isDark ? theme.card : '#ffffff' }]
+                    ]}>
+                      <Text style={[
+                        styles.messageText,
+                        msg.type === 'sent' ? styles.sentText : { color: theme.text }
+                      ]}>
+                        {msg.text}
+                      </Text>
+                    </View>
+                    <View style={styles.messageFooter}>
+                      <Text style={styles.timestamp}>{msg.timestamp}</Text>
+                      {msg.type === 'sent' && msg.isRead && (
+                        <Text style={[styles.checkmarks, { color: theme.primary }]}>✓✓</Text>
+                      )}
+                    </View>
+                  </View>
+                )}
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Input Area */}
         <View style={[styles.inputContainer, { backgroundColor: isDark ? theme.card : '#ffffff', borderTopColor: theme.border }]}>
           <TouchableOpacity style={styles.attachButton}>
             <Text style={styles.attachIcon}>📎</Text>
@@ -250,17 +300,17 @@ export const MessagesScreen: React.FC = () => {
               <Text style={styles.sendIcon}>➤</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={[styles.voiceButton, { backgroundColor: theme.primary, shadowColor: theme.primary }]}>
-              <Text style={styles.voiceIcon}>🎤</Text>
+            <TouchableOpacity style={[styles.sendButton, { backgroundColor: theme.primary, shadowColor: theme.primary, opacity: 0.5 }]} disabled>
+              <Text style={styles.sendIcon}>➤</Text>
             </TouchableOpacity>
           )}
         </View>
       </KeyboardAvoidingView>
 
       {/* Floating Button */}
-      <TouchableOpacity style={[styles.fab, { backgroundColor: theme.primary, shadowColor: theme.primary }]}>
+      {/* <TouchableOpacity style={[styles.fab, { backgroundColor: theme.primary, shadowColor: theme.primary }]}>
         <Text style={{ color: "#fff", fontSize: 24 }}>＋</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </SafeAreaView>
   );
 };
@@ -393,7 +443,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
-    gap: 4,
+    gap: 2,
   },
   timestamp: {
     fontSize: 11,
@@ -446,9 +496,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    paddingBottom: 5,
     borderTopWidth: 1,
-    gap: 12,
-    marginBottom: 40,
+    gap: 8,
   },
   attachButton: {
     width: 36,

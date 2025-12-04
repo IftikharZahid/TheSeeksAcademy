@@ -1,5 +1,7 @@
 import React from "react";
-import { View } from "react-native";
+import { View, ActivityIndicator } from "react-native";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../../api/firebaseConfig";
 import {
   NavigationContainer,
   DefaultTheme,
@@ -30,6 +32,16 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const AppNavigator: React.FC = () => {
   const { theme, isDark } = useTheme();
+  const [initializing, setInitializing] = React.useState(true);
+  const [user, setUser] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const subscriber = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      if (initializing) setInitializing(false);
+    });
+    return subscriber; // unsubscribe on unmount
+  }, []);
 
   const baseTheme = isDark ? DarkTheme : DefaultTheme;
 
@@ -46,20 +58,35 @@ export const AppNavigator: React.FC = () => {
     },
   };
 
+  if (initializing) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <NavigationContainer theme={navigationTheme}>
         <Stack.Navigator
-          initialRouteName="Welcome"
+          initialRouteName={user ? "Main" : "Welcome"}
           screenOptions={{ headerShown: false }}
         >
-          <Stack.Screen name="Welcome" component={WelcomeScreen} />
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Signup" component={SignupScreen} />
-          <Stack.Screen name="Main" component={MainTabs} />
-          <Stack.Screen name="Admin" component={AdminDashboard} />
-          <Stack.Screen name="SchoolDashboard" component={SchoolDashboard} />
-          <Stack.Screen name="Home" component={HomeScreen} />
+          {!user ? (
+            <>
+              <Stack.Screen name="Welcome" component={WelcomeScreen} />
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="Signup" component={SignupScreen} />
+            </>
+          ) : (
+            <>
+              <Stack.Screen name="Main" component={MainTabs} />
+              <Stack.Screen name="Admin" component={AdminDashboard} />
+              <Stack.Screen name="SchoolDashboard" component={SchoolDashboard} />
+              <Stack.Screen name="Home" component={HomeScreen} />
+            </>
+          )}
         </Stack.Navigator>
       </NavigationContainer>
     </View>

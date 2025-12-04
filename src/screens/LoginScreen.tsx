@@ -17,6 +17,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from './navigation/AppNavigator';
 import { useTheme } from '../context/ThemeContext';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../api/firebaseConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -60,31 +62,48 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
     setIsLoading(true);
     
-    // Simulate API call delay
-    setTimeout(async () => {
-      setIsLoading(false);
-      // Strict check for credentials
-      if (email.trim() === 'IftikharXahid@gmail.com' && password === '78600') {
-        try {
-          if (rememberMe) {
-            await AsyncStorage.setItem('user_email', email.trim());
-            await AsyncStorage.setItem('user_password', password);
-          } else {
-            await AsyncStorage.removeItem('user_email');
-            await AsyncStorage.removeItem('user_password');
-          }
-        } catch (error) {
-          console.error('Failed to save credentials', error);
-        }
-        navigation.replace('Main');
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+      
+      if (rememberMe) {
+        await AsyncStorage.setItem('user_email', email.trim());
+        await AsyncStorage.setItem('user_password', password);
       } else {
-        Alert.alert('Error', 'Email/Password is incorrect');
+        await AsyncStorage.removeItem('user_email');
+        await AsyncStorage.removeItem('user_password');
       }
-    }, 1000);
+      
+      setIsLoading(false);
+      navigation.replace('Main');
+    } catch (error: any) {
+      setIsLoading(false);
+      let errorMessage = 'Something went wrong';
+      if (error.code === 'auth/invalid-email') errorMessage = 'Invalid email address';
+      if (error.code === 'auth/user-disabled') errorMessage = 'User account disabled';
+      if (error.code === 'auth/user-not-found') errorMessage = 'User not found';
+      if (error.code === 'auth/wrong-password') errorMessage = 'Incorrect password';
+      if (error.code === 'auth/invalid-credential') errorMessage = 'Invalid credentials';
+      
+      Alert.alert('Login Failed', errorMessage);
+    }
   };
 
-  const handleForgotPassword = () => {
-    Alert.alert('Forgot Password', 'Password reset link will be sent to your email');
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert('Error', 'Please enter your email address to reset password');
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      Alert.alert('Success', 'Password reset link has been sent to your email');
+    } catch (error: any) {
+      let errorMessage = 'Failed to send reset email';
+      if (error.code === 'auth/invalid-email') errorMessage = 'Invalid email address';
+      if (error.code === 'auth/user-not-found') errorMessage = 'User not found';
+      
+      Alert.alert('Error', errorMessage);
+    }
   };
 
   return (
@@ -292,6 +311,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 16,
+    fontWeight: '500',
   },
   formContainer: {
     paddingHorizontal: 24,
