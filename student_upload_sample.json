@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Ahmed Khan",
+    "studentId": "STU-2024-001",
+    "email": "ahmed@example.com",
+    "grade": "10th",
+    "profileImage": "https://randomuser.me/api/portraits/men/1.jpg"
+  },
+  {
+    "name": "Fatima Ali",
+    "studentId": "STU-2024-002",
+    "email": "fatima@example.com",
+    "grade": "9th",
+    "profileImage": "https://randomuser.me/api/portraits/women/2.jpg"
+  },
+  {
+    "name": "Zainab Bibi",
+    "studentId": "STU-2024-003",
+    "email": "zainab@example.com",
+    "grade": "1st Year",
+    "profileImage": ""
+  }
+]

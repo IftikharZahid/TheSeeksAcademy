@@ -1,8 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { db } from '../api/firebaseConfig';
+import { doc, onSnapshot, collection } from 'firebase/firestore';
 
 interface ClassSession {
   id: string;
@@ -13,48 +15,12 @@ interface ClassSession {
   instructor: string;
 }
 
-interface DaySchedule {
-  day: string;
-  date: string;
-  classes: ClassSession[];
-}
 
-const weekSchedule: DaySchedule[] = [
-  {
-    day: 'Monday',
-    date: 'Jul 3',
-    classes: [
-      { id: '1', type: 'LECTURE', subject: 'Data Structures', time: '08:00 - 09:30', room: 'Room 201', instructor: 'Dr. Ahmed' },
-      { id: '2', type: 'PRACTICAL', subject: 'Database Lab', time: '10:00 - 12:00', room: 'Lab 3', instructor: 'Ms. Sara' },
-      { id: '3', type: 'TUTORIAL', subject: 'OOP Tutorial', time: '02:00 - 03:00', room: 'Room 105', instructor: 'Mr. Khan' },
-    ],
-  },
-  {
-    day: 'Tuesday',
-    date: 'Jul 4',
-    classes: [
-      { id: '1', type: 'LECTURE', subject: 'Operating Systems', time: '09:00 - 10:30', room: 'Room 202', instructor: 'Dr. Ali' },
-      { id: '2', type: 'LECTURE', subject: 'Computer Networks', time: '11:00 - 12:30', room: 'Room 203', instructor: 'Ms. Fatima' },
-    ],
-  },
-  {
-    day: 'Wednesday',
-    date: 'Jul 5',
-    classes: [
-      { id: '1', type: 'PRACTICAL', subject: 'Web Development Lab', time: '08:00 - 10:00', room: 'Lab 1', instructor: 'Mr. Usman' },
-      { id: '2', type: 'LECTURE', subject: 'Software Engineering', time: '01:00 - 02:30', room: 'Room 204', instructor: 'Dr. Hassan' },
-    ],
-  },
-  {
-    day: 'Saturday',
-    date: 'Jul 8',
-    classes: [
-      { id: '1', type: 'PRACTICAL', subject: 'Mobile App Development', time: '09:00 - 11:00', room: 'Lab 2', instructor: 'Ms. Ayesha' },
-    ],
-  },
-];
 
-const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+
+const days = ['All', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const dayOrder: { [key: string]: number } = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 7 };
 
 const getTypeColor = (type: string) => {
   switch (type) {
@@ -72,18 +38,63 @@ const getTypeColor = (type: string) => {
 export const TimetableScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
-  const [activeDay, setActiveDay] = useState('Monday');
+  const [activeDay, setActiveDay] = useState('All');
   const [refreshing, setRefreshing] = useState(false);
+  const [scheduleData, setScheduleData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch schedule
+    setLoading(true);
+    let unsubscribe: () => void;
+
+    if (activeDay === 'All') {
+      const colRef = collection(db, 'timetable');
+      unsubscribe = onSnapshot(colRef, (snapshot) => {
+        let allClasses: any[] = [];
+        snapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          const dayName = doc.id;
+          if (data.classes && Array.isArray(data.classes)) {
+            // Add day name to each class for 'All' view context
+            const dayClasses = data.classes.map((c: any) => ({ ...c, day: dayName }));
+            allClasses = [...allClasses, ...dayClasses];
+          }
+        });
+
+        // Sort by Day then Time
+        allClasses.sort((a, b) => {
+          const dayDiff = (dayOrder[a.day] || 8) - (dayOrder[b.day] || 8);
+          if (dayDiff !== 0) return dayDiff;
+          return a.time.localeCompare(b.time);
+        });
+
+        setScheduleData(allClasses);
+        setLoading(false);
+      });
+    } else {
+      const docRef = doc(db, 'timetable', activeDay);
+      unsubscribe = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setScheduleData(data.classes || []);
+        } else {
+          setScheduleData([]);
+        }
+        setLoading(false);
+      });
+    }
+
+    return () => unsubscribe && unsubscribe();
+  }, [activeDay]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    // Mock refresh delay
+    // Re-trigger fetch or just wait a bit since it's real-time
     setTimeout(() => {
       setRefreshing(false);
-    }, 1500);
+    }, 1000);
   }, []);
-
-  const currentSchedule = weekSchedule.find(s => s.day === activeDay) || weekSchedule[0];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
@@ -102,12 +113,7 @@ export const TimetableScreen: React.FC = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
       >
-        {/* Current Date Info */}
-        <View style={[styles.dateCard, { backgroundColor: theme.primary }]}>
-          <Text style={styles.currentDate}>Week of July 3, 2025</Text>
-          <Text style={styles.semester}>Spring Semester 2025</Text>
-        </View>
-
+      
         {/* Day Tabs */}
         <View style={styles.tabsContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -133,21 +139,23 @@ export const TimetableScreen: React.FC = () => {
           </ScrollView>
         </View>
 
-        {/* Classes for Selected Day */}
-        <View style={styles.scheduleContainer}>
-          <View style={styles.scheduleHeader}>
-            <Text style={[styles.scheduleTitle, { color: theme.text }]}>{currentSchedule.day}'s Classes</Text>
-            <Text style={[styles.scheduleDate, { color: theme.textSecondary }]}>{currentSchedule.date}</Text>
-          </View>
+          {/* Classes for Selected Day */}
+          <View style={styles.scheduleContainer}>
+            <View style={styles.scheduleHeader}>
+              <Text style={[styles.scheduleTitle, { color: theme.text }]}>{activeDay}'s Classes</Text>
+            </View>
 
           {/* Timeline Classes */}
           <View style={styles.classesContainer}>
-            {currentSchedule.classes.map((classItem, index) => (
+            {loading ? (
+                <Text style={{ textAlign: 'center', marginVertical: 20, color: theme.textSecondary }}>Loading...</Text>
+            ) : (
+                scheduleData.map((classItem, index) => (
               <View key={classItem.id} style={styles.classRow}>
                 {/* Timeline Dot */}
                 <View style={styles.timelineContainer}>
                   <View style={[styles.timelineDot, { backgroundColor: getTypeColor(classItem.type) }]} />
-                  {index < currentSchedule.classes.length - 1 && (
+                  {index < scheduleData.length - 1 && (
                     <View style={styles.timelineLine} />
                   )}
                 </View>
@@ -166,27 +174,30 @@ export const TimetableScreen: React.FC = () => {
                         {classItem.type}
                       </Text>
                     </View>
-                    <Text style={[styles.timeText, { color: theme.textSecondary }]}>🕐 {classItem.time}</Text>
+                      <Text style={[styles.timeText, { color: theme.textSecondary }]}>
+                        {activeDay === 'All' ? `${classItem.day} • ` : ''}🕐 {classItem.time}
+                      </Text>
                   </View>
                   
                   <Text style={[styles.subjectName, { color: theme.text }]}>{classItem.subject}</Text>
                   
                   <View style={styles.classDetails}>
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailIcon}>📍</Text>
+                      <Text style={styles.detailIcon}>📚 Room No:</Text>
                       <Text style={[styles.detailText, { color: theme.textSecondary }]}>{classItem.room}</Text>
                     </View>
                     <View style={styles.detailRow}>
-                      <Text style={styles.detailIcon}>👨‍🏫</Text>
+                      <Text style={styles.detailIcon}>👨‍🏫 Instructor:</Text>
                       <Text style={[styles.detailText, { color: theme.textSecondary }]}>{classItem.instructor}</Text>
                     </View>
                   </View>
                 </View>
               </View>
-            ))}
+            ))
+            )}
           </View>
 
-          {currentSchedule.classes.length === 0 && (
+          {!loading && scheduleData.length === 0 && (
             <View style={styles.noClassesContainer}>
               <Text style={[styles.noClassesText, { color: theme.textSecondary }]}>🎉 No classes scheduled for this day!</Text>
             </View>
@@ -241,17 +252,17 @@ const styles = StyleSheet.create({
   },
   tabsContainer: {
     marginHorizontal: 16,
-    marginTop: 20,
-    marginBottom: 16,
+    marginTop: 12,
+    marginBottom: 8,
   },
   tab: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 20,
     marginRight: 8,
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   tabTextActive: {
@@ -264,7 +275,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   scheduleTitle: {
     fontSize: 16,
@@ -274,33 +285,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   classesContainer: {
-    marginTop: 8,
+    marginTop: 4,
   },
   classRow: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   timelineContainer: {
-    width: 30,
+    width: 24,
     alignItems: 'center',
     position: 'relative',
   },
   timelineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     zIndex: 1,
   },
   timelineLine: {
     position: 'absolute',
-    top: 12,
+    top: 10,
     width: 2,
-    bottom: -16,
+    bottom: -8,
     backgroundColor: '#fed7aa',
   },
   classCard: {
     flex: 1,
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     borderWidth: 1,
     elevation: 2,
@@ -313,39 +324,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   typeBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
   },
   typeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
   },
   timeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   subjectName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   classDetails: {
-    gap: 8,
+    gap: 4,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   detailIcon: {
-    fontSize: 14,
-    marginRight: 8,
+    fontSize: 12,
+    marginRight: 6,
   },
   detailText: {
-    fontSize: 13,
+    fontSize: 12,
   },
   noClassesContainer: {
     padding: 40,

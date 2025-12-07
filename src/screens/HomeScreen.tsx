@@ -4,7 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useCourses } from '../context/CoursesContext';
 import { DeckSwiper } from '../components/DeckSwiper';
+import { QuickActions } from '../components/QuickActions';
 import { useTheme } from '../context/ThemeContext';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
 
@@ -12,37 +14,30 @@ const slides = [
   {
     id: 1,
     title: 'Admissions Open 👨‍🎓',
-    subtitle: 'Apply now for Session 2026-27 — limited seats',
-    color: '#3b82f6',
+    subtitle: 'Apply now for Session 2026-27 —limited seats',
+    colors: ['#667eea', '#764ba2'] as const,
   },
   {
     id: 2,
     title: 'Test Series Started ✍',
     subtitle: 'Join our Test series to prepare for your exams',
-    color: '#8b5cf6',
+    colors: ['#f093fb', '#f5576c'] as const,
   },
   {
     id: 3,
     title: 'Scholarships Available 📚',
     subtitle: 'Merit-based scholarships up to 50%',
-    color: '#10b981',
+    colors: ['#4facfe', '#00f2fe'] as const,
   },
   {
     id: 4,
     title: 'Pass Guarantee 🐥',
     subtitle: 'Pass in all exams with our expert guidance',
-    color: '#b91078ff',
+    colors: ['#43e97b', '#38f9d7'] as const,
   },
 ];
 
-const quickItems = [
-  { key: 'courses', label: 'Courses', emoji: '📚' },
-  { key: 'assignments', label: 'Assignments', emoji: '📝' },
-  { key: 'teachers', label: 'Teachers', emoji: '👩‍🏫' },
-  { key: 'results', label: 'Results', emoji: '🏆' },
-  { key: 'timetable', label: 'Timetable', emoji: '🕐' },
-  { key: 'attendance', label: 'Attendance', emoji: '📊' },
-];
+
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -104,13 +99,13 @@ export const HomeScreen: React.FC = () => {
               decelerationRate="fast"
             >
               {slides.map((slide) => (
-                <View key={slide.id} style={[styles.banner, { backgroundColor: slide.color, width: width - 32 }]}>
+                <LinearGradient key={slide.id} colors={[...slide.colors]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.banner, { width: width - 32 }]}>
                   <Text style={styles.bannerTitle}>{slide.title}</Text>
                   <Text style={styles.bannerSubtitle}>{slide.subtitle}</Text>
                   <TouchableOpacity style={styles.applyButton}>
-                    <Text style={[styles.applyButtonText, { color: slide.color }]}>Get Started!</Text>
+                    <Text style={[styles.applyButtonText, { color: slide.colors[0] }]}>Get Started!</Text>
                   </TouchableOpacity>
-                </View>
+                </LinearGradient>
               ))}
             </ScrollView>
             
@@ -129,25 +124,7 @@ export const HomeScreen: React.FC = () => {
           </View>
 
           {/* Quick Actions Grid */}
-          <View style={styles.quickActionsGrid}>
-            {quickItems.map((q) => (
-              <TouchableOpacity 
-                key={q.key} 
-                onPress={() => {
-                  if (q.key === 'courses') navigation.navigate('Courses');
-                  if (q.key === 'assignments') navigation.navigate('AssignmentsScreen');
-                  if (q.key === 'teachers') navigation.navigate('TeachersScreen');
-                  if (q.key === 'results') navigation.navigate('ResultsScreen');
-                  if (q.key === 'timetable') navigation.navigate('TimetableScreen');
-                  if (q.key === 'attendance') navigation.navigate('AttendanceScreen');
-                }} 
-                style={[styles.quickActionCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-              >
-                <Text style={styles.quickActionEmoji}>{q.emoji}</Text>
-                <Text style={[styles.quickActionLabel, { color: theme.text }]}>{q.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <QuickActions />
 
           {/* Featured Courses */}
           <View style={styles.featuredSection}>
@@ -172,7 +149,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   carouselContainer: {
-    marginBottom: 20,
+    marginBottom: 8,
   },
   banner: {
     borderRadius: 16,
@@ -218,36 +195,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#3b82f6',
     width: 24,
   },
-  quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginTop: 10,
-  },
-  quickActionCard: {
-    width: '31%',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  quickActionEmoji: {
-    fontSize: 32,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  quickActionLabel: {
-    fontWeight: '600',
-    textAlign: 'center',
-    fontSize: 12,
-  },
+
   featuredSection: {
     marginTop: 10,
   },

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Linking } 
 import Svg, { Path } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext';
 
 export const AboutScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -28,7 +28,7 @@ export const AboutScreen: React.FC = () => {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/icon.png')} 
+            source={require('../../../assets/icon.png')} 
             style={styles.appLogo} 
             resizeMode="contain"
           />
@@ -43,7 +43,7 @@ export const AboutScreen: React.FC = () => {
             <View style={styles.devHeader}>
               <View style={styles.devAvatarContainer}>
                  <Image 
-                  source={require('../assets/profile.jpg')} 
+                  source={require('../../assets/profile.jpg')} 
                   style={styles.devAvatar} 
                 />
               </View>

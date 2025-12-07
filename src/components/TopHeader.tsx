@@ -18,14 +18,14 @@ export const TopHeader: React.FC<{ title?: string; onBell?: () => void; notifica
     if (!user?.email) return;
 
     const cacheKey = `user_profile_${user.email}`;
-    console.log("TopHeader: Setting up listener for", user.email);
+
 
     // Load from cache immediately
     const loadCache = async () => {
       try {
         const cachedProfile = await AsyncStorage.getItem(cacheKey);
         if (cachedProfile) {
-          console.log("TopHeader: Loaded from cache");
+
           setProfileData(JSON.parse(cachedProfile));
         }
       } catch (error) {
@@ -40,14 +40,14 @@ export const TopHeader: React.FC<{ title?: string; onBell?: () => void; notifica
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       if (!querySnapshot.empty) {
         const docData = querySnapshot.docs[0].data();
-        console.log("TopHeader: Data found", docData);
+
         setProfileData(docData);
         // Update cache
         AsyncStorage.setItem(cacheKey, JSON.stringify(docData)).catch(err => 
           console.error("TopHeader: Error saving to cache:", err)
         );
       } else {
-        console.log("TopHeader: No profile found for email:", user.email);
+
         setProfileData(null);
       }
     }, (error) => {

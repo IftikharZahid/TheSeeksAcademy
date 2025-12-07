@@ -67,7 +67,7 @@ export const ProfileScreen: React.FC = () => {
         setProfileData(docData);
         await AsyncStorage.setItem(cacheKey, JSON.stringify(docData));
       } else {
-        console.log("No profile found for this email:", user.email);
+
         setProfileData(null);
       }
     } catch (error) {

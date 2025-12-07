@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -7,7 +8,7 @@ import { HomeStackParamList } from './navigation/HomeStack';
 import teachersData from '../../teachers.json';
 import { useTheme } from '../context/ThemeContext';
 import { db } from '../api/firebaseConfig';
-import { collection, getDocs, setDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, setDoc, doc, onSnapshot } from 'firebase/firestore';
 
 interface Teacher {
   id: string;
@@ -30,6 +31,8 @@ export const TeachersScreen: React.FC = () => {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+
   // Define color palette for teacher cards
   const colors = [
     "#FEF3C7", "#DBEAFE", "#E0E7FF", "#FCE7F3", 
@@ -37,23 +40,21 @@ export const TeachersScreen: React.FC = () => {
     "#FCE7F3", "#D1FAE5"
   ];
 
-  // Fetch teachers from Firebase
-  useEffect(() => {
-    fetchTeachers();
-  }, []);
+  const fetchTeachers = useCallback(() => {
+    setLoading(true);
+    setError('');
+    
+    // Unsubscribe from previous listener if exists
+    if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+    }
 
-  const fetchTeachers = async () => {
-    try {
-      if (!refreshing) setLoading(true);
-      setError('');
-      
-      const staffCollection = collection(db, "staff");
-      const querySnapshot = await getDocs(staffCollection);
-      
+    const staffCollection = collection(db, "staff");
+    
+    const unsubscribe = onSnapshot(staffCollection, async (querySnapshot) => {
       let teachersArray: Teacher[] = [];
 
       if (querySnapshot.empty) {
-        console.log("Seeding staff collection...");
         // Seed database if empty
         const localTeachers = Object.entries(teachersData.staff).map(
           ([id, teacher], index) => ({
@@ -63,38 +64,54 @@ export const TeachersScreen: React.FC = () => {
           })
         );
 
-        for (const teacher of localTeachers) {
-          // Use the ID from the JSON as the document ID
+        // We don't await here to avoid blocking the UI, 
+        // the snapshot will fire again when these are added.
+        localTeachers.forEach(async (teacher) => {
           await setDoc(doc(db, "staff", teacher.id), teacher);
-          teachersArray.push(teacher);
-        }
+        });
+        
+        // Optimistically set data
+        setStaff(localTeachers);
       } else {
-        // Fetch from Firestore
         querySnapshot.forEach((doc) => {
           const data = doc.data() as Omit<Teacher, 'id'>;
           teachersArray.push({ id: doc.id, ...data });
         });
         
-        // Apply colors locally since we might not want to store UI state in DB
+        // Apply colors
         teachersArray = teachersArray.map((teacher, index) => ({
           ...teacher,
           color: colors[index % colors.length]
         }));
+        
+        setStaff(teachersArray);
       }
-
-      setStaff(teachersArray);
-    } catch (err) {
-      console.error('Error fetching teachers:', err);
-      setError('Failed to load teachers. Please try again.');
-    } finally {
       setLoading(false);
-    }
-  };
+      setRefreshing(false); // Stop refreshing if it was triggered manually
+    }, (err) => {
+      console.error('Error fetching teachers:', err);
+      setError('Failed to load teachers.');
+      setLoading(false);
+      setRefreshing(false);
+    });
 
-  const onRefresh = React.useCallback(async () => {
+    unsubscribeRef.current = unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    fetchTeachers();
+
+    return () => {
+        if (unsubscribeRef.current) {
+            unsubscribeRef.current();
+        }
+    };
+  }, [fetchTeachers]);
+
+  const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    await fetchTeachers();
-    setRefreshing(false);
+    // onSnapshot is already live, but we can simulate a check
+    setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
   // Group teachers by subject and count them
@@ -119,7 +136,9 @@ export const TeachersScreen: React.FC = () => {
           <Text style={[styles.backIcon, { color: theme.text }]}>←</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Our Teachers</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity onPress={() => navigation.navigate('AdminTeachersScreen')} style={styles.backButton}>
+           <Ionicons name="settings-outline" size={24} color={theme.text} />
+        </TouchableOpacity>
       </View>
 
       {/* Tabs with teacher counts */}

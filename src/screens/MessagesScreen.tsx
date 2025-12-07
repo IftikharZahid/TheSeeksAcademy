@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, RefreshControl, Keyboard } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -23,11 +23,23 @@ export const MessagesScreen: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [profileData, setProfileData] = useState<any>(null);
+  const [showInputBox, setShowInputBox] = useState(false);
+  const [isKeyboardActive, setIsKeyboardActive] = useState(false);
   
   const userPhotoUrl = auth.currentUser?.photoURL;
 
   React.useEffect(() => {
     fetchUserData();
+  }, []);
+
+  // Keyboard listeners for dynamic padding
+  React.useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardActive(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardActive(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
   }, []);
 
   const fetchUserData = async () => {
@@ -167,7 +179,7 @@ export const MessagesScreen: React.FC = () => {
 
   const handleSend = () => {
     if (message.trim()) {
-      console.log('Sending message:', message);
+
       setMessage('');
     }
   };
@@ -280,37 +292,47 @@ export const MessagesScreen: React.FC = () => {
           </ScrollView>
         </View>
 
-        {/* Input Area */}
-        <View style={[styles.inputContainer, { backgroundColor: isDark ? theme.card : '#ffffff', borderTopColor: theme.border }]}>
-          <TouchableOpacity style={styles.attachButton}>
-            <Text style={styles.attachIcon}>📎</Text>
-          </TouchableOpacity>
+        {/* WhatsApp-style Input Area */}
+        <View style={[styles.inputWrapper, { backgroundColor: isDark ? theme.background : '#f0f2f5', paddingBottom: isKeyboardActive ? 5 : 15 }]}>
+          {/* Pill-shaped input container */}
+          <View style={[styles.inputContainer, { backgroundColor: isDark ? theme.card : '#ffffff' }]}>
+            <TouchableOpacity style={styles.emojiButton}>
+              <Text style={styles.emojiIcon}>😊</Text>
+            </TouchableOpacity>
+            
+            <TextInput
+              style={[styles.input, { color: theme.text }]}
+              placeholder="Message"
+              placeholderTextColor="#9ca3af"
+              value={message}
+              onChangeText={setMessage}
+              multiline
+            />
+            
+            <TouchableOpacity style={styles.attachButton}>
+              <Text style={styles.attachIcon}>📎</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.cameraButton}>
+              <Text style={styles.cameraIcon}>📷</Text>
+            </TouchableOpacity>
+          </View>
           
-          <TextInput
-            style={[styles.input, { backgroundColor: isDark ? theme.background : '#f9fafb', color: theme.text }]}
-            placeholder="Type message..."
-            placeholderTextColor="#9ca3af"
-            value={message}
-            onChangeText={setMessage}
-            multiline
-          />
-          
+          {/* Mic/Send Button */}
           {message.trim() ? (
-            <TouchableOpacity style={[styles.sendButton, { backgroundColor: theme.primary, shadowColor: theme.primary }]} onPress={handleSend}>
-              <Text style={styles.sendIcon}>➤</Text>
+            <TouchableOpacity 
+              style={[styles.micButton, { backgroundColor: '#128C7E' }]} 
+              onPress={handleSend}
+            >
+              <Text style={styles.micIcon}>➤</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={[styles.sendButton, { backgroundColor: theme.primary, shadowColor: theme.primary, opacity: 0.5 }]} disabled>
-              <Text style={styles.sendIcon}>➤</Text>
+            <TouchableOpacity style={[styles.micButton, { backgroundColor: '#128C7E' }]}>
+              <Text style={styles.micIcon}>🎤</Text>
             </TouchableOpacity>
           )}
         </View>
       </KeyboardAvoidingView>
-
-      {/* Floating Button */}
-      {/* <TouchableOpacity style={[styles.fab, { backgroundColor: theme.primary, shadowColor: theme.primary }]}>
-        <Text style={{ color: "#fff", fontSize: 24 }}>＋</Text>
-      </TouchableOpacity> */}
     </SafeAreaView>
   );
 };
@@ -491,14 +513,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 12,
   },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    gap: 8,
+  },
   inputContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingBottom: 5,
-    borderTopWidth: 1,
-    gap: 8,
+    borderRadius: 25,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    minHeight: 48,
+  },
+  emojiButton: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emojiIcon: {
+    fontSize: 24,
   },
   attachButton: {
     width: 36,
@@ -520,6 +558,15 @@ const styles = StyleSheet.create({
     // shadowOpacity: 0.3,
     // shadowRadius: 8,
     // elevation: 4,
+  },
+  cameraButton: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraIcon: {
+    fontSize: 22,
   },
   input: {
     flex: 1,
@@ -544,6 +591,22 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#ffffff',
   },
+  micButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  micIcon: {
+    fontSize: 22,
+    color: '#ffffff',
+  },
   voiceButton: {
     width: 52,
     height: 52,
@@ -565,8 +628,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     position: "absolute",
-    bottom: 90,
-    right: 20,
+    bottom: 20,
+    left: 20,
     elevation: 8,
     shadowOffset: {
       width: 0,
@@ -574,5 +637,10 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+  },
+  fabIcon: {
+    fontSize: 32,
+    color: '#ffffff',
+    fontWeight: '300',
   },
 });

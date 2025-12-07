@@ -105,8 +105,25 @@ const path = `
                   style={[styles.centerButton, { backgroundColor: theme.primary, shadowColor: theme.primary }]}
                   activeOpacity={0.8}
                 >
-                  {/* Render icon inside the floating button with white color */}
-                  {options.tabBarIcon ? (options.tabBarIcon as any)({ focused: isFocused, color: '#ffffff', size: 30 }) : <Text style={{ fontSize: 24 }}>💬</Text>}
+                  {/* Custom Chat Bubble SVG Icon */}
+                  <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                    <Path 
+                      d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" 
+                      fill="#ffffff"
+                    />
+                    <Path 
+                      d="M7 9H17" 
+                      stroke={theme.primary} 
+                      strokeWidth="2" 
+                      strokeLinecap="round"
+                    />
+                    <Path 
+                      d="M7 13H13" 
+                      stroke={theme.primary} 
+                      strokeWidth="2" 
+                      strokeLinecap="round"
+                    />
+                  </Svg>
                 </TouchableOpacity>
                 <Text style={[styles.label, { color: isFocused ? theme.primary : theme.textSecondary, marginTop: 18 }]}>
                   {label as string}

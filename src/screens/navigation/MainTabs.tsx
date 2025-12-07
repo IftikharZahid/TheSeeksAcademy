@@ -34,7 +34,7 @@ export const MainTabs: React.FC = () => {
         component={HomeStack}
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeScreen';
-          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'CoursesScreen', 'StaffInfoScreen', 'SettingsScreen', 'SimTrackerScreen', 'ChangePasswordScreen', 'AboutScreen', 'PrivacyPolicyScreen', 'HelpCenterScreen'];
+          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'CoursesScreen', 'StaffInfoScreen', 'SettingsScreen', 'SimTrackerScreen', 'ChangePasswordScreen', 'AboutScreen', 'PrivacyPolicyScreen', 'HelpCenterScreen', 'ComplaintsScreen', 'AdminTeachersScreen', 'FeeDetailScreen'];
           if (hiddenRoutes.includes(routeName)) {
             return { 
               headerShown: false,
@@ -75,7 +75,7 @@ export const MainTabs: React.FC = () => {
         component={ProfileStack}
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'ProfileScreen';
-          const hiddenRoutes = ['SimTrackerScreen', 'ChangePasswordScreen'];
+          const hiddenRoutes = ['HelpCenterScreen'];
           if (hiddenRoutes.includes(routeName)) {
             return { 
               headerShown: false,

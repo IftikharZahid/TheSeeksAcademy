@@ -14,9 +14,15 @@ import { LoginScreen } from "../LoginScreen";
 import { SignupScreen } from "../SignupScreen";
 import { WelcomeScreen } from "../WelcomeScreen";
 import { MainTabs } from "./MainTabs";
-import { AdminDashboard } from "../AdminDashboard";
-import { SchoolDashboard } from "../SchoolDashboard";
+import { AdminDashboard } from "../AdminScreens/AdminDashboard";
 import { HomeScreen } from "../HomeScreen";
+import { AdminComplaintsScreen } from "../AdminScreens/AdminComplaintsScreen";
+import { AdminTimetableScreen } from "../AdminScreens/AdminTimetableScreen";
+import { AdminTeachersScreen } from "../AdminScreens/AdminTeachersScreen";
+import { AdminCoursesScreen } from "../AdminScreens/AdminCoursesScreen";
+import { AdminStudentRecordsScreen } from "../AdminScreens/AdminStudentRecordsScreen";
+import { AdminExamsScreen } from "../AdminScreens/AdminExamsScreen";
+import { AdminFeeScreen } from "../AdminScreens/AdminFeeScreen";
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -24,8 +30,14 @@ export type RootStackParamList = {
   Signup: undefined;
   Main: undefined;
   Admin: undefined;
-  SchoolDashboard: undefined;
   Home: undefined;
+  AdminComplaints: undefined;
+  AdminTimetable: undefined;
+  AdminTeachers: undefined;
+  AdminCourses: undefined;
+  AdminStudentRecords: undefined;
+  AdminExams: undefined;
+  AdminFeeScreen: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -83,8 +95,15 @@ export const AppNavigator: React.FC = () => {
             <>
               <Stack.Screen name="Main" component={MainTabs} />
               <Stack.Screen name="Admin" component={AdminDashboard} />
-              <Stack.Screen name="SchoolDashboard" component={SchoolDashboard} />
+
               <Stack.Screen name="Home" component={HomeScreen} />
+              <Stack.Screen name="AdminComplaints" component={AdminComplaintsScreen} />
+              <Stack.Screen name="AdminTimetable" component={AdminTimetableScreen} />
+              <Stack.Screen name="AdminTeachers" component={AdminTeachersScreen} />
+              <Stack.Screen name="AdminCourses" component={AdminCoursesScreen} />
+              <Stack.Screen name="AdminStudentRecords" component={AdminStudentRecordsScreen} />
+              <Stack.Screen name="AdminExams" component={AdminExamsScreen} />
+              <Stack.Screen name="AdminFeeScreen" component={AdminFeeScreen} />
             </>
           )}
         </Stack.Navigator>

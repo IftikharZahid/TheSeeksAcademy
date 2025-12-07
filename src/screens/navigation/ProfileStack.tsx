@@ -3,7 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ProfileScreen } from '../ProfileScreen';
 
 
-import { HelpCenterScreen } from '../HelpCenterScreen';
+import { HelpCenterScreen } from '../SettingScreens/HelpCenterScreen';
 
 export type ProfileStackParamList = {
   ProfileScreen: undefined;

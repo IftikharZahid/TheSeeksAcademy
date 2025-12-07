@@ -1,206 +1,232 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, RefreshControl, LayoutAnimation, Platform, UIManager } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Image, ActivityIndicator, Animated, Easing } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
-import { auth, db } from '../api/firebaseConfig';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { db, auth } from '../api/firebaseConfig';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
+import Svg, { Circle, G } from 'react-native-svg';
 
-if (Platform.OS === 'android') {
-  if (UIManager.setLayoutAnimationEnabledExperimental) {
-    UIManager.setLayoutAnimationEnabledExperimental(true);
-  }
-}
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-interface Subject {
-  id: string;
-  name: string;
-  date: string;
-  score: number;
-  status: string;
-}
-
-interface Exam {
+interface ExamEntry {
   id: string;
   title: string;
-  category: string;
-  dateRange: string;
-  status: 'Pass' | 'Fail' | 'Pending';
-  subjects: Subject[];
+  date: string;
+  category: string; 
+  bookName?: string;
+  totalMarks?: string;
+  obtainedMarks?: string;
+  status?: string; 
+  description: string;
 }
 
-const tabs = ['All Exams', 'Quarterly', 'Half yearly', 'Annual'];
+const CATEGORIES = ['Weekly', 'Monthly', 'Quarterly', 'Half-Year', 'Final'];
+const TITLE_FILTERS = ['All', ...Array.from({ length: 20 }, (_, i) => `T${i + 1}`)];
+
+const ScoreCircle = ({ percentage, color }: { percentage: number, color: string }) => {
+    const animatedValue = useRef(new Animated.Value(0)).current;
+    const radius = 35;
+    const strokeWidth = 8;
+    const circumference = 2 * Math.PI * radius;
+    const halfCircle = radius + strokeWidth;
+
+    useEffect(() => {
+        Animated.timing(animatedValue, {
+            toValue: percentage,
+            duration: 1500,
+            useNativeDriver: true,
+            easing: Easing.out(Easing.ease),
+        }).start();
+    }, [percentage]);
+
+    const strokeDashoffset = animatedValue.interpolate({
+        inputRange: [0, 100],
+        outputRange: [circumference, 0],
+        extrapolate: 'clamp',
+    });
+
+    return (
+        <View style={{ width: halfCircle * 2, height: halfCircle * 2, alignItems: 'center', justifyContent: 'center' }}>
+            <Svg width={halfCircle * 2} height={halfCircle * 2} viewBox={`0 0 ${halfCircle * 2} ${halfCircle * 2}`}>
+                <G rotation="-90" origin={`${halfCircle}, ${halfCircle}`}>
+                    {/* Background Circle */}
+                    <Circle
+                        cx={halfCircle}
+                        cy={halfCircle}
+                        r={radius}
+                        stroke="rgba(255,255,255,0.2)"
+                        strokeWidth={strokeWidth}
+                        fill="transparent"
+                    />
+                    {/* Progress Circle */}
+                    <AnimatedCircle
+                        cx={halfCircle}
+                        cy={halfCircle}
+                        r={radius}
+                        stroke={color}
+                        strokeWidth={strokeWidth}
+                        fill="transparent"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={strokeDashoffset}
+                        strokeLinecap="round"
+                    />
+                </G>
+            </Svg>
+            <View style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }]}>
+                <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>{percentage}%</Text>
+                <Text style={{ color: '#e0e7ff', fontSize: 10, fontWeight: '600', textTransform: 'uppercase' }}>Score</Text>
+            </View>
+        </View>
+    );
+};
 
 export const ResultsScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
-  const [activeTab, setActiveTab] = useState('All Exams');
+
+  const [activeTab, setActiveTab] = useState('Weekly');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
   const [refreshing, setRefreshing] = useState(false);
-  const [results, setResults] = useState<Exam[]>([]);
+  const [entries, setEntries] = useState<ExamEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedExams, setExpandedExams] = useState<Set<string>>(new Set());
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Pass':
-        return { bg: isDark ? 'rgba(16, 185, 129, 0.2)' : '#d1fae5', text: '#059669', icon: '✓' };
-      case 'Fail':
-        return { bg: isDark ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2', text: '#dc2626', icon: '✕' };
-      case 'Pending':
-        return { bg: isDark ? 'rgba(245, 158, 11, 0.2)' : '#fef3c7', text: '#d97706', icon: '⏳' };
-      default:
-        return { bg: isDark ? 'rgba(107, 114, 128, 0.2)' : '#f3f4f6', text: '#4b5563', icon: '?' };
-    }
-  };
-
-  const fetchResults = useCallback(async () => {
+  // Fetch Profile Image
+  useEffect(() => {
     const user = auth.currentUser;
     if (!user?.email) return;
 
-    try {
-      const q = query(collection(db, "results"), where("studentEmail", "==", user.email));
-      const querySnapshot = await getDocs(q);
-      const fetchedResults: Exam[] = [];
-      querySnapshot.forEach((doc) => {
-        fetchedResults.push({ id: doc.id, ...doc.data() } as Exam);
-      });
-      setResults(fetchedResults);
-      // Expand all by default
-      setExpandedExams(new Set(fetchedResults.map(e => e.id)));
-    } catch (error) {
-      console.error("Error fetching results:", error);
-    } finally {
-      setLoading(false);
-    }
+    const q = query(collection(db, "profile"), where("email", "==", user.email));
+    
+    // Real-time listener for profile changes
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        if (!snapshot.empty) {
+            const docData = snapshot.docs[0].data();
+            if (docData.image) {
+                setProfileImage(docData.image);
+            }
+        }
+    });
+
+    return () => unsubscribe();
   }, []);
 
+  // Fetch Exams
   useEffect(() => {
-    fetchResults();
-  }, [fetchResults]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchResults();
-    setRefreshing(false);
-  }, [fetchResults]);
-
-  const toggleExam = (id: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedExams(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
+    const q = query(collection(db, 'exams'));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: ExamEntry[] = [];
+      snapshot.forEach((doc) => {
+        list.push({ id: doc.id, ...doc.data() } as ExamEntry);
+      });
+      setEntries(list);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching exams:", error);
+      setLoading(false);
     });
+
+    return () => unsubscribe();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
   };
 
-  const seedData = async () => {
-    const user = auth.currentUser;
-    if (!user?.email) return;
+  // Calculate Overall Percentage and Grade
+  const { percentageVal } = useMemo(() => {
+    let totalObtained = 0;
+    let totalPossible = 0;
 
-    const sampleExams = [
-      {
-        studentEmail: user.email,
-        title: '1st Midterm',
-        category: 'Quarterly',
-        dateRange: '15 Sep to 18 Sep',
-        status: 'Pass',
-        subjects: [
-          { id: '1', name: 'Chemistry 1', date: '28/08/2019', score: 65, status: 'PASS' },
-          { id: '2', name: 'Physics 1', date: '28/08/2019', score: 56, status: 'PASS' },
-          { id: '3', name: 'Mathematics 1', date: '29/08/2019', score: 78, status: 'PASS' },
-        ],
-      },
-      {
-        studentEmail: user.email,
-        title: '2nd Midterm',
-        category: 'Half yearly',
-        dateRange: '20 Oct to 23 Oct',
-        status: 'Fail',
-        subjects: [
-          { id: '1', name: 'Chemistry 2', date: '20/10/2019', score: 32, status: 'FAIL' },
-          { id: '2', name: 'Physics 2', date: '21/10/2019', score: 40, status: 'FAIL' },
-        ],
-      },
-      {
-        studentEmail: user.email,
-        title: 'Final Exam',
-        category: 'Annual',
-        dateRange: '10 Mar to 20 Mar',
-        status: 'Pending',
-        subjects: [
-          { id: '1', name: 'Chemistry Final', date: '10/03/2020', score: 85, status: 'PASS' },
-          { id: '2', name: 'Physics Final', date: '12/03/2020', score: 75, status: 'PASS' },
-          { id: '3', name: 'Math Final', date: '15/03/2020', score: 90, status: 'PASS' },
-        ],
-      },
-    ];
+    entries.forEach(entry => {
+      const obtained = parseFloat(entry.obtainedMarks || '0');
+      const total = parseFloat(entry.totalMarks || '0');
 
-    try {
-      for (const exam of sampleExams) {
-        await addDoc(collection(db, "results"), exam);
+      if (!isNaN(obtained) && !isNaN(total) && total > 0) {
+        totalObtained += obtained;
+        totalPossible += total;
       }
-      alert('Data seeded! Pull to refresh.');
-      onRefresh();
-    } catch (error) {
-      console.error("Error seeding data:", error);
-      alert('Error seeding data');
-    }
-  };
+    });
 
-  const filteredExams = activeTab === 'All Exams' 
-    ? results 
-    : results.filter(exam => exam.category === activeTab);
+    if (totalPossible === 0) return { percentageVal: 0 };
+    const val = Math.round((totalObtained / totalPossible) * 100);
+    return { percentageVal: val };
+  }, [entries]);
+
+  const filteredEntries = useMemo(() => {
+    return entries.filter(e => e.category === activeTab);
+  }, [entries, activeTab]);
+
+  // Group entries by title (T1, T2, etc.)
+  const groupedEntries = useMemo(() => {
+    const groups: { [key: string]: ExamEntry[] } = {};
+    filteredEntries.forEach(entry => {
+      const title = entry.title || 'Other';
+      if (!groups[title]) {
+        groups[title] = [];
+      }
+      groups[title].push(entry);
+    });
+    return groups;
+  }, [filteredEntries]);
+
+  // Score Color
+  const getScoreColor = () => {
+      if (percentageVal >= 80) return '#4ade80'; // Green
+      if (percentageVal >= 60) return '#facc15'; // Yellow
+      if (percentageVal >= 40) return '#fb923c'; // Orange
+      return '#f87171'; // Red
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      {/* Simple Header */}
-      <View style={[styles.header, { backgroundColor: theme.background }]}>
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={[styles.backIcon, { color: theme.text }]}>←</Text>
+          <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>My Results</Text>
-        <TouchableOpacity onPress={seedData} style={{ padding: 8 }}>
-          <Text style={{ color: theme.primary, fontSize: 12 }}>Seed Data</Text>
-        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Exams & Results</Text>
+
+
       </View>
 
-      <ScrollView 
-        contentContainerStyle={{ paddingBottom: 100 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
-        }
-      >
-        {/* Student Card */}
+
+        {/* Student Info Card */}
         <View style={[styles.studentCard, { backgroundColor: theme.primary }]}>
           <View style={styles.studentCardContent}>
-            <View style={styles.studentAvatar}>
-              <Image 
-                source={auth.currentUser?.photoURL ? { uri: auth.currentUser.photoURL } : require('../assets/profile.jpg')} 
-                style={styles.avatarImage}
-              />
+            <View style={styles.profileSection}>
+                <View style={[styles.studentAvatar, { borderColor: getScoreColor() }]}>
+                  <Image 
+                    source={profileImage ? { uri: profileImage } : (auth.currentUser?.photoURL ? { uri: auth.currentUser.photoURL } : require('../assets/default-profile.png'))} 
+                    style={styles.avatarImage}
+                  />
+                </View>
+                <View style={styles.studentInfo}>
+                  <Text style={styles.studentName}>{auth.currentUser?.displayName || 'Student'}</Text>
+                  <Text style={styles.studentClass}>The Seeks Academy</Text>
+                  <View style={[styles.statusPill, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                      <Text style={styles.statusText}>Active Student</Text>
+                  </View>
+                </View>
             </View>
-            <View style={styles.studentInfo}>
-              <Text style={styles.studentName}>{auth.currentUser?.displayName || 'Student'}</Text>
-              <Text style={styles.studentClass}>BSCS A</Text>
-            </View>
-            <View style={styles.percentageSection}>
-              <Text style={styles.percentageValue}>85%</Text>
-              <Text style={styles.percentageLabel}>Over all percentage</Text>
+            
+            {/* Animated Score Circle */}
+            <View style={styles.scoreContainer}>
+               <ScoreCircle percentage={percentageVal} color={getScoreColor()} />
             </View>
           </View>
         </View>
 
-        {/* Exams Results Section */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Exams Results</Text>
-
-        {/* Tabs */}
-        <View style={styles.tabsContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {tabs.map((tab) => (
+        {/* Categories Tabs */}
+        {/* Categories Tabs & Filter */}
+        <View style={[styles.tabsContainer, { paddingRight: 16 }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 8 }} style={{ flex: 1 }}>
+            {CATEGORIES.map((tab) => (
               <TouchableOpacity
                 key={tab}
                 onPress={() => setActiveTab(tab)}
@@ -213,306 +239,448 @@ export const ResultsScreen: React.FC = () => {
                 <Text style={[
                   styles.tabText, 
                   { color: theme.textSecondary },
-                  activeTab === tab && styles.tabTextActive
+                  activeTab === tab && { color: '#ffffff' }
                 ]}>
                   {tab}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
+
         </View>
 
-        {/* Exam Cards */}
-        <View style={styles.examsContainer}>
-          {filteredExams.length === 0 && !loading ? (
-             <Text style={{ textAlign: 'center', marginTop: 20, color: theme.textSecondary }}>No results found.</Text>
-          ) : (
-            filteredExams.map((exam, examIndex) => {
-              const statusStyle = getStatusColor(exam.status);
-              return (
-              <View key={exam.id} style={[styles.examCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                {/* Exam Header */}
-                <TouchableOpacity 
-                  style={[styles.examHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}
-                  onPress={() => toggleExam(exam.id)}
-                  activeOpacity={0.7}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.examTitle, { color: theme.text }]}>{exam.title}</Text>
-                    <Text style={[styles.examDate, { color: theme.textSecondary }]}>{exam.dateRange}</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-                      <Text style={[styles.statusIcon, { color: statusStyle.text }]}>{statusStyle.icon}</Text>
-                      <Text style={[styles.statusText, { color: statusStyle.text }]}>{exam.status}</Text>
-                    </View>
-                    <Text style={{ fontSize: 16, color: theme.textSecondary }}>
-                      {expandedExams.has(exam.id) ? '▲' : '▼'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+      <ScrollView 
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+        }
+      >
 
-                {/* Subjects */}
-                {expandedExams.has(exam.id) && (
-                  <View style={styles.subjectsContainer}>
-                    {exam.subjects.map((subject, subjectIndex) => (
-                      <View key={subjectIndex} style={styles.subjectRow}>
-                        {/* Timeline Dot */}
-                        <View style={styles.timelineContainer}>
-                          <View style={styles.timelineDot} />
-                          {subjectIndex < exam.subjects.length - 1 && (
-                            <View style={styles.timelineLine} />
-                          )}
-                        </View>
+        {/* List */}
+        {loading ? (
+          <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
+        ) : (
+          <View style={styles.listContainer}>
+             {filteredEntries.length === 0 ? (
+               <Text style={{ textAlign: 'center', marginTop: 20, color: theme.textSecondary }}>No entries found.</Text>
+             ) : 
+             Object.keys(groupedEntries).map((groupTitle) => {
+                 const groupCards = groupedEntries[groupTitle];
+                 const isGroupExpanded = expandedGroups.has(groupTitle);
+                 
+                 // Check if this is a T1-T20 format group
+                 const titleRegex = /^T\d{1,2}$/i;
+                 const isCollapsibleGroup = titleRegex.test(groupTitle.trim());
 
-                        {/* Subject Card */}
-                        <View style={[styles.subjectCard, { backgroundColor: theme.card, borderColor: '#f97316' }]}>
-                          <View style={styles.subjectInfo}>
-                            <View style={styles.subjectDateRow}>
-                              <Text style={styles.dateIcon}>📅</Text>
-                              <Text style={[styles.subjectDate, { color: theme.textSecondary }]}>{subject.date}</Text>
-                            </View>
-                            <View style={styles.subjectNameRow}>
-                              <Text style={styles.subjectIcon}>📚</Text>
-                              <Text style={[styles.subjectName, { color: theme.text }]}>{subject.name}</Text>
-                            </View>
-                          </View>
-                          <View style={styles.scoreSection}>
-                            <Text style={[styles.scoreValue, { color: theme.text }]}>{subject.score}</Text>
-                            <Text style={styles.scoreStatus}>{subject.status}</Text>
-                          </View>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </View>
-            )})
-          )}
-        </View>
+                 const toggleGroup = () => {
+                     setExpandedGroups(prev => {
+                         const newSet = new Set(prev);
+                         if (newSet.has(groupTitle)) {
+                             newSet.delete(groupTitle);
+                         } else {
+                             newSet.add(groupTitle);
+                         }
+                         return newSet;
+                     });
+                 };
+
+                 return (
+                   <View key={groupTitle} style={{ marginBottom: 16 }}>
+                     {/* Group Header with Arrow - Modern Lite UI: Soft fill, no borders, tight spacing */}
+                     {isCollapsibleGroup && (
+                       <TouchableOpacity 
+                         onPress={toggleGroup}
+                         activeOpacity={0.7}
+                         style={styles.groupHeader}
+                       >
+                         <View style={styles.groupTitleContainer}>
+                           <View style={[styles.groupTitleBadge, { backgroundColor: theme.primary + '15' }]}>
+                             <Text style={[styles.groupTitleText, { color: theme.primary }]}>{groupTitle}</Text>
+                           </View>
+                           <Text style={[styles.groupCountText, { color: theme.textSecondary }]}>
+                             {groupCards.length} {groupCards.length === 1 ? 'Exam' : 'Exams'}
+                           </Text>
+                         </View>
+                         <View style={styles.groupArrowButton}>
+                           <Animated.View style={{ transform: [{ rotate: isGroupExpanded ? '180deg' : '0deg' }] }}>
+                             <Ionicons 
+                               name={isGroupExpanded ? 'chevron-up' : 'chevron-down'} 
+                               size={16} 
+                               color={theme.textSecondary}
+                             />
+                           </Animated.View>
+                         </View>
+                       </TouchableOpacity>
+                     )}
+
+                     {/* Group Cards - Show if not collapsible OR if expanded */}
+                     {(!isCollapsibleGroup || isGroupExpanded) && groupCards.map((item, index) => {
+                       //Calculate status based on marks if available
+                       let displayStatus = item.status;
+                       let statusColor = '#ca8a04'; // Default/Pending color
+
+                       const obtained = parseFloat(item.obtainedMarks || '0');
+                       const total = parseFloat(item.totalMarks || '0');
+
+                       if (item.totalMarks && item.obtainedMarks && total > 0) {
+                           const percentage = (obtained / total) * 100;
+                           displayStatus = percentage >= 40 ? 'Pass' : 'Fail';
+                       }
+
+                       if (displayStatus === 'Pass') statusColor = '#16a34a';
+                       else if (displayStatus === 'Fail') statusColor = '#dc2626';
+                       else if (item.status === 'Pass') statusColor = '#16a34a';
+                       else if (item.status === 'Fail') statusColor = '#dc2626';
+
+                       return (
+                         <View key={item.id} style={styles.resultRow}>
+                           {/* Timeline Dot */}
+                           <View style={styles.timelineContainer}>
+                             <View style={[styles.timelineDot, { backgroundColor: statusColor }]} />
+                             {index < groupCards.length - 1 && (
+                               <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
+                             )}
+                           </View>
+
+                           <View style={[styles.card, { flex: 1, backgroundColor: theme.card, borderColor: statusColor, borderWidth: 1 }]}>
+                             {/* Row 1: Date | Book Name | Title */}
+                             <View style={styles.tableRow}>
+                               {/* Date */}
+                               <View style={[styles.tableCell, { backgroundColor: theme.primary + '08' }]}>
+                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                   <Ionicons name="calendar-outline" size={12} color={theme.textSecondary} style={{ marginRight: 4 }} />
+                                   <Text style={[styles.cellText, { color: theme.textSecondary }]}>{item.date || 'Date'}</Text>
+                                 </View>
+                               </View>
+
+                               {/* Book Name (Middle, Flex) */}
+                               <View style={[styles.tableCell, { flex: 1, backgroundColor: theme.background }]}>
+                                 <Text style={[styles.cellText, { color: theme.textSecondary }]} numberOfLines={1}>{item.bookName || 'No Book'}</Text>
+                               </View>
+
+                               {/* Title Badge (Right) - Text Only */}
+                               <View style={[styles.titleBadge, { backgroundColor: theme.primary + '10', paddingHorizontal: 10 }]}>
+                                 <Text style={[styles.cellText, { color: theme.primary, fontWeight: '700', fontSize: 13 }]} numberOfLines={1}>{item.title}</Text>
+                               </View>
+                             </View>
+
+                             {/* Row 2: Category | Status | Marks */}
+                             <View style={[styles.tableRow, { alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }]}>
+                               {/* Category (Left) */}
+                               <View style={[styles.tableCell, { backgroundColor: theme.primary + '15' }]}>
+                                 <Text style={[styles.cellText, { color: theme.primary }]}>{item.category || 'Exam'}</Text>
+                               </View>
+
+                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                 {/* Status */}
+                                 {displayStatus && (
+                                   <View style={[styles.tableCell, { 
+                                     backgroundColor: displayStatus === 'Pass' ? '#dcfce7' : displayStatus === 'Fail' ? '#fee2e2' : '#fef9c3',
+                                   }]}>
+                                     <Text style={[styles.cellText, { 
+                                       color: displayStatus === 'Pass' ? '#166534' : displayStatus === 'Fail' ? '#991b1b' : '#854d0e' 
+                                     }]}>{displayStatus}</Text>
+                                   </View>
+                                 )}
+
+                                 {/* Marks */}
+                                 {(item.totalMarks || item.obtainedMarks) ? (
+                                   <View style={[styles.marksBox, { backgroundColor: theme.primary + '10' }]}>
+                                     <Text style={[styles.marksObtained, { color: theme.primary }]}>
+                                       {item.obtainedMarks || '-'}
+                                     </Text>
+                                     <Text style={[styles.marksTotal, { color: theme.primary + '80' }]}>
+                                       /{item.totalMarks || '100'}
+                                     </Text>
+                                   </View>
+                                 ) : null}
+                               </View>
+                             </View>
+
+                             {/* Row 3: Remarks Content */}
+                             {item.description ? (
+                               <View style={[styles.remarksContainer, { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border, opacity: 0.98 }]}>
+                                 <Text style={[styles.description, { color: theme.textSecondary }]}>{item.description}</Text>
+                               </View>
+                             ) : null}
+                           </View>
+                         </View>
+                       );
+                     })}
+                   </View>
+                 );
+             })
+          }
+           </View>
+         )}
       </ScrollView>
+
     </SafeAreaView>
   );
 };
 
+
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  studentCard: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 16,
     padding: 16,
+    gap: 16,
+    borderBottomWidth: 1,
+  },
+  headerTitle: { fontSize: 18, fontWeight: 'bold' },
+  backButton: { padding: 4 },
+  studentCard: {
+    margin: 8,
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   studentCardContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  profileSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
   },
   studentAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#ffffff',
+    borderWidth: 3,
+    backgroundColor: '#ccc'
   },
   avatarImage: {
     width: '100%',
     height: '100%',
   },
   studentInfo: {
-    flex: 1,
-    marginLeft: 12,
+    marginLeft: 16,
   },
   studentName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: '#ffffff',
+    marginBottom: 4,
   },
   studentClass: {
     fontSize: 13,
     color: '#e0e7ff',
-    marginTop: 2,
+    marginBottom: 4,
   },
-  percentageSection: {
-    alignItems: 'flex-end',
+  statusPill: {
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 12,
+      alignSelf: 'flex-start',
   },
-  percentageValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#ffffff',
+  statusText: {
+      color: '#fff',
+      fontSize: 10,
+      fontWeight: '600',
   },
-  percentageLabel: {
-    fontSize: 11,
-    color: '#e0e7ff',
-    marginTop: 2,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginHorizontal: 16,
-    marginTop: 24,
-    marginBottom: 12,
+  scoreContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabsContainer: {
     flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    gap: 8,
+    marginBottom: 12,
+    marginLeft: 16,
   },
   tab: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 20,
+    marginRight: 8,
   },
   tabText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
-  tabTextActive: {
-    color: '#ffffff',
-  },
-  examsContainer: {
+  listContainer: {
     paddingHorizontal: 16,
   },
-  examCard: {
-    marginBottom: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    overflow: 'hidden',
-  },
-  examHeader: {
+
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
+    marginBottom: 10,
   },
-  examTitle: {
-    fontSize: 16,
+  categoryBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  categoryText: {
+    fontSize: 11,
     fontWeight: '700',
+    textTransform: 'uppercase',
   },
-  examDate: {
+  date: {
     fontSize: 12,
-    marginTop: 4,
   },
-  statusBadge: {
+  title: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  metaContainer: {
+    flexDirection: 'column',
+    gap: 4,
+    marginBottom: 8,
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    padding: 6,
+    borderRadius: 8,
+  },
+  metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 4,
+    gap: 6,
   },
-  statusIcon: {
-    fontSize: 14,
-    color: '#059669',
+  metaText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#059669',
+  description: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
   },
-  subjectsContainer: {
-    padding: 16,
-  },
-  subjectRow: {
+  resultRow: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   timelineContainer: {
-    width: 30,
+    width: 24,
     alignItems: 'center',
     position: 'relative',
   },
   timelineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#f97316',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     zIndex: 1,
+    marginTop: 6,
   },
   timelineLine: {
     position: 'absolute',
-    top: 12,
+    top: 16,
     width: 2,
-    bottom: -12,
-    backgroundColor: '#fed7aa',
+    bottom: -8,
   },
-  subjectCard: {
+  card: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     padding: 12,
     borderRadius: 12,
-    borderWidth: 1,
-  },
-  subjectInfo: {
-    flex: 1,
-  },
-  subjectDateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    elevation: 2,
+    gap: 6,
   },
-  dateIcon: {
-    fontSize: 16,
-    marginRight: 8,
+  titleBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
   },
-  subjectDate: {
+  dateText: {
     fontSize: 12,
+    fontWeight: '500',
   },
-  subjectNameRow: {
+  tableRow: {
     flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  tableCell: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  subjectIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  subjectName: {
-    fontSize: 14,
+  cellText: {
+    fontSize: 12,
     fontWeight: '600',
   },
-  scoreSection: {
-    alignItems: 'flex-end',
-  },
-  scoreValue: {
-    fontSize: 24,
+  cellTextLarge: {
+    fontSize: 15,
     fontWeight: '700',
+    letterSpacing: 0.2,
   },
-  scoreStatus: {
-    fontSize: 11,
+  marksBox: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  marksObtained: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    lineHeight: 16,
+  },
+  marksTotal: {
+    fontSize: 9,
     fontWeight: '600',
-    color: '#059669',
-    marginTop: 2,
+    lineHeight: 12,
+  },
+  remarksContainer: {
+    padding: 12,
+    borderRadius: 12,
+    // borderWidth: 2, // Removed
+    marginTop: 4,
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 0, // Minimized gap
+    marginHorizontal: 0,
+    paddingHorizontal: 0, // Flush with content 
+    paddingVertical: 6,
+    minHeight: 36,
+  },
+  groupTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 8,
+  },
+  groupTitleBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  groupTitleText: {
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  groupCountText: {
+    fontSize: 12,
+    fontWeight: '500',
+    opacity: 0.6,
+  },
+  groupArrowButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

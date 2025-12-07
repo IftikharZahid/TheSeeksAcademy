@@ -1,76 +1,183 @@
-import React, { useRef, useState } from 'react';
-import { View, Text, Image, StyleSheet, Dimensions, Animated, PanResponder } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, Image, StyleSheet, Dimensions, FlatList, TouchableOpacity, NativeSyntheticEvent, NativeScrollEvent, ActivityIndicator } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import { db } from '../api/firebaseConfig';
+import { collection, getDocs } from 'firebase/firestore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.85;
-const SWIPE_THRESHOLD = 120;
 
-interface Course {
+interface StaffData {
   id: string;
   name: string;
-  teacher: string;
+  subject: string;
+  qualification: string;
+  experience: string;
   image: string;
+  bookimage?: string;
+  booktitle?: string;
+}
+
+interface FeaturedCourse {
+  id: string;
+  bookTitle: string;
+  bookImage: string;
+  teacherName: string;
+  teacherImage: string;
+  subject: string;
 }
 
 interface DeckSwiperProps {
-  data: Course[];
+  data?: any[]; // Keep for backward compatibility
 }
 
-export const DeckSwiper: React.FC<DeckSwiperProps> = ({ data }) => {
+export const DeckSwiper: React.FC<DeckSwiperProps> = () => {
   const { theme, isDark } = useTheme();
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const position = useRef(new Animated.ValueXY()).current;
-  
-  const rotate = position.x.interpolate({
-    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
-    outputRange: ['-15deg', '0deg', '15deg'],
-    extrapolate: 'clamp',
-  });
+  const [activeIndex, setActiveIndex] = useState(0);
+  const flatListRef = useRef<FlatList>(null);
+  const [featuredCourses, setFeaturedCourses] = useState<FeaturedCourse[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const likeOpacity = position.x.interpolate({
-    inputRange: [0, SWIPE_THRESHOLD],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
+  // Fetch book data from Firebase
+  useEffect(() => {
+    fetchFeaturedCourses();
+  }, []);
 
-  const nopeOpacity = position.x.interpolate({
-    inputRange: [-SWIPE_THRESHOLD, 0],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderMove: (_, gesture) => {
-        position.setValue({ x: gesture.dx, y: gesture.dy });
-      },
-      onPanResponderRelease: (_, gesture) => {
-        if (Math.abs(gesture.dx) > SWIPE_THRESHOLD) {
-          // Swipe away
-          const direction = gesture.dx > 0 ? SCREEN_WIDTH : -SCREEN_WIDTH;
-          Animated.timing(position, {
-            toValue: { x: direction, y: gesture.dy },
-            duration: 300,
-            useNativeDriver: false,
-          }).start(() => {
-            // Move to next card
-            setCurrentIndex((prevIndex) => (prevIndex + 1) % data.length);
-            position.setValue({ x: 0, y: 0 });
+  const fetchFeaturedCourses = async () => {
+    try {
+      setLoading(true);
+      const staffCollection = collection(db, "staff");
+      const querySnapshot = await getDocs(staffCollection);
+      
+      const courses: FeaturedCourse[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as StaffData;
+        // Only include if bookimage exists
+        if (data.bookimage || data.booktitle) {
+          courses.push({
+            id: doc.id,
+            bookTitle: data.booktitle || data.subject,
+            bookImage: data.bookimage || data.image,
+            teacherName: data.name,
+            teacherImage: data.image,
+            subject: data.subject,
           });
-        } else {
-          // Snap back
-          Animated.spring(position, {
-            toValue: { x: 0, y: 0 },
-            useNativeDriver: false,
-          }).start();
         }
-      },
-    })
-  ).current;
+      });
 
-  if (data.length === 0) {
+      // If no books found, fallback to using subject as title and teacher image
+      if (courses.length === 0) {
+        querySnapshot.forEach((doc) => {
+          const data = doc.data() as StaffData;
+          courses.push({
+            id: doc.id,
+            bookTitle: data.subject,
+            bookImage: data.image,
+            teacherName: data.name,
+            teacherImage: data.image,
+            subject: data.subject,
+          });
+        });
+      }
+
+      setFeaturedCourses(courses);
+    } catch (error) {
+      console.error('Error fetching featured courses:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const slideSize = event.nativeEvent.layoutMeasurement.width;
+    const index = event.nativeEvent.contentOffset.x / slideSize;
+    const roundIndex = Math.round(index);
+    setActiveIndex(roundIndex);
+  };
+
+  const renderItem = ({ item, index }: { item: FeaturedCourse; index: number }) => (
+    <View style={[styles.cardContainer, { width: SCREEN_WIDTH }]}>
+      <View style={[styles.card, { backgroundColor: theme.card }]}>
+        {/* Image Section with Gradient Overlay */}
+        <View style={styles.cardHeader}>
+          <Image 
+            source={{ uri: item.bookImage }} 
+            style={styles.cardImage} 
+          />
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.7)']}
+            style={styles.gradient}
+          />
+          
+          {/* Badge */}
+          <View style={[styles.badge, { backgroundColor: '#ef4444' }]}>
+            <Text style={styles.badgeText}>🔥 HOT</Text>
+          </View>
+          
+          {/* Rating Stars */}
+          <View style={styles.ratingContainer}>
+            <Text style={styles.ratingStars}>★★★★★</Text>
+            <Text style={styles.ratingText}>4.9</Text>
+          </View>
+          
+          {/* Course Title on Image */}
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle} numberOfLines={2}>{item.bookTitle}</Text>
+            <View style={styles.tagRow}>
+              <View style={styles.tag}>
+                <Text style={styles.tagText}>📚 Premium</Text>
+              </View>
+              <View style={[styles.tag, { backgroundColor: 'rgba(16,185,129,0.9)' }]}>
+                <Text style={styles.tagText}>✓ Certificate Free</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Content Section */}
+        <View style={styles.cardBody}>
+          {/* Teacher Info with Avatar */}
+          <View style={styles.teacherRow}>
+            <Image 
+              source={{ uri: item.teacherImage }} 
+              style={styles.teacherAvatar}
+            />
+            <View style={styles.teacherInfo}>
+              <Text style={[styles.teacherName, { color: theme.text }]}>{item.teacherName}</Text>
+              <Text style={[styles.teacherRole, { color: theme.textSecondary }]}>Expert Instructor</Text>
+            </View>
+            <View style={styles.priceContainer}>
+              <Text style={[styles.originalPrice, { color: theme.textSecondary }]}>Rs. 5,000</Text>
+              <Text style={[styles.price, { color: theme.primary }]}>Free</Text>
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity style={[styles.button, styles.outlineButton, { borderColor: theme.primary }]}>
+              <Text style={[styles.buttonText, { color: theme.primary }]}>👁️ Preview</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.button, styles.filledButton, { backgroundColor: theme.primary }]}>
+              <Text style={[styles.buttonText, { color: '#ffffff' }]}>🎓 Enroll Now</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading courses...</Text>
+      </View>
+    );
+  }
+
+  if (featuredCourses.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No courses available</Text>
@@ -78,58 +185,35 @@ export const DeckSwiper: React.FC<DeckSwiperProps> = ({ data }) => {
     );
   }
 
-  const currentCard = data[currentIndex];
-  const nextCard = data[(currentIndex + 1) % data.length];
-
   return (
     <View style={styles.container}>
-      {/* Next card (background) */}
-      {nextCard && (
-        <View style={[styles.card, styles.nextCard, { backgroundColor: theme.card }]}>
-          <Image source={{ uri: nextCard.image }} style={styles.cardImage} />
-          <View style={styles.cardContent}>
-            <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={2}>{nextCard.name}</Text>
-            <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>{nextCard.teacher}</Text>
-          </View>
-        </View>
-      )}
+      <FlatList
+        ref={flatListRef}
+        data={featuredCourses}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        snapToAlignment="center"
+        decelerationRate="fast"
+        contentContainerStyle={styles.listContent}
+      />
 
-      {/* Current card (foreground) */}
-      <Animated.View
-        {...panResponder.panHandlers}
-        style={[
-          styles.card,
-          { backgroundColor: theme.card },
-          {
-            transform: [
-              { translateX: position.x },
-              { translateY: position.y },
-              { rotate },
-            ],
-          },
-        ]}
-      >
-        <Image source={{ uri: currentCard.image }} style={styles.cardImage} />
-        <View style={styles.cardContent}>
-          <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={2}>{currentCard.name}</Text>
-          <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>{currentCard.teacher}</Text>
-        </View>
-
-        {/* Swipe indicators */}
-        <Animated.View style={[styles.likeLabel, { opacity: likeOpacity }]}>
-          <Text style={styles.likeLabelText}>LIKE</Text>
-        </Animated.View>
-
-        <Animated.View style={[styles.nopeLabel, { opacity: nopeOpacity }]}>
-          <Text style={styles.nopeLabelText}>NOPE</Text>
-        </Animated.View>
-      </Animated.View>
-
-      {/* Card counter */}
-      <View style={styles.counterContainer}>
-        <Text style={styles.counterText}>
-          {currentIndex + 1} / {data.length}
-        </Text>
+      {/* Pagination Dots */}
+      <View style={styles.pagination}>
+        {featuredCourses.map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.dot,
+              { backgroundColor: index === activeIndex ? theme.primary : '#d1d5db' },
+              index === activeIndex && styles.activeDot
+            ]}
+          />
+        ))}
       </View>
     </View>
   );
@@ -137,101 +221,201 @@ export const DeckSwiper: React.FC<DeckSwiperProps> = ({ data }) => {
 
 const styles = StyleSheet.create({
   container: {
-    height: 350,
+    marginVertical: 10,
+  },
+  loadingContainer: {
+    height: 280,
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: 5,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  listContent: {
+    paddingBottom: 20,
+  },
+  cardContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  card: {
+    width: '100%',
+    maxWidth: CARD_WIDTH,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  cardHeader: {
+    height: 180,
+    position: 'relative',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  gradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  badge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  badgeText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  ratingContainer: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  ratingStars: {
+    color: '#fbbf24',
+    fontSize: 12,
+    marginRight: 4,
+  },
+  ratingText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  headerContent: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#ffffff',
+    marginBottom: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  tagRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  tag: {
+    backgroundColor: 'rgba(139,92,246,0.9)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  tagText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  cardBody: {
+    padding: 20,
+  },
+  teacherRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  teacherAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  teacherInitial: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  teacherInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  teacherName: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  teacherRole: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  priceContainer: {
+    alignItems: 'flex-end',
+  },
+  originalPrice: {
+    fontSize: 12,
+    textDecorationLine: 'line-through',
+  },
+  price: {
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  button: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  outlineButton: {
+    borderWidth: 2,
+    backgroundColor: 'transparent',
+  },
+  filledButton: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  buttonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  pagination: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 0,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  activeDot: {
+    width: 24,
   },
   emptyContainer: {
-    height: 300,
+    height: 200,
     justifyContent: 'center',
     alignItems: 'center',
   },
   emptyText: {
     fontSize: 16,
-    color: '#9ca3af',
-  },
-  card: {
-    position: 'absolute',
-    width: CARD_WIDTH,
-    height: 300,
-    borderRadius: 16,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-    overflow: 'hidden',
-  },
-  nextCard: {
-    opacity: 0.9,
-    transform: [{ scale: 0.95 }],
-  },
-  cardImage: {
-    width: '100%',
-    height: 200,
-    resizeMode: 'cover',
-  },
-  cardContent: {
-    padding: 16,
-    flex: 1,
-    justifyContent: 'center',
-  },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  likeLabel: {
-    position: 'absolute',
-    top: 30,
-    right: 30,
-    borderWidth: 4,
-    borderColor: '#22c55e',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    transform: [{ rotate: '15deg' }],
-  },
-  likeLabelText: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#22c55e',
-  },
-  nopeLabel: {
-    position: 'absolute',
-    top: 30,
-    left: 30,
-    borderWidth: 4,
-    borderColor: '#ef4444',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    transform: [{ rotate: '-15deg' }],
-  },
-  nopeLabelText: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#ef4444',
-  },
-  counterContainer: {
-    position: 'absolute',
-    top: 30,
-    right: 15,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  counterText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
   },
 });
