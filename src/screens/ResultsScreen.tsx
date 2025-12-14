@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Image, ActivityIndicator, Animated, Easing } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -10,14 +10,25 @@ import Svg, { Circle, G } from 'react-native-svg';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
+interface BookEntry {
+  name: string;
+  totalMarks: string;
+  obtainedMarks: string;
+}
+
 interface ExamEntry {
   id: string;
   title: string;
   date: string;
-  category: string; 
-  bookName?: string;
-  totalMarks?: string;
-  obtainedMarks?: string;
+  category: string;
+  rollNo?: string;
+  studentName?: string;
+  studentEmail?: string;
+  studentClass?: string;
+  books?: BookEntry[]; // NEW: Multiple books support
+  bookName?: string; // LEGACY
+  totalMarks?: string; // LEGACY
+  obtainedMarks?: string; // LEGACY
   status?: string; 
   description: string;
 }
@@ -114,29 +125,85 @@ export const ResultsScreen: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  // Fetch Exams
+  // Fetch Exams - Filter by Student Email
   useEffect(() => {
-    const q = query(collection(db, 'exams'));
+    const user = auth.currentUser;
+    if (!user?.email) {
+      setLoading(false);
+      return;
+    }
+
+    fetchExams();
+
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+    };
+  }, []);
+
+  // Dedicated function to fetch/refresh exams data
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  
+  const fetchExams = useCallback(() => {
+    const user = auth.currentUser;
+    console.log('👤 ResultsScreen: Current user:', user?.email);
+    
+    if (!user?.email) {
+      console.log('⚠️ No user email found, cannot fetch exams');
+      setLoading(false);
+      return;
+    }
+
+    // Unsubscribe from previous listener if exists
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+    }
+
+    // Query exams where studentEmail matches logged-in user's email
+    console.log('🔍 Querying exams for studentEmail:', user.email);
+    const q = query(
+      collection(db, 'exams'),
+      where('studentEmail', '==', user.email)
+    );
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      console.log('📥 ResultsScreen: Snapshot received, size:', snapshot.size);
       const list: ExamEntry[] = [];
       snapshot.forEach((doc) => {
-        list.push({ id: doc.id, ...doc.data() } as ExamEntry);
+        const data = doc.data();
+        console.log('📄 Exam found - Full data:', {
+          id: doc.id,
+          title: data.title,
+          category: data.category,
+          studentEmail: data.studentEmail,
+          studentName: data.studentName,
+          date: data.date
+        });
+        list.push({ id: doc.id, ...data } as ExamEntry);
       });
+      console.log('✅ ResultsScreen: Total exams loaded:', list.length);
+      console.log('📋 All exams:', list.map(e => ({ title: e.title, category: e.category })));
       setEntries(list);
       setLoading(false);
     }, (error) => {
-      console.error("Error fetching exams:", error);
+      console.error('❌ ResultsScreen: Error fetching exams:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    unsubscribeRef.current = unsubscribe;
   }, []);
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  };
+    setLoading(true);
+    await fetchExams();
+    // Small delay to show refresh animation
+    await new Promise(resolve => setTimeout(resolve, 300));
+    setRefreshing(false);
+  }, [fetchExams]);
 
   // Calculate Overall Percentage and Grade
   const { percentageVal } = useMemo(() => {
@@ -159,7 +226,10 @@ export const ResultsScreen: React.FC = () => {
   }, [entries]);
 
   const filteredEntries = useMemo(() => {
-    return entries.filter(e => e.category === activeTab);
+    const filtered = entries.filter(e => e.category === activeTab);
+    console.log('🔍 Filtering - activeTab:', activeTab, '| Total entries:', entries.length, '| Filtered:', filtered.length);
+    console.log('📊 Entries by category:', entries.map(e => ({ title: e.title, category: e.category })));
+    return filtered;
   }, [entries, activeTab]);
 
   // Group entries by title (T1, T2, etc.)
@@ -191,8 +261,6 @@ export const ResultsScreen: React.FC = () => {
           <Ionicons name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Exams & Results</Text>
-
-
       </View>
 
 

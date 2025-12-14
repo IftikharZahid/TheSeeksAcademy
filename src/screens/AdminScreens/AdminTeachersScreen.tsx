@@ -6,6 +6,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { db } from '../../api/firebaseConfig';
 import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const SUBJECTS = [
   'TarjumaTul Quran', 
@@ -39,6 +41,7 @@ export const AdminTeachersScreen: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
+  const [choiceModalVisible, setChoiceModalVisible] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -124,10 +127,94 @@ export const AdminTeachersScreen: React.FC = () => {
       setQualification(teacher.qualification);
       setExperience(teacher.experience);
       setImage(teacher.image);
+      setModalVisible(true);
     } else {
       resetForm();
+      setChoiceModalVisible(true);
     }
+  };
+
+  const handleManualEntry = () => {
+    setChoiceModalVisible(false);
+    resetForm();
     setModalVisible(true);
+  };
+
+  const handlePickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ 
+        type: '*/*',
+        copyToCacheDirectory: true 
+      });
+      
+      if (result.canceled) return;
+
+      setLoading(true);
+      setChoiceModalVisible(false);
+
+      const asset = result.assets[0];
+      let fileUri = asset.uri;
+
+      if (fileUri.startsWith('content://')) {
+        const tempUri = FileSystem.documentDirectory + 'temp_teacher_upload.json';
+        await FileSystem.copyAsync({
+          from: fileUri,
+          to: tempUri
+        });
+        fileUri = tempUri;
+      }
+
+      const fileContent = await FileSystem.readAsStringAsync(fileUri);
+      
+      let data;
+      try {
+        data = JSON.parse(fileContent);
+      } catch (parseError) {
+        Alert.alert('JSON Error', 'The file content is not valid JSON.');
+        setLoading(false);
+        return;
+      }
+
+      if (!Array.isArray(data)) {
+        Alert.alert('Error', 'Invalid JSON format. The root must be an array of teacher records.');
+        setLoading(false);
+        return;
+      }
+
+      let addedCount = 0;
+      let errorCount = 0;
+
+      for (const item of data) {
+        if (item.name && item.subject && item.qualification && item.experience) {
+          try {
+            const docId = Date.now().toString() + '_' + addedCount;
+            await setDoc(doc(db, 'staff', docId), {
+              name: item.name,
+              subject: item.subject,
+              qualification: item.qualification,
+              experience: item.experience,
+              image: item.image || 'https://via.placeholder.com/150',
+              updatedAt: serverTimestamp(),
+            });
+
+            addedCount++;
+          } catch (err) {
+            console.error("Error adding teacher:", item, err);
+            errorCount++;
+          }
+        } else {
+          errorCount++;
+        }
+      }
+
+      Alert.alert('Upload Complete', `Successfully added ${addedCount} teacher records.\nFailed/Skipped: ${errorCount}`);
+
+    } catch (error: any) {
+      console.error("File upload error:", error);
+      Alert.alert('Error', `Failed to process the file: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resetForm = () => {
@@ -289,6 +376,54 @@ export const AdminTeachersScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Choice Modal (Manual vs Upload) */}
+      <Modal visible={choiceModalVisible} animationType="fade" transparent>
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => setChoiceModalVisible(false)}
+        >
+          <View style={[styles.modalContent, { backgroundColor: theme.card, alignItems: 'center', paddingHorizontal: 20, paddingVertical: 24 }]}>
+            <View style={[styles.modalIconContainer, { backgroundColor: theme.primary + '15' }]}>
+              <Ionicons name="people" size={32} color={theme.primary} />
+            </View>
+            <Text style={[styles.modalTitle, { color: theme.text, marginTop: 12, marginBottom: 6 }]}>Add New Teacher</Text>
+            <Text style={{ color: theme.textSecondary, marginBottom: 20, textAlign: 'center', fontSize: 13, lineHeight: 18 }}>
+              Choose how you want to add teachers.
+            </Text>
+            
+            <TouchableOpacity 
+              onPress={handleManualEntry} 
+              style={[styles.modernChoiceBtn, styles.primaryChoiceBtn, { backgroundColor: theme.primary, shadowColor: theme.primary }]}
+            >
+              <View style={styles.choiceBtnIconContainer}>
+                <Ionicons name="create-outline" size={18} color="#fff" />
+              </View>
+              <Text style={styles.modernChoiceBtnTitle}>Manual Entry</Text>
+              <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={handlePickDocument} 
+              style={[styles.modernChoiceBtn, styles.secondaryChoiceBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
+            >
+              <View style={[styles.choiceBtnIconContainer, { backgroundColor: theme.primary + '15' }]}>
+                <Ionicons name="cloud-upload-outline" size={18} color={theme.primary} />
+              </View>
+              <Text style={[styles.modernChoiceBtnTitle, { color: theme.text }]}>Upload JSON File</Text>
+              <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={() => setChoiceModalVisible(false)} 
+              style={{ marginTop: 12, padding: 8 }}
+            >
+              <Text style={{ color: theme.textSecondary, fontSize: 14, fontWeight: '600' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -376,5 +511,51 @@ const styles = StyleSheet.create({
   dropdownItem: {
     padding: 12,
     borderBottomWidth: 1,
+  },
+  modalIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modernChoiceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  primaryChoiceBtn: {
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  secondaryChoiceBtn: {
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  choiceBtnIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  choiceBtnTextContainer: {
+    flex: 1,
+  },
+  modernChoiceBtnTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

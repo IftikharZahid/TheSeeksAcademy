@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, StatusBar, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, StatusBar, KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
@@ -29,6 +29,7 @@ const SimTrackerScreen = () => {
   const [records, setRecords] = useState<RecordItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
   
   // Array of refs to capture specific cards
   const cardRefs = useRef<Array<View | null>>([]);
@@ -65,6 +66,34 @@ const SimTrackerScreen = () => {
     }
   };
 
+  const onRefresh = async () => {
+    if (!input) return; // Only refresh if there's a search input
+    
+    setRefreshing(true);
+    setError('');
+    
+    try {
+      const response = await fetch(
+        `https://legendxdata.site/Api/simdata.php?phone=${input}`
+      );
+
+      const jsonData: ApiResponse = await response.json();
+
+      if (!jsonData.success || !jsonData.records || jsonData.records.length === 0) {
+        setError("No records found.");
+        setRecords([]);
+        return;
+      }
+
+      setRecords(jsonData.records);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      setError('Failed to refresh. Please try again.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const captureAndCopy = async (index: number) => {
     try {
       const viewRef = cardRefs.current[index];
@@ -88,6 +117,17 @@ const SimTrackerScreen = () => {
     }
   };
 
+  const copyRecordText = async (record: RecordItem, index: number) => {
+    try {
+      const formattedRecord = `Record ${index + 1}:\nName: ${record.Name}\nPhone: ${record.Mobile}\nCNIC: ${record.CNIC}\nAddress: ${record.Address}\nCountry: ${record.Country}\nMade with ❤ by @GetCrack`;
+      
+      await Clipboard.setStringAsync(formattedRecord);
+      Alert.alert('Copied!', 'Record details copied to clipboard.');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to copy record.');
+    }
+  };
+
   const copyAllRecords = async () => {
     if (records.length === 0) return;
 
@@ -104,8 +144,12 @@ const SimTrackerScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['left', 'right']}>
-      <StatusBar barStyle="light-content" />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor="#667eea" 
+        translucent={false}
+      />
 
       {/* Premium Gradient Header - SettingsScreen Style */}
       <LinearGradient
@@ -134,7 +178,18 @@ const SimTrackerScreen = () => {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
           style={{ flex: 1 }}
       >
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <ScrollView 
+          style={styles.scrollView} 
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#667eea']}
+              tintColor="#667eea"
+            />
+          }
+        >
           
           {/* Ultra Compact Search Card */}
           <View style={[styles.searchCard, { backgroundColor: theme.card }]}>
@@ -197,95 +252,113 @@ const SimTrackerScreen = () => {
               </View>
 
               {records.map((item, index) => (
-                <View 
-                  key={index} 
-                  collapsable={false}
-                  ref={(el) => { cardRefs.current[index] = el; }}
-                  style={[styles.resultCard, { backgroundColor: theme.card }]}
+                <Pressable 
+                  key={index}
+                  onLongPress={() => copyRecordText(item, index)}
+                  delayLongPress={500}
                 >
-                  {/* Card Header */}
-                  <LinearGradient
-                    colors={['#667eea', '#764ba2']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.cardHeader}
+                  <View 
+                    collapsable={false}
+                    ref={(el) => { cardRefs.current[index] = el; }}
+                    style={[styles.resultCard, { backgroundColor: theme.card }]}
                   >
-                    <View style={styles.cardHeaderLeft}>
-                      <View style={styles.recordBadge}>
-                        <Text style={styles.recordBadgeText}>{index + 1}</Text>
-                      </View>
-                      <Text style={styles.cardHeaderTitle}>Record Details</Text>
-                    </View>
-                    <TouchableOpacity 
-                      style={styles.copyButton}
-                      onPress={() => captureAndCopy(index)}
+                    {/* Card Header */}
+                    <LinearGradient
+                      colors={['#667eea', '#764ba2']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.cardHeader}
                     >
-                      <Text style={styles.copyIcon}>📸</Text>
-                    </TouchableOpacity>
-                  </LinearGradient>
-                  
-                  {/* Card Body */}
-                  <View style={styles.cardBody}>
-                    <View style={styles.infoRow}>
-                      <View style={[styles.infoIconContainer, { backgroundColor: '#dbeafe' }]}>
-                        <Text style={styles.infoIcon}>👤</Text>
+                      <View style={styles.cardHeaderLeft}>
+                        <View style={styles.recordBadge}>
+                          <Text style={styles.recordBadgeText}>{index + 1}</Text>
+                        </View>
+                        <Text style={styles.cardHeaderTitle}>Record Details</Text>
                       </View>
-                      <View style={styles.infoContent}>
-                        <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Name</Text>
-                        <Text style={[styles.infoValue, { color: theme.text }]}>{item.Name}</Text>
+                      <TouchableOpacity 
+                        style={styles.copyButton}
+                        onPress={() => captureAndCopy(index)}
+                      >
+                        <Text style={styles.copyIcon}>📸</Text>
+                      </TouchableOpacity>
+                    </LinearGradient>
+                    
+                    {/* Card Body */}
+                    <View style={styles.cardBody}>
+                      <View style={styles.infoRow}>
+                        <View style={[styles.infoIconContainer, { backgroundColor: '#dbeafe' }]}>
+                          <Text style={styles.infoIcon}>👤</Text>
+                        </View>
+                        <View style={styles.infoContent}>
+                          <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Name</Text>
+                          <Text style={[styles.infoValue, { color: theme.text }]}>{item.Name}</Text>
+                        </View>
                       </View>
-                    </View>
 
-                    <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                      <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-                    <View style={styles.infoRow}>
-                      <View style={[styles.infoIconContainer, { backgroundColor: '#dcfce7' }]}>
-                        <Text style={styles.infoIcon}>📱</Text>
+                      <View style={styles.infoRow}>
+                        <View style={[styles.infoIconContainer, { backgroundColor: '#dcfce7' }]}>
+                          <Text style={styles.infoIcon}>📱</Text>
+                        </View>
+                        <View style={styles.infoContent}>
+                          <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Phone</Text>
+                          <Text style={[styles.infoValue, { color: theme.text }]}>{item.Mobile}</Text>
+                        </View>
                       </View>
-                      <View style={styles.infoContent}>
-                        <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Phone</Text>
-                        <Text style={[styles.infoValue, { color: theme.text }]}>{item.Mobile}</Text>
-                      </View>
-                    </View>
 
-                    <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                      <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-                    <View style={styles.infoRow}>
-                      <View style={[styles.infoIconContainer, { backgroundColor: '#fef3c7' }]}>
-                        <Text style={styles.infoIcon}>🪪</Text>
+                      <View style={styles.infoRow}>
+                        <View style={[styles.infoIconContainer, { backgroundColor: '#fef3c7' }]}>
+                          <Text style={styles.infoIcon}>🪪</Text>
+                        </View>
+                        <View style={styles.infoContent}>
+                          <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>CNIC</Text>
+                          <Text style={[styles.infoValue, { color: theme.text }]}>{item.CNIC}</Text>
+                        </View>
                       </View>
-                      <View style={styles.infoContent}>
-                        <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>CNIC</Text>
-                        <Text style={[styles.infoValue, { color: theme.text }]}>{item.CNIC}</Text>
-                      </View>
-                    </View>
 
-                    <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                      <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-                    <View style={styles.infoRow}>
-                      <View style={[styles.infoIconContainer, { backgroundColor: '#fce7f3' }]}>
-                        <Text style={styles.infoIcon}>📍</Text>
+                      <View style={styles.infoRow}>
+                        <View style={[styles.infoIconContainer, { backgroundColor: '#fce7f3' }]}>
+                          <Text style={styles.infoIcon}>📍</Text>
+                        </View>
+                        <View style={styles.infoContent}>
+                          <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Address</Text>
+                          <Text style={[styles.infoValue, { color: theme.text }]}>{item.Address}</Text>
+                        </View>
                       </View>
-                      <View style={styles.infoContent}>
-                        <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Address</Text>
-                        <Text style={[styles.infoValue, { color: theme.text }]}>{item.Address}</Text>
-                      </View>
-                    </View>
 
-                    <View style={[styles.divider, { backgroundColor: theme.border }]} />
+                      <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-                    <View style={styles.infoRow}>
-                      <View style={[styles.infoIconContainer, { backgroundColor: '#e0e7ff' }]}>
-                        <Text style={styles.infoIcon}>🌍</Text>
-                      </View>
-                      <View style={styles.infoContent}>
-                        <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Country</Text>
-                        <Text style={[styles.infoValue, { color: theme.text }]}>{item.Country}</Text>
+                      <View style={styles.infoRow}>
+                        <View style={[styles.infoIconContainer, { backgroundColor: '#e0e7ff' }]}>
+                          <Text style={styles.infoIcon}>🌍</Text>
+                        </View>
+                        <View style={styles.infoContent}>
+                          <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Country</Text>
+                          <Text style={[styles.infoValue, { color: theme.text }]}>{item.Country}</Text>
+                        </View>
                       </View>
                     </View>
                   </View>
-                </View>
+                </Pressable>
               ))}
+            </View>
+          )}
+
+          {/* Loading State */}
+          {loading && (
+            <View style={styles.loadingContainer}>
+              <View style={[styles.loadingCard, { backgroundColor: theme.card }]}>
+                <ActivityIndicator size="large" color="#667eea" />
+                <Text style={[styles.loadingText, { color: theme.text }]}>Searching...</Text>
+                <Text style={[styles.loadingSubtext, { color: theme.textSecondary }]}>
+                  Please wait while we fetch the records
+                </Text>
+              </View>
             </View>
           )}
 
@@ -314,8 +387,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 50,
-    paddingBottom: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
@@ -332,7 +405,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: '#ffffff',
-    marginTop: -2,
+    marginTop: -6,
   },
   headerCenter: {
     flexDirection: 'row',
@@ -533,6 +606,32 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     marginLeft: 56,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingCard: {
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 8,
+    width: '85%',
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 16,
+    marginBottom: 4,
+  },
+  loadingSubtext: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   emptyState: {
     alignItems: 'center',

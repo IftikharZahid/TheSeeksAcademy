@@ -98,7 +98,7 @@ export const DeckSwiper: React.FC<DeckSwiperProps> = () => {
   };
 
   const renderItem = ({ item, index }: { item: FeaturedCourse; index: number }) => (
-    <View style={[styles.cardContainer, { width: SCREEN_WIDTH }]}>
+    <View style={styles.cardContainer}>
       <View style={[styles.card, { backgroundColor: theme.card }]}>
         {/* Image Section with Gradient Overlay */}
         <View style={styles.cardHeader}>
@@ -234,11 +234,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   listContent: {
+    paddingHorizontal: (SCREEN_WIDTH - CARD_WIDTH) / 2,
     paddingBottom: 20,
   },
   cardContainer: {
+    width: CARD_WIDTH,
     alignItems: 'center',
-    paddingHorizontal: 10,
   },
   card: {
     width: '100%',

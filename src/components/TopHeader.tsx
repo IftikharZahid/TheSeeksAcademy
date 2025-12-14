@@ -85,13 +85,15 @@ export const TopHeader: React.FC<{ title?: string; onBell?: () => void; notifica
     <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.leftSection}>
-          <View style={styles.avatar}>
-            <Image 
-              source={displayImage ? { uri: displayImage } : require('../assets/default-profile.png')} 
-              defaultSource={require('../assets/default-profile.png')}
-              style={styles.avatarImage} 
-            />
-          </View>
+          <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.7}>
+            <View style={styles.avatar}>
+              <Image 
+                source={displayImage ? { uri: displayImage } : require('../assets/default-profile.png')} 
+                defaultSource={require('../assets/default-profile.png')}
+                style={styles.avatarImage} 
+              />
+            </View>
+          </TouchableOpacity>
           <View style={styles.userInfo}>
             <Text style={[styles.userName, { color: theme.text }]}>{displayName}</Text>
             <Text style={[styles.greetingText, { color: theme.textSecondary }]}>{getGreeting()}</Text>

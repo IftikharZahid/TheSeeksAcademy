@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "./navigation/AppNavigator";
 import { useTheme } from "../context/ThemeContext";
 import { StatusBar } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
 const { width } = Dimensions.get("window");
 
@@ -35,116 +36,117 @@ export const WelcomeScreen: React.FC = () => {
   ];
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
-    >
-      <StatusBar
-        barStyle={isDark ? "light-content" : "dark-content"}
-        backgroundColor={theme.background}
-      />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={isDark 
+          ? [theme.background, theme.backgroundSecondary, theme.background]
+          : ['#f8f9ff', '#fff5f7', '#f0f9ff']}
+        style={styles.gradientContainer}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
-        {/* Illustration Section */}
-        <View style={styles.illustrationContainer}>
-          <View
-            style={[
-              styles.circleBackground,
-              {
-                backgroundColor: isDark ? theme.backgroundSecondary : "#f3f4f6",
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.phoneFrame,
-              { backgroundColor: theme.card, borderColor: theme.text },
-            ]}
-          >
-            <Image
-              source={require("../../assets/icon.png")}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-            {/* Mock UI lines */}
+        <StatusBar
+          barStyle={isDark ? "light-content" : "dark-content"}
+          backgroundColor="transparent"
+          translucent
+        />
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Illustration Section */}
+          <View style={styles.illustrationContainer}>
             <View
-              style={[styles.mockLineLong, { backgroundColor: theme.border }]}
+              style={[
+                styles.circleBackground,
+                {
+                  backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.08)',
+                },
+              ]}
             />
             <View
-              style={[styles.mockLineShort, { backgroundColor: theme.border }]}
-            />
-            <View
-              style={[styles.mockLineMedium, { backgroundColor: theme.border }]}
-            />
+              style={[
+                styles.phoneFrame,
+                { backgroundColor: theme.card, borderColor: isDark ? theme.border : '#e5e7eb' },
+              ]}
+            >
+              <Image
+                source={require("../../assets/icon.png")}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+              {/* Mock UI lines */}
+              <View
+                style={[styles.mockLineLong, { backgroundColor: theme.border }]}
+              />
+              <View
+                style={[styles.mockLineShort, { backgroundColor: theme.border }]}
+              />
+              <View
+                style={[styles.mockLineMedium, { backgroundColor: theme.border }]}
+              />
+            </View>
           </View>
-        </View>
 
-        {/* Text Content */}
-        <View style={styles.textContainer}>
-          <Text style={[styles.headline, { color: theme.text }]}>
-            The Seeks Academy Fort Abbas
-          </Text>
-          <Text style={[styles.subheadline, { color: theme.textSecondary }]}>
-            Join a community of learners achieving their goals through expert
-            coaching and personalized paths.
-          </Text>
-
-          {/* Feature List */}
-          <View style={styles.featureList}>
-            {features.map((feature) => (
-              <View key={feature.id} style={styles.featureItem}>
-                <View style={styles.iconContainer}>
-                  <Text style={styles.featureIcon}>{feature.icon}</Text>
-                </View>
-                <Text
-                  style={[styles.featureText, { color: theme.textSecondary }]}
-                >
-                  {feature.text}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        {/* <View style={styles.buttonContainer}>
-          <TouchableOpacity 
-            style={[styles.getStartedButton, { backgroundColor: theme.primary, shadowColor: theme.primary }]}
-            onPress={() => navigation.navigate('Signup')}
-          >
-            <Text style={styles.getStartedText}>Get Started</Text>
-          </TouchableOpacity> */}
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[
-              styles.getStartedButton,
-              { backgroundColor: theme.primary, shadowColor: theme.primary },
-            ]}
-            onPress={() => 
-              Alert.alert(
-                "Registration Required",
-                "Contact admin to be Registered",
-                [{ text: "OK" }]
-              )
-            }
-          >
-            <Text style={styles.getStartedText}>Get Started</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.loginButton,
-              { backgroundColor: theme.background, borderColor: theme.primary },
-            ]}
-            onPress={() => navigation.navigate("Login")}
-          >
-            <Text style={[styles.loginText, { color: theme.primary }]}>
-              Log In
+          {/* Text Content */}
+          <View style={styles.textContainer}>
+            <Text style={[styles.headline, { color: theme.text }]}>
+              The Seeks Academy Fort Abbas
             </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            <Text style={[styles.subheadline, { color: theme.textSecondary }]}>
+              Join a community of learners achieving their goals through expert
+              coaching and personalized paths.
+            </Text>
+
+            {/* Feature List */}
+            <View style={styles.featureList}>
+              {features.map((feature) => (
+                <View key={feature.id} style={styles.featureItem}>
+                  <View style={styles.iconContainer}>
+                    <Text style={styles.featureIcon}>{feature.icon}</Text>
+                  </View>
+                  <Text
+                    style={[styles.featureText, { color: theme.textSecondary }]}
+                  >
+                    {feature.text}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[
+                styles.getStartedButton,
+                { backgroundColor: theme.primary, shadowColor: theme.primary },
+              ]}
+              onPress={() => 
+                Alert.alert(
+                  "Registration Required",
+                  "Contact admin to be Registered",
+                  [{ text: "OK" }]
+                )
+              }
+            >
+              <Text style={styles.getStartedText}>Get Started</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.loginButton,
+                { backgroundColor: 'transparent', borderColor: theme.primary },
+              ]}
+              onPress={() => navigation.navigate("Login")}
+            >
+              <Text style={[styles.loginText, { color: theme.primary }]}>
+                Log In
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </LinearGradient>
     </SafeAreaView>
   );
 };
@@ -152,7 +154,9 @@ export const WelcomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+  },
+  gradientContainer: {
+    flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
@@ -180,10 +184,8 @@ const styles = StyleSheet.create({
   phoneFrame: {
     width: 110,
     height: 220,
-    backgroundColor: "#ffffff",
     borderRadius: 20,
     borderWidth: 4,
-    borderColor: "#1f2937", // Dark frame
     alignItems: "center",
     paddingTop: 15,
     elevation: 5,
@@ -285,13 +287,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   loginButton: {
-    backgroundColor: "#ffffff",
     paddingVertical: 16,
     borderRadius: 20,
     alignItems: "center",
     width: "100%",
-    borderWidth: 1.5,
-    borderColor: "#8b5cf6", // Purple border
+    borderWidth: 2,
   },
   loginText: {
     color: "#8b5cf6", // Purple text

@@ -10,6 +10,11 @@ export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark, toggleTheme } = useTheme();
 
+  // Admin email list
+  const ADMIN_EMAILS = ['theseeksacademyfta@gmail.com', 'iftikharzahid@outlook.com'];
+  const currentUserEmail = auth.currentUser?.email?.toLowerCase() || '';
+  const isAdmin = ADMIN_EMAILS.includes(currentUserEmail);
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -180,25 +185,25 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Admin Panel (Temporary) */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Admin Panel</Text>
-          
-          <View style={[styles.card, { backgroundColor: theme.card }]}>
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={() => navigation.navigate('Admin' as never)}
-            >
-              <View style={styles.settingLeft}>
-                <Text style={styles.settingIcon}>🛠️</Text>
-                <Text style={[styles.settingText, { color: theme.text }]}>Admin Dashboard</Text>
-              </View>
-              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
-            </TouchableOpacity>
-
-
+        {/* Admin Panel - Only visible for admin users */}
+        {isAdmin && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Admin Panel</Text>
+            
+            <View style={[styles.card, { backgroundColor: theme.card }]}>
+              <TouchableOpacity 
+                style={styles.settingRow}
+                onPress={() => navigation.navigate('Admin' as never)}
+              >
+                <View style={styles.settingLeft}>
+                  <Text style={styles.settingIcon}>🛠️</Text>
+                  <Text style={[styles.settingText, { color: theme.text }]}>Admin Dashboard</Text>
+                </View>
+                <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Delete Account Button */}
         {/* Logout Button */}

@@ -171,34 +171,37 @@ const styles = StyleSheet.create({
 
   courseCard: {
     width: CARD_WIDTH,
-    borderRadius: 12,
-    marginBottom: 16,
+    borderRadius: 16,
+    marginBottom: 18,
     overflow: 'hidden',
     borderWidth: 1,
-    elevation: 2,
+    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
   },
 
   courseImage: {
     width: '100%',
-    height: 110,
+    height: 140,
+    backgroundColor: '#f0f0f0',
   },
 
-  courseInfo: { padding: 10 },
+  courseInfo: { padding: 14 },
 
   courseName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    marginBottom: 4,
-    height: 40,
+    marginBottom: 6,
+    height: 42,
+    lineHeight: 21,
   },
 
   teacherName: {
-    fontSize: 12,
-    marginBottom: 8,
+    fontSize: 13,
+    marginBottom: 12,
+    fontWeight: '500',
   },
 
   actionButtons: {
@@ -208,9 +211,9 @@ const styles = StyleSheet.create({
   },
 
   likeButton: {
-    padding: 6,
-    borderRadius: 6,
-    borderWidth: 1,
+    padding: 7,
+    borderRadius: 8,
+    borderWidth: 1.5,
   },
 
   likeButtonActive: {
@@ -228,15 +231,20 @@ const styles = StyleSheet.create({
   },
 
   enrollButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
 
   enrollText: {
     color: '#ffffff',
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });
 

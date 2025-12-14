@@ -17,7 +17,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from './navigation/AppNavigator';
 import { useTheme } from '../context/ThemeContext';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { auth } from '../api/firebaseConfig';
+import { auth, db } from '../api/firebaseConfig';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 
@@ -51,11 +52,20 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
         await updateProfile(userCredential.user, {
           displayName: name.trim()
         });
+        
+        // Create profile document in Firestore
+        await setDoc(doc(db, 'profile', userCredential.user.uid), {
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          image: '', // Default empty, user can update later
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
       }
 
       setIsLoading(false);
       Alert.alert('Success', 'Account created successfully!', [
-        { text: 'OK', onPress: () => navigation.replace('Login') }
+        { text: 'OK', onPress: () => navigation.navigate('Login') }
       ]);
     } catch (error: any) {
       setIsLoading(false);

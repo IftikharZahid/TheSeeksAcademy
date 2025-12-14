@@ -1,0 +1,30 @@
+[
+  {
+    "name": "Dr. Ahmed Ali",
+    "subject": "Mathematics",
+    "qualification": "PhD in Mathematics",
+    "experience": "15 Years",
+    "image": "https://via.placeholder.com/150"
+  },
+  {
+    "name": "Prof. Sarah Khan",
+    "subject": "Physics",
+    "qualification": "MSc Physics",
+    "experience": "10 Years",
+    "image": "https://via.placeholder.com/150"
+  },
+  {
+    "name": "Dr. Hassan Shah",
+    "subject": "Chemistry",
+    "qualification": "PhD in Chemistry",
+    "experience": "12 Years",
+    "image": "https://via.placeholder.com/150"
+  },
+  {
+    "name": "Ms. Fatima Noor",
+    "subject": "English",
+    "qualification": "MA English Literature",
+    "experience": "8 Years",
+    "image": "https://via.placeholder.com/150"
+  }
+]

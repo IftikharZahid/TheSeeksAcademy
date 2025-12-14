@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, Image, Pressable } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { db } from '../../api/firebaseConfig';
-import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp, query, where, getDocs, updateDoc, getDoc } from 'firebase/firestore';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -13,8 +15,12 @@ import * as FileSystem from 'expo-file-system/legacy';
 interface Student {
   id: string;
   name: string;
+  fatherName: string;
   studentId: string;
   email: string;
+  password: string;
+  authUid?: string;
+  authError?: string;
   grade: string;
   profileImage?: string;
 }
@@ -26,14 +32,18 @@ export const AdminStudentRecordsScreen: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
+  const [viewModalVisible, setViewModalVisible] = useState(false);
   const [choiceModalVisible, setChoiceModalVisible] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Form State
   const [name, setName] = useState('');
+  const [fatherName, setFatherName] = useState('');
   const [studentId, setStudentId] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [grade, setGrade] = useState('');
   const [profileImage, setProfileImage] = useState('');
   const [classPickerVisible, setClassPickerVisible] = useState(false);
@@ -58,30 +68,88 @@ export const AdminStudentRecordsScreen: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
+  const generatePassword = (): string => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let password = '';
+    for (let i = 0; i < 8; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  };
+
+  const getNextStudentId = async (): Promise<string> => {
+    const currentYear = new Date().getFullYear();
+    const counterRef = doc(db, 'counters', 'studentId');
+    
+    try {
+      const counterSnap = await getDoc(counterRef);
+      let nextNumber = 1;
+      
+      if (counterSnap.exists()) {
+        const data = counterSnap.data();
+        // If same year, use next number; if new year, reset to 1
+        if (data.year === currentYear) {
+          nextNumber = data.nextNumber;
+        }
+      }
+      
+      // Generate ID: STD-2025-001
+      const studentId = `STD-${currentYear}-${String(nextNumber).padStart(3, '0')}`;
+      
+      // Increment counter for next student
+      await setDoc(counterRef, {
+        year: currentYear,
+        nextNumber: nextNumber + 1
+      });
+      
+      return studentId;
+    } catch (error) {
+      console.error('Error generating student ID:', error);
+      throw error;
+    }
+  };
+
   const handleSaveStudent = async () => {
-    if (!name || !studentId || !email) {
-      Alert.alert('Error', 'Please fill all required fields (Name, ID, Email)');
+    // Only validate name and father name (ID and email are auto-generated)
+    if (!name || !fatherName) {
+      Alert.alert('Error', 'Please fill in Full Name and Father Name');
       return;
     }
 
-    const studentData = {
-      name,
-      studentId,
-      email,
-      grade: grade || 'N/A',
-      profileImage,
-      updatedAt: serverTimestamp(),
-    };
-
     try {
       if (editingStudent) {
+        // Editing existing student - keep existing IDs and password
+        const studentData = {
+          name,
+          fatherName,
+          studentId,
+          email,
+          password,
+          grade: grade || 'N/A',
+          profileImage,
+          updatedAt: serverTimestamp(),
+        };
         await setDoc(doc(db, 'students', editingStudent.id), studentData, { merge: true });
         Alert.alert('Success', 'Student updated successfully');
       } else {
-        // Use studentId as doc ID if valid, else auto-gen
-        const docId = studentId || Date.now().toString(); 
-        await setDoc(doc(db, 'students', docId), studentData);
-        Alert.alert('Success', 'Student added successfully');
+        // Adding new student - auto-generate ID, email, and password
+        const newStudentId = await getNextStudentId();
+        const newEmail = `${newStudentId}@theseeksacademy.edu.pk`;
+        const newPassword = generatePassword();
+        
+        const studentData = {
+          name,
+          fatherName,
+          studentId: newStudentId,
+          email: newEmail,
+          password: newPassword,
+          grade: grade || 'N/A',
+          profileImage,
+          updatedAt: serverTimestamp(),
+        };
+        
+        await setDoc(doc(db, 'students', newStudentId), studentData);
+        Alert.alert('Success', `Student added successfully!\n\nStudent ID: ${newStudentId}\nEmail: ${newEmail}\nPassword: ${newPassword}`);
       }
 
       setModalVisible(false);
@@ -107,6 +175,27 @@ export const AdminStudentRecordsScreen: React.FC = () => {
         }
       }
     ]);
+  };
+
+  const copyStudentRecord = async (student: Student) => {
+    try {
+      const recordText = `Student Record
+━━━━━━━━━━━━━━━━━━━━
+Name: ${student.name}
+Father Name: ${student.fatherName}
+Student ID: ${student.studentId}
+Email: ${student.email}
+Password: ${student.password}
+Grade/Class: ${student.grade}
+${student.profileImage ? `Profile: ${student.profileImage}` : ''}
+
+Made with ❤ by The Seeks Academy`;
+
+      await Clipboard.setStringAsync(recordText);
+      Alert.alert('Copied!', 'Student record copied to clipboard');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to copy record');
+    }
   };
 
   const handlePickDocument = async () => {
@@ -212,8 +301,10 @@ export const AdminStudentRecordsScreen: React.FC = () => {
     if (student) {
       setEditingStudent(student);
       setName(student.name);
+      setFatherName(student.fatherName);
       setStudentId(student.studentId);
       setEmail(student.email);
+      setPassword(student.password);
       setGrade(student.grade);
       setProfileImage(student.profileImage || '');
       setModalVisible(true);
@@ -225,8 +316,10 @@ export const AdminStudentRecordsScreen: React.FC = () => {
   const resetForm = () => {
     setEditingStudent(null);
     setName('');
+    setFatherName('');
     setStudentId('');
     setEmail('');
+    setPassword('');
     setGrade('');
     setProfileImage('');
   };
@@ -296,21 +389,29 @@ export const AdminStudentRecordsScreen: React.FC = () => {
           ) : (
             filteredStudents.map((item) => (
               <View key={item.id} style={[styles.card, { backgroundColor: theme.card }]}>
-                <View style={[styles.avatar, { backgroundColor: theme.primary + '20', overflow: 'hidden' }]}>
-                   {item.profileImage ? (
-                       <Image source={{ uri: item.profileImage }} style={{ width: '100%', height: '100%' }} />
-                   ) : (
-                       <Ionicons name="person" size={24} color={theme.primary} />
-                   )}
-                </View>
-                <View style={styles.cardInfo}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                    <Text style={[styles.name, { color: theme.text, marginBottom: 0 }]}>{item.name}</Text>
-                    <Text style={[styles.name, { color: theme.text, textDecorationLine: 'underline', marginBottom: 0 }]}>{item.grade}</Text>
+                <Pressable 
+                  style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+                  onPress={() => {
+                    setViewingStudent(item);
+                    setViewModalVisible(true);
+                  }}
+                  onLongPress={() => copyStudentRecord(item)}
+                  delayLongPress={500}
+                >
+                  <View style={[styles.avatar, { backgroundColor: theme.primary + '20', overflow: 'hidden' }]}>
+                     {item.profileImage ? (
+                         <Image source={{ uri: item.profileImage }} style={{ width: '100%', height: '100%' }} />
+                     ) : (
+                         <Ionicons name="person" size={24} color={theme.primary} />
+                     )}
                   </View>
-                  <Text style={[styles.details, { color: theme.textSecondary }]}>ID: {item.studentId}</Text>
-                  <Text style={[styles.details, { color: theme.textSecondary }]}>{item.email}</Text>
-                </View>
+                  <View style={styles.cardInfo}>
+                    <Text style={[styles.name, { color: theme.text }]}>{item.name}</Text>
+                    <Text style={[styles.details, { color: theme.textSecondary }]}>Father: {item.fatherName || 'N/A'}</Text>
+                    <Text style={[styles.details, { color: theme.textSecondary }]}>ID: {item.studentId}</Text>
+                    <Text style={[styles.details, { color: theme.textSecondary }]}>{item.email}</Text>
+                  </View>
+                </Pressable>
                 <View style={styles.cardActions}>
                   <TouchableOpacity onPress={() => openModal(item)} style={styles.actionBtn}>
                     <Ionicons name="pencil" size={20} color={theme.primary} />
@@ -341,24 +442,34 @@ export const AdminStudentRecordsScreen: React.FC = () => {
                 onChangeText={setName} 
               />
               
-              <Text style={[styles.label, { color: theme.text }]}>Student ID</Text>
+              <Text style={[styles.label, { color: theme.text }]}>Father Name</Text>
               <TextInput 
                 style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]} 
-                placeholder="e.g. STU-2024-001" 
+                placeholder="e.g. John Smith Sr." 
                 placeholderTextColor={theme.textSecondary}
-                value={studentId} 
-                onChangeText={setStudentId} 
+                value={fatherName} 
+                onChangeText={setFatherName} 
               />
               
-              <Text style={[styles.label, { color: theme.text }]}>Email</Text>
-              <TextInput 
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]} 
-                placeholder="e.g. john@example.com" 
-                placeholderTextColor={theme.textSecondary}
-                value={email} 
-                onChangeText={setEmail}
-                autoCapitalize="none"
-              />
+              {/* Show Student ID and Email only when editing (read-only) */}
+              {editingStudent && (
+                <>
+                  <Text style={[styles.label, { color: theme.text }]}>Student ID (Auto-generated)</Text>
+                  <TextInput 
+                    style={[styles.input, { backgroundColor: theme.border, color: theme.textSecondary, borderColor: theme.border }]} 
+                    value={studentId}
+                    editable={false}
+                  />
+                  
+                  <Text style={[styles.label, { color: theme.text }]}>Email (Auto-generated)</Text>
+                  <TextInput 
+                    style={[styles.input, { backgroundColor: theme.border, color: theme.textSecondary, borderColor: theme.border }]} 
+                    value={email}
+                    editable={false}
+                    autoCapitalize="none"
+                  />
+                </>
+              )}
 
               <Text style={[styles.label, { color: theme.text }]}>Profile Image URL</Text>
               <TextInput 
@@ -394,6 +505,126 @@ export const AdminStudentRecordsScreen: React.FC = () => {
         </View>
       </Modal>
 
+      {/* View Student Details Modal - Modern & Compact */}
+      <Modal visible={viewModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.viewModalContent, { backgroundColor: theme.card }]}>
+            {/* Extended Gradient Header */}
+            <LinearGradient
+              colors={['#667eea', '#764ba2']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.viewModalHeader}
+            >
+              <TouchableOpacity 
+                onPress={() => setViewModalVisible(false)} 
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+            </LinearGradient>
+            
+            {/* Floating Profile Section */}
+            <View style={styles.floatingProfileSection}>
+              <View style={styles.modalHeaderRow}>
+                <View style={styles.modalIdBadge}>
+                  <Text style={styles.modalIdText}>{viewingStudent?.studentId}</Text>
+                </View>
+                
+                <View style={styles.profileImageContainer}>
+                  {viewingStudent?.profileImage ? (
+                    <Image 
+                      source={{ uri: viewingStudent.profileImage }} 
+                      style={styles.profileImage} 
+                    />
+                  ) : (
+                    <Ionicons name="person" size={40} color="#fff" />
+                  )}
+                </View>
+                
+                <View style={styles.modalGradeBadge}>
+                  <Text style={styles.modalGradeText}>{viewingStudent?.grade}</Text>
+                </View>
+              </View>
+            </View>
+            
+            {/* Compact Info Section */}
+            <View style={styles.infoSection}>
+              <View style={styles.compactInfoRow}>
+                <View style={[styles.iconBadge, { backgroundColor: '#e0e7ff' }]}>
+                  <Ionicons name="person" size={18} color="#667eea" />
+                </View>
+                <Pressable 
+                  style={styles.infoTextContainer}
+                  onLongPress={async () => {
+                    await Clipboard.setStringAsync(viewingStudent?.name || '');
+                    Alert.alert('Copied!', 'Name copied to clipboard');
+                  }}
+                  delayLongPress={500}
+                >
+                  <Text style={[styles.compactLabel, { color: theme.textSecondary }]}>Student Name</Text>
+                  <Text style={[styles.compactValue, { color: theme.text }]}>{viewingStudent?.name}</Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.compactInfoRow}>
+                <View style={[styles.iconBadge, { backgroundColor: '#fef3c7' }]}>
+                  <Ionicons name="person-outline" size={18} color="#f59e0b" />
+                </View>
+                <Pressable 
+                  style={styles.infoTextContainer}
+                  onLongPress={async () => {
+                    await Clipboard.setStringAsync(viewingStudent?.fatherName || '');
+                    Alert.alert('Copied!', 'Father Name copied to clipboard');
+                  }}
+                  delayLongPress={500}
+                >
+                  <Text style={[styles.compactLabel, { color: theme.textSecondary }]}>Father Name</Text>
+                  <Text style={[styles.compactValue, { color: theme.text }]}>{viewingStudent?.fatherName || 'N/A'}</Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.compactInfoRow}>
+                <View style={[styles.iconBadge, { backgroundColor: '#dcfce7' }]}>
+                  <Ionicons name="mail-outline" size={18} color="#10b981" />
+                </View>
+                <Pressable 
+                  style={styles.infoTextContainer}
+                  onLongPress={async () => {
+                    const credentials = `Email: ${viewingStudent?.email}\nPassword: ${viewingStudent?.password}`;
+                    await Clipboard.setStringAsync(credentials);
+                    Alert.alert('Copied!', 'Email and Password copied to clipboard');
+                  }}
+                  delayLongPress={500}
+                >
+                  <Text style={[styles.compactLabel, { color: theme.textSecondary }]}>Email</Text>
+                  <Text style={[styles.compactValue, { color: theme.text }]}>{viewingStudent?.email}</Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.compactInfoRow}>
+                <View style={[styles.iconBadge, { backgroundColor: '#fed7aa' }]}>
+                  <Ionicons name="key-outline" size={18} color="#ea580c" />
+                </View>
+                <Pressable 
+                  style={styles.infoTextContainer}
+                  onLongPress={async () => {
+                    const credentials = `Email: ${viewingStudent?.email}\nPassword: ${viewingStudent?.password}`;
+                    await Clipboard.setStringAsync(credentials);
+                    Alert.alert('Copied!', 'Email and Password copied to clipboard');
+                  }}
+                  delayLongPress={500}
+                >
+                  <Text style={[styles.compactLabel, { color: theme.textSecondary }]}>Password</Text>
+                  <Text style={[styles.compactValue, { color: theme.text }]}>{viewingStudent?.password}</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+
       {/* Choice Modal (Manual vs Upload) */}
       <Modal visible={choiceModalVisible} animationType="fade" transparent>
         <TouchableOpacity 
@@ -401,33 +632,42 @@ export const AdminStudentRecordsScreen: React.FC = () => {
             activeOpacity={1} 
             onPress={() => setChoiceModalVisible(false)}
         >
-          <View style={[styles.modalContent, { backgroundColor: theme.card, alignItems: 'center' }]}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Add New Student</Text>
-            <Text style={{ color: theme.textSecondary, marginBottom: 20, textAlign: 'center' }}>
-                Choose how you want to add students to the database.
+          <View style={[styles.modalContent, { backgroundColor: theme.card, alignItems: 'center', paddingHorizontal: 20, paddingVertical: 24 }]}>
+            <View style={[styles.modalIconContainer, { backgroundColor: theme.primary + '15' }]}>
+              <Ionicons name="person-add" size={32} color={theme.primary} />
+            </View>
+            <Text style={[styles.modalTitle, { color: theme.text, marginTop: 12, marginBottom: 6 }]}>Add New Student</Text>
+            <Text style={{ color: theme.textSecondary, marginBottom: 20, textAlign: 'center', fontSize: 13, lineHeight: 18 }}>
+                Choose how you want to add students.
             </Text>
             
             <TouchableOpacity 
                 onPress={handleManualEntry} 
-                style={[styles.choiceBtn, { backgroundColor: theme.primary }]}
+                style={[styles.modernChoiceBtn, styles.primaryChoiceBtn, { backgroundColor: theme.primary, shadowColor: theme.primary }]}
             >
-                <Ionicons name="create-outline" size={24} color="#fff" style={{ marginRight: 10 }} />
-                <Text style={styles.choiceBtnText}>Manual Entry</Text>
+              <View style={styles.choiceBtnIconContainer}>
+                <Ionicons name="create-outline" size={18} color="#fff" />
+              </View>
+              <Text style={styles.modernChoiceBtnTitle}>Manual Entry</Text>
+              <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
             </TouchableOpacity>
 
             <TouchableOpacity 
                 onPress={handlePickDocument} 
-                style={[styles.choiceBtn, { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.primary }]}
+                style={[styles.modernChoiceBtn, styles.secondaryChoiceBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
             >
-                <Ionicons name="cloud-upload-outline" size={24} color={theme.primary} style={{ marginRight: 10 }} />
-                <Text style={[styles.choiceBtnText, { color: theme.primary }]}>Upload JSON File</Text>
+              <View style={[styles.choiceBtnIconContainer, { backgroundColor: theme.primary + '15' }]}>
+                <Ionicons name="cloud-upload-outline" size={18} color={theme.primary} />
+              </View>
+              <Text style={[styles.modernChoiceBtnTitle, { color: theme.text }]}>Upload JSON File</Text>
+              <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
             </TouchableOpacity>
 
             <TouchableOpacity 
                 onPress={() => setChoiceModalVisible(false)} 
-                style={{ marginTop: 10, padding: 10 }}
+                style={{ marginTop: 12, padding: 8 }}
             >
-                <Text style={{ color: theme.textSecondary }}>Cancel</Text>
+                <Text style={{ color: theme.textSecondary, fontSize: 14, fontWeight: '600' }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -509,6 +749,38 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  idBadge: {
+    backgroundColor: '#dbeafe',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    minWidth: 85,
+  },
+  idBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1e40af',
+    textAlign: 'center',
+  },
+  gradeBadge: {
+    backgroundColor: '#fce7f3',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    minWidth: 60,
+  },
+  gradeBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#9f1239',
+    textAlign: 'center',
+  },
   avatar: {
     width: 60,
     height: 60,
@@ -526,6 +798,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
   modalContent: {
@@ -619,5 +892,193 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
+  },
+  modalIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modernChoiceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  primaryChoiceBtn: {
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  secondaryChoiceBtn: {
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  choiceBtnIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  choiceBtnTextContainer: {
+    flex: 1,
+  },
+  modernChoiceBtnTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  // Modern Compact View Modal
+  viewModalContent: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 5,
+    maxWidth: 400,
+    width: '90%',
+  },
+  viewModalHeader: {
+    height: 80, // Shorter header - will extend to middle of profile via overlap
+    paddingTop: 16,
+    paddingHorizontal: 20,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  floatingProfileSection: {
+    alignItems: 'center',
+    marginTop: -40, // Negative margin creates overlap - profile sits half on gradient
+    paddingBottom: 8, // Reduced gap
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 10,
+  },
+  modalIdBadge: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    minWidth: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  modalIdText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#1e40af',
+    textAlign: 'center',
+  },
+  modalGradeBadge: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    minWidth: 75,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  modalGradeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#9f1239',
+    textAlign: 'center',
+  },
+  profileSection: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  profileImageContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  studentName: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  gradeBadge: {
+    backgroundColor: '#667eea',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  studentGrade: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  infoSection: {
+    padding: 16,
+    paddingTop: 0,
+  },
+  compactInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  iconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  infoTextContainer: {
+    flex: 1,
+  },
+  compactLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  compactValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    flexWrap: 'wrap',
   },
 });
