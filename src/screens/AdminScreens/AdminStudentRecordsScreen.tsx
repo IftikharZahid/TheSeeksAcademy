@@ -1036,12 +1036,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: 8,
   },
-  gradeBadge: {
-    backgroundColor: '#667eea',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
+
   studentGrade: {
     fontSize: 13,
     fontWeight: '700',

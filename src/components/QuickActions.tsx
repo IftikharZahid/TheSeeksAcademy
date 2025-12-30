@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { scale } from '../utils/responsive';
 
 const { width } = Dimensions.get('window');
 
@@ -54,7 +55,7 @@ export const QuickActions: React.FC = () => {
       <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
       <View style={styles.grid}>
         {quickItems.map((item) => (
-          <TouchableOpacity 
+          <TouchableOpacity
             key={item.key}
             style={[styles.actionCard, { backgroundColor: theme.card }]}
             onPress={() => handlePress(item.key)}
@@ -63,7 +64,14 @@ export const QuickActions: React.FC = () => {
             <View style={[styles.iconCircle, { backgroundColor: `${item.color}15` }]}>
               <Text style={styles.emoji}>{item.emoji}</Text>
             </View>
-            <Text style={[styles.actionTitle, { color: theme.text }]}>{item.label}</Text>
+            <Text
+              style={[styles.actionTitle, { color: theme.text }]}
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
+              {item.label}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -73,44 +81,48 @@ export const QuickActions: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 8,
+    marginTop: scale(8),
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 16,
+    fontSize: scale(15),
+    fontWeight: '600',
+    marginBottom: scale(12),
     letterSpacing: 0.5,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: scale(8),
+    justifyContent: 'space-between',
   },
   actionCard: {
-    width: (width - 80) / 4,
-    padding: 12,
-    borderRadius: 12,
+    width: (width - scale(64)) / 4,
+    minHeight: scale(90),
+    padding: scale(8),
+    borderRadius: scale(10),
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: scale(2) },
     shadowOpacity: 0.08,
-    shadowRadius: 6,
+    shadowRadius: scale(4),
     elevation: 3,
   },
   iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: scale(5),
   },
   emoji: {
-    fontSize: 24,
+    fontSize: scale(18),
   },
   actionTitle: {
-    fontSize: 10,
+    fontSize: scale(9),
     fontWeight: '600',
     textAlign: 'center',
+    lineHeight: scale(11),
   },
 });

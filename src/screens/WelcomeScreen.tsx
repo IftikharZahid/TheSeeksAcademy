@@ -8,14 +8,13 @@ import {
   Dimensions,
   ScrollView,
   Alert,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "./navigation/AppNavigator";
 import { useTheme } from "../context/ThemeContext";
-import { StatusBar } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 
 const { width } = Dimensions.get("window");
 
@@ -36,24 +35,15 @@ export const WelcomeScreen: React.FC = () => {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={isDark 
-          ? [theme.background, theme.backgroundSecondary, theme.background]
-          : ['#f8f9ff', '#fff5f7', '#f0f9ff']}
-        style={styles.gradientContainer}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar
+        barStyle={isDark ? "light-content" : "dark-content"}
+        backgroundColor={theme.background}
+      />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <StatusBar
-          barStyle={isDark ? "light-content" : "dark-content"}
-          backgroundColor="transparent"
-          translucent
-        />
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
           {/* Illustration Section */}
           <View style={styles.illustrationContainer}>
             <View
@@ -91,7 +81,10 @@ export const WelcomeScreen: React.FC = () => {
           {/* Text Content */}
           <View style={styles.textContainer}>
             <Text style={[styles.headline, { color: theme.text }]}>
-              The Seeks Academy Fort Abbas
+              The Seeks Academy
+            </Text>
+            <Text style={[styles.subHeading, { color: theme.text }]}>
+              Fort Abbas
             </Text>
             <Text style={[styles.subheadline, { color: theme.textSecondary }]}>
               Join a community of learners achieving their goals through expert
@@ -146,16 +139,12 @@ export const WelcomeScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </LinearGradient>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-  },
-  gradientContainer: {
     flex: 1,
   },
   scrollContent: {
@@ -233,8 +222,16 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#1f2937",
     textAlign: "center",
-    marginBottom: 10,
-    lineHeight: 35,
+    marginBottom: 8,
+    lineHeight: 30,
+  },
+  subHeading: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#1f2937",
+    textAlign: "center",
+    marginBottom: 6,
+    lineHeight: 25,
   },
   subheadline: {
     fontSize: 15,

@@ -6,6 +6,8 @@ import { db } from '../api/firebaseConfig';
 import { collection, getDocs } from 'firebase/firestore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const BASE_WIDTH = 375; // iPhone 11/Pro width
+const scale = (size: number) => (SCREEN_WIDTH / BASE_WIDTH) * size;
 const CARD_WIDTH = SCREEN_WIDTH * 0.85;
 
 interface StaffData {
@@ -26,6 +28,8 @@ interface FeaturedCourse {
   teacherName: string;
   teacherImage: string;
   subject: string;
+  qualification: string;
+  experience: string;
 }
 
 interface DeckSwiperProps {
@@ -49,9 +53,9 @@ export const DeckSwiper: React.FC<DeckSwiperProps> = () => {
       setLoading(true);
       const staffCollection = collection(db, "staff");
       const querySnapshot = await getDocs(staffCollection);
-      
+
       const courses: FeaturedCourse[] = [];
-      
+
       querySnapshot.forEach((doc) => {
         const data = doc.data() as StaffData;
         // Only include if bookimage exists
@@ -63,6 +67,8 @@ export const DeckSwiper: React.FC<DeckSwiperProps> = () => {
             teacherName: data.name,
             teacherImage: data.image,
             subject: data.subject,
+            qualification: data.qualification || 'Not Specified',
+            experience: data.experience || 'N/A',
           });
         }
       });
@@ -78,6 +84,8 @@ export const DeckSwiper: React.FC<DeckSwiperProps> = () => {
             teacherName: data.name,
             teacherImage: data.image,
             subject: data.subject,
+            qualification: data.qualification || 'Not Specified',
+            experience: data.experience || 'N/A',
           });
         });
       }
@@ -102,26 +110,26 @@ export const DeckSwiper: React.FC<DeckSwiperProps> = () => {
       <View style={[styles.card, { backgroundColor: theme.card }]}>
         {/* Image Section with Gradient Overlay */}
         <View style={styles.cardHeader}>
-          <Image 
-            source={{ uri: item.bookImage }} 
-            style={styles.cardImage} 
+          <Image
+            source={{ uri: item.bookImage }}
+            style={styles.cardImage}
           />
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.7)']}
             style={styles.gradient}
           />
-          
+
           {/* Badge */}
           <View style={[styles.badge, { backgroundColor: '#ef4444' }]}>
             <Text style={styles.badgeText}>🔥 HOT</Text>
           </View>
-          
+
           {/* Rating Stars */}
           <View style={styles.ratingContainer}>
             <Text style={styles.ratingStars}>★★★★★</Text>
             <Text style={styles.ratingText}>4.9</Text>
           </View>
-          
+
           {/* Course Title on Image */}
           <View style={styles.headerContent}>
             <Text style={styles.headerTitle} numberOfLines={2}>{item.bookTitle}</Text>
@@ -140,29 +148,21 @@ export const DeckSwiper: React.FC<DeckSwiperProps> = () => {
         <View style={styles.cardBody}>
           {/* Teacher Info with Avatar */}
           <View style={styles.teacherRow}>
-            <Image 
-              source={{ uri: item.teacherImage }} 
+            <Image
+              source={{ uri: item.teacherImage }}
               style={styles.teacherAvatar}
             />
             <View style={styles.teacherInfo}>
-              <Text style={[styles.teacherName, { color: theme.text }]}>{item.teacherName}</Text>
-              <Text style={[styles.teacherRole, { color: theme.textSecondary }]}>Expert Instructor</Text>
+              <Text style={[styles.teacherName, { color: theme.text }]} numberOfLines={1}>{item.teacherName}</Text>
+              <Text style={[styles.teacherRole, { color: theme.textSecondary }]} numberOfLines={1}>🎓 {item.qualification}</Text>
             </View>
-            <View style={styles.priceContainer}>
-              <Text style={[styles.originalPrice, { color: theme.textSecondary }]}>Rs. 5,000</Text>
-              <Text style={[styles.price, { color: theme.primary }]}>Free</Text>
+            <View style={styles.experienceContainer}>
+              <Text style={[styles.experienceLabel, { color: theme.textSecondary }]}>Experience</Text>
+              <Text style={[styles.experienceValue, { color: theme.primary }]} numberOfLines={1}>{item.experience}</Text>
             </View>
           </View>
 
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <TouchableOpacity style={[styles.button, styles.outlineButton, { borderColor: theme.primary }]}>
-              <Text style={[styles.buttonText, { color: theme.primary }]}>👁️ Preview</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.button, styles.filledButton, { backgroundColor: theme.primary }]}>
-              <Text style={[styles.buttonText, { color: '#ffffff' }]}>🎓 Enroll Now</Text>
-            </TouchableOpacity>
-          </View>
+
         </View>
       </View>
     </View>
@@ -221,21 +221,21 @@ export const DeckSwiper: React.FC<DeckSwiperProps> = () => {
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 10,
+    marginVertical: scale(10),
   },
   loadingContainer: {
-    height: 280,
+    height: scale(280),
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 14,
+    marginTop: scale(12),
+    fontSize: scale(14),
     fontWeight: '500',
   },
   listContent: {
     paddingHorizontal: (SCREEN_WIDTH - CARD_WIDTH) / 2,
-    paddingBottom: 20,
+    paddingBottom: scale(20),
   },
   cardContainer: {
     width: CARD_WIDTH,
@@ -244,16 +244,16 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: CARD_WIDTH,
-    borderRadius: 24,
+    borderRadius: scale(24),
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: scale(8) },
     shadowOpacity: 0.15,
-    shadowRadius: 16,
+    shadowRadius: scale(16),
     elevation: 8,
   },
   cardHeader: {
-    height: 180,
+    height: scale(180),
     position: 'relative',
   },
   cardImage: {
@@ -266,157 +266,126 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    top: 12,
-    left: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    top: scale(12),
+    left: scale(12),
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(12),
   },
   badgeText: {
     color: '#ffffff',
-    fontSize: 11,
+    fontSize: scale(11),
     fontWeight: '700',
   },
   ratingContainer: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: scale(12),
+    right: scale(12),
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(12),
   },
   ratingStars: {
     color: '#fbbf24',
-    fontSize: 12,
+    fontSize: scale(12),
     marginRight: 4,
   },
   ratingText: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: scale(12),
     fontWeight: '700',
   },
   headerContent: {
     position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
+    bottom: scale(16),
+    left: scale(16),
+    right: scale(16),
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: scale(20),
     fontWeight: '800',
     color: '#ffffff',
-    marginBottom: 8,
+    marginBottom: scale(8),
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
   tagRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: scale(8),
   },
   tag: {
     backgroundColor: 'rgba(139,92,246,0.9)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(8),
   },
   tagText: {
     color: '#ffffff',
-    fontSize: 11,
+    fontSize: scale(11),
     fontWeight: '600',
   },
   cardBody: {
-    padding: 20,
+    padding: scale(20),
   },
   teacherRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: scale(16),
   },
   teacherAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
-  teacherInitial: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700',
+    width: scale(44),
+    height: scale(44),
+    borderRadius: scale(22),
   },
   teacherInfo: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: scale(12),
   },
   teacherName: {
-    fontSize: 15,
+    fontSize: scale(14),
     fontWeight: '700',
   },
   teacherRole: {
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: scale(11),
+    marginTop: scale(3),
+    fontWeight: '500',
   },
-  priceContainer: {
+  experienceContainer: {
     alignItems: 'flex-end',
   },
-  originalPrice: {
-    fontSize: 12,
-    textDecorationLine: 'line-through',
+  experienceLabel: {
+    fontSize: scale(10),
+    fontWeight: '500',
   },
-  price: {
-    fontSize: 22,
-    fontWeight: '800',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  outlineButton: {
-    borderWidth: 2,
-    backgroundColor: 'transparent',
-  },
-  filledButton: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  buttonText: {
-    fontSize: 13,
+  experienceValue: {
+    fontSize: scale(14),
     fontWeight: '700',
-    letterSpacing: 0.3,
   },
   pagination: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    gap: scale(8),
     marginTop: 0,
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: scale(8),
+    height: scale(8),
+    borderRadius: scale(4),
   },
   activeDot: {
-    width: 24,
+    width: scale(24),
   },
   emptyContainer: {
-    height: 200,
+    height: scale(200),
     justifyContent: 'center',
     alignItems: 'center',
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: scale(16),
   },
 });

@@ -7,6 +7,7 @@ import { DeckSwiper } from '../components/DeckSwiper';
 import { QuickActions } from '../components/QuickActions';
 import { useTheme } from '../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import { scale } from '../utils/responsive';
 
 const { width } = Dimensions.get('window');
 
@@ -77,14 +78,14 @@ export const HomeScreen: React.FC = () => {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right']}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.background} />
-      <ScrollView 
-        style={styles.container} 
+      <ScrollView
+        style={styles.container}
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
       >
-        
+
         <View style={styles.content}>
           {/* Carousel Banner */}
           <View style={styles.carouselContainer}>
@@ -108,7 +109,7 @@ export const HomeScreen: React.FC = () => {
                 </LinearGradient>
               ))}
             </ScrollView>
-            
+
             {/* Pagination Dots */}
             <View style={styles.pagination}>
               {slides.map((_, index) => (
@@ -145,63 +146,63 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: scale(16),
+    paddingTop: scale(16),
   },
   carouselContainer: {
-    marginBottom: 8,
+    marginBottom: scale(8),
   },
   banner: {
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: scale(16),
+    padding: scale(16),
     marginRight: 0,
   },
   bannerTitle: {
     color: '#ffffff',
-    fontSize: 22,
+    fontSize: scale(18),
     fontWeight: '700',
   },
   bannerSubtitle: {
     color: '#ffffff',
-    marginTop: 8,
-    fontSize: 14,
+    marginTop: scale(6),
+    fontSize: scale(12),
     opacity: 0.9,
   },
   applyButton: {
     backgroundColor: '#ffffff',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginTop: 16,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(8),
+    borderRadius: scale(18),
+    marginTop: scale(12),
     alignSelf: 'flex-start',
   },
   applyButtonText: {
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: scale(12),
   },
   pagination: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 12,
-    gap: 6,
+    marginTop: scale(12),
+    gap: scale(6),
   },
   paginationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: scale(8),
+    height: scale(8),
+    borderRadius: scale(4),
     backgroundColor: '#d1d5db',
   },
   paginationDotActive: {
     backgroundColor: '#3b82f6',
-    width: 24,
+    width: scale(24),
   },
 
   featuredSection: {
-    marginTop: 10,
+    marginTop: scale(10),
   },
   featuredTitle: {
     fontWeight: '700',
-    fontSize: 18,
-    marginBottom: 12,
+    fontSize: scale(18),
+    marginBottom: scale(12),
   },
 });

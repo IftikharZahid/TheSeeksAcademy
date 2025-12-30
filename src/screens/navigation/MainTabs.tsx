@@ -1,7 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
-import { Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { HomeStack } from './HomeStack';
 import { ProfileStack } from './ProfileStack';
 import { CoursesScreen } from '../CoursesScreen';
@@ -22,9 +22,9 @@ const Tab = createBottomTabNavigator<TabParamList>();
 
 export const MainTabs: React.FC = () => {
   return (
-    <Tab.Navigator 
+    <Tab.Navigator
       tabBar={props => <CustomTabBar {...props} />}
-      screenOptions={{ 
+      screenOptions={{
         headerShown: true,
         header: () => <TopHeader />
       }}
@@ -35,15 +35,15 @@ export const MainTabs: React.FC = () => {
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeScreen';
           const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'CoursesScreen', 'StaffInfoScreen', 'SettingsScreen', 'SimTrackerScreen', 'ChangePasswordScreen', 'AboutScreen', 'PrivacyPolicyScreen', 'HelpCenterScreen', 'ComplaintsScreen', 'AdminTeachersScreen', 'FeeDetailScreen'];
-          if (hiddenRoutes.includes(routeName)) {
-            return { 
-              headerShown: false,
-              tabBarStyle: { display: 'none' },
-              tabBarIcon: () => <Text>🏠</Text>
-            };
-          }
+
+          const isHidden = hiddenRoutes.includes(routeName);
+
           return {
-            tabBarIcon: () => <Text>🏠</Text>,
+            headerShown: !isHidden,
+            tabBarStyle: isHidden ? { display: 'none' } : undefined,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="home" size={size} color={color} />
+            ),
           };
         }}
       />
@@ -51,7 +51,9 @@ export const MainTabs: React.FC = () => {
         name="Courses"
         component={CoursesScreen}
         options={{
-          tabBarIcon: () => <Text>📚</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="book" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -60,14 +62,18 @@ export const MainTabs: React.FC = () => {
         options={{
           headerShown: false,
           tabBarStyle: { display: 'none' },
-          tabBarIcon: () => <Text>💬</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubbles" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
         name="NoticeBoard"
         component={NoticesScreen}
         options={{
-          tabBarIcon: () => <Text>📢</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="notifications" size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -76,16 +82,14 @@ export const MainTabs: React.FC = () => {
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'ProfileScreen';
           const hiddenRoutes = ['HelpCenterScreen'];
-          if (hiddenRoutes.includes(routeName)) {
-            return { 
-              headerShown: false,
-              tabBarStyle: { display: 'none' },
-              tabBarIcon: () => <Text>👤</Text>
-            };
-          }
+          const isHidden = hiddenRoutes.includes(routeName);
+
           return {
             headerShown: false,
-            tabBarIcon: () => <Text>👤</Text>,
+            tabBarStyle: isHidden ? { display: 'none' } : undefined,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="person" size={size} color={color} />
+            ),
           };
         }}
       />

@@ -7,12 +7,12 @@ import {
   Image,
   StyleSheet,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCourses } from '../context/CoursesContext';
 import { Course } from '../data/courses';
 import { useTheme } from '../context/ThemeContext';
-import {LoaderKitView} from 'react-native-loader-kit';
 
 const CourseCard = memo(
   ({ item, liked }: { item: Course; liked: boolean }) => {
@@ -24,8 +24,8 @@ const CourseCard = memo(
     };
 
     return (
-      <TouchableOpacity 
-        style={[styles.courseCard, { backgroundColor: theme.card, borderColor: theme.border }]} 
+      <TouchableOpacity
+        style={[styles.courseCard, { backgroundColor: theme.card, borderColor: theme.border }]}
         activeOpacity={0.9}
       >
         <Image source={{ uri: item.image }} style={[styles.courseImage, { backgroundColor: theme.border }]} />
@@ -42,7 +42,7 @@ const CourseCard = memo(
           <View style={styles.actionButtons}>
             <TouchableOpacity
               style={[
-                styles.likeButton, 
+                styles.likeButton,
                 { backgroundColor: theme.background, borderColor: theme.border },
                 localLiked && styles.likeButtonActive
               ]}
@@ -91,18 +91,13 @@ export const CoursesScreen: React.FC = () => {
     return (
       <View style={[styles.courseCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <View style={[styles.courseImage, { backgroundColor: theme.border, justifyContent: 'center', alignItems: 'center' }]}>
-          <LoaderKitView
-            style={{ width: 50, height: 50 }}
-            name={'BallTrianglePath'}
-            animationSpeedMultiplier={1.0}
-            color={theme.primary}
-          />
+          <ActivityIndicator size="large" color={theme.primary} />
         </View>
         <View style={styles.courseInfo}>
           <View style={{ height: 14, width: '80%', backgroundColor: theme.border, marginBottom: 8, borderRadius: 4 }} />
           <View style={{ height: 14, width: '60%', backgroundColor: theme.border, marginBottom: 12, borderRadius: 4 }} />
           <View style={{ height: 12, width: '40%', backgroundColor: theme.border, marginBottom: 8, borderRadius: 4 }} />
-          
+
           <View style={styles.actionButtons}>
             <View style={{ width: 30, height: 30, backgroundColor: theme.border, borderRadius: 6 }} />
             <View style={{ width: 80, height: 26, backgroundColor: theme.border, borderRadius: 6 }} />

@@ -18,7 +18,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from './navigation/AppNavigator';
 import { useTheme } from '../context/ThemeContext';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../api/firebaseConfig';
+import { auth, db } from '../api/firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 
@@ -39,14 +40,12 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const loadCredentials = async () => {
     try {
       const savedEmail = await AsyncStorage.getItem('user_email');
-      const savedPassword = await AsyncStorage.getItem('user_password');
-      if (savedEmail && savedPassword) {
+      if (savedEmail) {
         setEmail(savedEmail);
-        setPassword(savedPassword);
         setRememberMe(true);
       }
     } catch (error) {
-      console.error('Failed to load credentials', error);
+      console.error('Failed to load credentials:', error);
     }
   };
 
@@ -60,30 +59,90 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      Alert.alert('Error', 'Please enter a valid email address (e.g., name@gmail.com)');
+      return;
+    }
+
     setIsLoading(true);
-    
+    console.log('🔐 Starting login process for:', email.trim());
+
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      
+      // Step 1: Authenticate with Firebase
+      console.log('📝 Attempting Firebase authentication...');
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      console.log('✅ Firebase authentication successful! UID:', userCredential.user.uid);
+
+      // Step 2: Fetch user profile data from Firestore
+      try {
+        console.log('📥 Fetching user profile from Firestore...');
+        const userDocRef = doc(db, 'profile', userCredential.user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data();
+          console.log('✅ User profile found:', userData.name);
+
+          // Store user data in storage for app-wide access
+          await AsyncStorage.setItem('user_data', JSON.stringify({
+            uid: userCredential.user.uid,
+            email: userData.email,
+            name: userData.name,
+            image: userData.image || '',
+          }));
+          console.log('💾 User data saved to storage');
+        } else {
+          console.warn('⚠️ No user profile found in Firestore for UID:', userCredential.user.uid);
+          // Store basic info from auth
+          await AsyncStorage.setItem('user_data', JSON.stringify({
+            uid: userCredential.user.uid,
+            email: userCredential.user.email,
+            name: userCredential.user.displayName || 'User',
+            image: '',
+          }));
+        }
+      } catch (firestoreError) {
+        console.error('❌ Error fetching Firestore data:', firestoreError);
+        // Continue with login even if Firestore fetch fails
+      }
+
+      // Step 3: Handle "Remember Me" functionality (email only, NOT password)
       if (rememberMe) {
         await AsyncStorage.setItem('user_email', email.trim());
-        await AsyncStorage.setItem('user_password', password);
+        console.log('💾 Email saved for next login');
       } else {
         await AsyncStorage.removeItem('user_email');
-        await AsyncStorage.removeItem('user_password');
       }
-      
+
+      // Remove any old password storage for security
+      await AsyncStorage.removeItem('user_password');
+
+      console.log('🎉 Login successful! Navigating to Main...');
       setIsLoading(false);
       navigation.replace('Main');
+
     } catch (error: any) {
       setIsLoading(false);
+      console.error('❌ Login error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+
       let errorMessage = 'Something went wrong';
       if (error.code === 'auth/invalid-email') errorMessage = 'Invalid email address';
       if (error.code === 'auth/user-disabled') errorMessage = 'User account disabled';
       if (error.code === 'auth/user-not-found') errorMessage = 'User not found';
       if (error.code === 'auth/wrong-password') errorMessage = 'Incorrect password';
       if (error.code === 'auth/invalid-credential') errorMessage = 'Invalid credentials';
-      
+      if (error.code === 'auth/network-request-failed') errorMessage = 'Network error. Please check your connection';
+      if (error.code === 'auth/too-many-requests') errorMessage = 'Too many failed attempts. Please try again later';
+
+      // Check for Firebase configuration issues
+      if (error.message && error.message.includes('API key')) {
+        errorMessage = 'Firebase configuration error. Please contact support.';
+        console.error('🔥 FIREBASE CONFIG ERROR: Check firebaseConfig.ts credentials');
+      }
+
       Alert.alert('Login Failed', errorMessage);
     }
   };
@@ -94,15 +153,49 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
+    console.log('🔄 Password reset requested for:', email.trim());
+
     try {
+      console.log('📧 Sending password reset email...');
       await sendPasswordResetEmail(auth, email.trim());
-      Alert.alert('Success', 'Password reset link has been sent to your email');
+      console.log('✅ Password reset email sent successfully!');
+
+      Alert.alert(
+        'Success',
+        `Password reset link has been sent to ${email.trim()}. Please check your email inbox (and spam folder).`,
+        [{ text: 'OK' }]
+      );
     } catch (error: any) {
+      console.error('❌ Password reset error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+
       let errorMessage = 'Failed to send reset email';
-      if (error.code === 'auth/invalid-email') errorMessage = 'Invalid email address';
-      if (error.code === 'auth/user-not-found') errorMessage = 'User not found';
-      
-      Alert.alert('Error', errorMessage);
+
+      if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address';
+        console.error('❌ Invalid email format:', email.trim());
+      }
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email address';
+        console.error('❌ User not found:', email.trim());
+      }
+      if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection';
+        console.error('🌐 Network connection failed');
+      }
+      if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many requests. Please try again later';
+        console.error('⚠️ Rate limit exceeded');
+      }
+
+      // Check for Firebase configuration issues
+      if (error.message && error.message.includes('API key')) {
+        errorMessage = 'Firebase configuration error. Please contact support.';
+        console.error('🔥 FIREBASE CONFIG ERROR: Check firebaseConfig.ts credentials');
+      }
+
+      Alert.alert('Password Reset Failed', errorMessage);
     }
   };
 
@@ -112,7 +205,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.background} />
-      
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -122,9 +215,9 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.illustrationContainer}>
           <View style={[styles.circleBackground, { backgroundColor: isDark ? theme.backgroundSecondary : '#f3f4f6' }]} />
           <View style={[styles.phoneFrame, { backgroundColor: theme.card, borderColor: theme.text }]}>
-            <Image 
-              source={require('../../assets/icon.png')} 
-              style={styles.logoImage} 
+            <Image
+              source={require('../../assets/icon.png')}
+              style={styles.logoImage}
               resizeMode="contain"
             />
             {/* Mock UI lines */}
@@ -142,7 +235,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* Form Container */}
         <View style={styles.formContainer}>
-          
+
           {/* Email Input */}
           <View style={styles.inputGroup}>
             <Text style={[styles.inputLabel, { color: theme.text }]}>Email Address</Text>

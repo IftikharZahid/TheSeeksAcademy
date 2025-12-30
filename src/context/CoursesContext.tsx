@@ -39,27 +39,27 @@ export const CoursesProvider: React.FC<{ children: ReactNode }> = ({ children })
       unsubscribe = onSnapshot(collection(db, "courses"), async (querySnapshot) => {
         try {
           if (querySnapshot.empty) {
-             // Optional: Seed if absolutely needed, or just handle empty
-             // For now, if empty, we might keep local fallback or just empty list
-             if (courses.length === 0 && !await AsyncStorage.getItem('courses_cache')) {
-                // Seed logic could go here if really desired
-
-             }
-             setCourses([]);
+            // Use local fallback data when Firebase is empty
+            console.log("Firebase courses collection is empty, using local data");
+            setCourses(localCourses);
+            await AsyncStorage.setItem('courses_cache', JSON.stringify(localCourses));
           } else {
-             const fetchedCourses: Course[] = [];
-             querySnapshot.forEach((doc) => {
-               fetchedCourses.push({ id: doc.id, ...doc.data() } as Course);
-             });
-             setCourses(fetchedCourses);
-             await AsyncStorage.setItem('courses_cache', JSON.stringify(fetchedCourses));
+            const fetchedCourses: Course[] = [];
+            querySnapshot.forEach((doc) => {
+              fetchedCourses.push({ id: doc.id, ...doc.data() } as Course);
+            });
+            setCourses(fetchedCourses);
+            await AsyncStorage.setItem('courses_cache', JSON.stringify(fetchedCourses));
           }
           setIsLoading(false);
         } catch (error) {
-           console.error("Error processing courses snapshot: ", error);
+          console.error("Error processing courses snapshot: ", error);
         }
       }, (error) => {
         console.error("Error listening to courses: ", error);
+        // On error, use local fallback data
+        console.log("Firebase error, using local data");
+        setCourses(localCourses);
         setIsLoading(false);
       });
     };
@@ -72,10 +72,10 @@ export const CoursesProvider: React.FC<{ children: ReactNode }> = ({ children })
   }, []);
 
   const refreshCourses = async () => {
-     // No-op or maybe re-sync logic if needed, but onSnapshot handles updates.
-     // We can keep it to satisfy interface or trigger a check.
-     // For now, we'll just wait a bit to simulate refresh
-     await new Promise(resolve => setTimeout(resolve, 500));
+    // No-op or maybe re-sync logic if needed, but onSnapshot handles updates.
+    // We can keep it to satisfy interface or trigger a check.
+    // For now, we'll just wait a bit to simulate refresh
+    await new Promise(resolve => setTimeout(resolve, 500));
   };
 
   const toggleLike = (id: string) => {

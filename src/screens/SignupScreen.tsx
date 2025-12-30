@@ -41,38 +41,83 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
       Alert.alert('Error', 'Passwords do not match');
       return;
     }
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return;
+    }
 
     setIsLoading(true);
+    console.log('📝 Starting signup process for:', email.trim());
     
     try {
+      // Step 1: Create Firebase Authentication user
+      console.log('🔐 Creating Firebase Auth user...');
       const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      console.log('✅ Firebase Auth user created! UID:', userCredential.user.uid);
       
-      // Update profile with name
+      // Step 2: Update profile with name
       if (userCredential.user) {
+        console.log('👤 Updating user profile with display name...');
         await updateProfile(userCredential.user, {
           displayName: name.trim()
         });
+        console.log('✅ Display name updated:', name.trim());
         
-        // Create profile document in Firestore
-        await setDoc(doc(db, 'profile', userCredential.user.uid), {
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-          image: '', // Default empty, user can update later
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
+        // Step 3: Create profile document in Firestore
+        try {
+          console.log('💾 Creating user profile in Firestore...');
+          await setDoc(doc(db, 'profile', userCredential.user.uid), {
+            name: name.trim(),
+            email: email.trim().toLowerCase(),
+            image: '', // Default empty, user can update later
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+          console.log('✅ User profile created in Firestore collection: profile');
+        } catch (firestoreError) {
+          console.error('❌ Error creating Firestore profile:', firestoreError);
+          console.error('Note: Auth user was created, but profile doc failed');
+        }
       }
 
+      console.log('🎉 Signup successful!');
       setIsLoading(false);
-      Alert.alert('Success', 'Account created successfully!', [
-        { text: 'OK', onPress: () => navigation.navigate('Login') }
-      ]);
+      
+      Alert.alert(
+        'Success', 
+        'Account created successfully! You can now log in.', 
+        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+      );
+      
     } catch (error: any) {
       setIsLoading(false);
+      console.error('❌ Signup error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      
       let errorMessage = 'Something went wrong';
-      if (error.code === 'auth/email-already-in-use') errorMessage = 'Email already in use';
-      if (error.code === 'auth/invalid-email') errorMessage = 'Invalid email address';
-      if (error.code === 'auth/weak-password') errorMessage = 'Password should be at least 6 characters';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'Email already in use';
+        console.error('📧 Email already registered:', email.trim());
+      }
+      if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address';
+        console.error('❌ Invalid email format:', email.trim());
+      }
+      if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password should be at least 6 characters';
+        console.error('🔒 Weak password provided');
+      }
+      if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your connection';
+        console.error('🌐 Network connection failed');
+      }
+      
+      // Check for Firebase configuration issues
+      if (error.message && error.message.includes('API key')) {
+        errorMessage = 'Firebase configuration error. Please contact support.';
+        console.error('🔥 FIREBASE CONFIG ERROR: Check firebaseConfig.ts credentials');
+      }
       
       Alert.alert('Signup Failed', errorMessage);
     }
