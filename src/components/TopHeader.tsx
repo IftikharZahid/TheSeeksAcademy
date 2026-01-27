@@ -3,26 +3,23 @@ import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { notices } from '../screens/NoticesScreen';
 import { useTheme } from '../context/ThemeContext';
+import { useNotifications } from '../context/NotificationContext';
 import { auth, db } from '../api/firebaseConfig';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-
 import { Ionicons } from '@expo/vector-icons';
-import { scale } from '../utils/responsive'; // Verify import path
+import { scale } from '../utils/responsive';
 
-// ... 
-
-export const TopHeader: React.FC<{ title?: string; onBell?: () => void; notificationCount?: number }> = ({ title = 'Home', onBell, notificationCount }) => {
-  // ... (keep existing hook logic) ...
+export const TopHeader: React.FC = () => {
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
+  const { unreadCount: notificationCount } = useNotifications();
   const [profileData, setProfileData] = useState<any>(null);
   const user = auth.currentUser;
 
   useEffect(() => {
     if (!user?.email) return;
-
+    // ... existing profile logic ...
     const cacheKey = `user_profile_${user.email}`;
 
     // Load from cache immediately
@@ -39,9 +36,9 @@ export const TopHeader: React.FC<{ title?: string; onBell?: () => void; notifica
     loadCache();
 
     // Real-time listener for profile data
-    const q = query(collection(db, "profile"), where("email", "==", user.email));
+    const qProfile = query(collection(db, "profile"), where("email", "==", user.email));
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const unsubscribe = onSnapshot(qProfile, (querySnapshot) => {
       if (!querySnapshot.empty) {
         const docData = querySnapshot.docs[0].data();
         setProfileData(docData);
@@ -59,26 +56,6 @@ export const TopHeader: React.FC<{ title?: string; onBell?: () => void; notifica
     return () => unsubscribe();
   }, [user]);
 
-  const handleBellPress = () => {
-    if (onBell) {
-      onBell();
-    } else {
-      // Navigate to NoticeBoard tab in MainTabs
-      navigation.navigate('NoticeBoard');
-    }
-  };
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return 'Good Morning 🌄';
-    if (hour >= 12 && hour < 13) return 'Good Noon 🌞';
-    if (hour >= 13 && hour < 17) return 'Good Afternoon 🌤️';
-    if (hour >= 17 && hour < 20) return 'Good Evening 🌃';
-    return 'Good Night, Sweet Dreams 🌌';
-  };
-
-  const count = notificationCount !== undefined ? notificationCount : notices.length;
-
   // Fallback logic
   const displayName = profileData?.fullname || user?.displayName || 'Student';
   const displayImage = profileData?.image || user?.photoURL;
@@ -86,7 +63,29 @@ export const TopHeader: React.FC<{ title?: string; onBell?: () => void; notifica
   return (
     <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
+        {/* Left Section - Hello + Name */}
         <View style={styles.leftSection}>
+          <Text style={[styles.helloText, { color: theme.textSecondary }]}>Hello</Text>
+          <Text style={[styles.userName, { color: theme.text }]}>{displayName}</Text>
+        </View>
+
+        {/* Right Section - Notification + Avatar */}
+        <View style={styles.rightSection}>
+          <TouchableOpacity
+            style={[styles.notificationButton, { backgroundColor: theme.card }]}
+            onPress={() => navigation.navigate('Home', { screen: 'NoticesScreen' })}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="notifications-outline" size={scale(22)} color={theme.text} />
+            {notificationCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {notificationCount > 9 ? '9+' : notificationCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
           <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.7}>
             <View style={styles.avatar}>
               <Image
@@ -95,23 +94,6 @@ export const TopHeader: React.FC<{ title?: string; onBell?: () => void; notifica
                 style={styles.avatarImage}
               />
             </View>
-          </TouchableOpacity>
-          <View style={styles.userInfo}>
-            <Text style={[styles.userName, { color: theme.text }]}>{displayName}</Text>
-            <Text style={[styles.greetingText, { color: theme.textSecondary }]}>{getGreeting()}</Text>
-          </View>
-        </View>
-        <View style={styles.rightSection}>
-          <TouchableOpacity onPress={handleBellPress} style={styles.iconButton}>
-            <Ionicons name="notifications-outline" size={scale(24)} color={theme.text} />
-            {count > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{count > 9 ? '9+' : count}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('Home', { screen: 'SettingsScreen' })} style={styles.iconButton}>
-            <Ionicons name="settings-outline" size={scale(24)} color={theme.text} />
           </TouchableOpacity>
         </View>
       </View>
@@ -128,59 +110,67 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: scale(16),
-    paddingVertical: scale(12),
+    paddingVertical: scale(8),
   },
   leftSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
+  },
+  helloText: {
+    fontSize: scale(14),
+    color: '#6b7280',
+  },
+  userName: {
+    fontSize: scale(20),
+    fontWeight: '700',
+    color: '#1f2937',
+    marginTop: scale(2),
   },
   avatar: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: scale(8),
+    width: scale(50),
+    height: scale(50),
+    borderRadius: scale(25),
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
   },
   avatarImage: {
     width: '100%',
     height: '100%',
   },
-  userInfo: {
-    marginLeft: scale(12),
-  },
-  userName: {
-    fontSize: scale(14),
-    fontWeight: '600',
-    color: '#1f2937',
-  },
-  greetingText: {
-    fontSize: scale(11),
-    color: '#6b7280',
-    marginTop: scale(2),
-  },
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(4),
+    gap: scale(12),
   },
-  iconButton: {
-    padding: scale(8),
-    position: 'relative',
+  notificationButton: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   badge: {
     position: 'absolute',
-    top: scale(4),
-    right: scale(4),
-    backgroundColor: '#ef4444',
-    borderRadius: scale(10),
+    top: -2,
+    right: -2,
     minWidth: scale(16),
     height: scale(16),
+    borderRadius: scale(8),
+    backgroundColor: '#F44336',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: scale(2),
+    paddingHorizontal: 2,
   },
   badgeText: {
-    color: '#ffffff',
-    fontSize: scale(10),
-    fontWeight: 'bold',
+    color: '#fff',
+    fontSize: scale(9),
+    fontWeight: '700',
   },
 });

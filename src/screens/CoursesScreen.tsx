@@ -9,54 +9,37 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCourses } from '../context/CoursesContext';
 import { Course } from '../data/courses';
 import { useTheme } from '../context/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
+import { scale } from '../utils/responsive';
 
 const CourseCard = memo(
-  ({ item, liked }: { item: Course; liked: boolean }) => {
-    const [localLiked, setLocalLiked] = React.useState(liked);
+  ({ item, onPress }: { item: Course; onPress: () => void }) => {
     const { theme } = useTheme();
-
-    const handleToggle = () => {
-      setLocalLiked((prev) => !prev);
-    };
 
     return (
       <TouchableOpacity
-        style={[styles.courseCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-        activeOpacity={0.9}
+        style={[styles.courseItem, { borderBottomColor: theme.border }]}
+        activeOpacity={0.7}
+        onPress={onPress}
       >
-        <Image source={{ uri: item.image }} style={[styles.courseImage, { backgroundColor: theme.border }]} />
+        <Image source={{ uri: item.image }} style={styles.courseImage} />
 
-        <View style={styles.courseInfo}>
-          <Text style={[styles.courseName, { color: theme.text }]} numberOfLines={2}>
+        <View style={styles.courseContent}>
+          <Text style={[styles.courseName, { color: theme.text }]} numberOfLines={1}>
             {item.name}
           </Text>
-
           <Text style={[styles.teacherName, { color: theme.textSecondary }]} numberOfLines={1}>
             {item.teacher}
           </Text>
+        </View>
 
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[
-                styles.likeButton,
-                { backgroundColor: theme.background, borderColor: theme.border },
-                localLiked && styles.likeButtonActive
-              ]}
-              onPress={handleToggle}
-            >
-              <Text style={[styles.likeText, localLiked && styles.likeTextActive]}>
-                {localLiked ? '❤️' : '🤍'}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.enrollButton, { backgroundColor: theme.primary }]}>
-              <Text style={styles.enrollText}>More Detail...</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.actionIcon}>
+          <Ionicons name="chevron-forward" size={scale(20)} color={theme.textTertiary} />
         </View>
       </TouchableOpacity>
     );
@@ -64,7 +47,8 @@ const CourseCard = memo(
 );
 
 export const CoursesScreen: React.FC = () => {
-  const { courses, isLiked, refreshCourses, isLoading } = useCourses();
+  const navigation = useNavigation<any>(); // Added type
+  const { courses, refreshCourses, isLoading } = useCourses();
   const { theme } = useTheme();
   const [refreshing, setRefreshing] = React.useState(false);
 
@@ -76,39 +60,48 @@ export const CoursesScreen: React.FC = () => {
 
   const renderCourse = useCallback(
     ({ item }: { item: Course }) => {
-      const liked = isLiked(item.id);
       return (
         <CourseCard
           item={item}
-          liked={liked}
+          onPress={() => navigation.navigate('Home', { screen: 'VideoLecturesScreen', params: { courseId: item.id } })}
         />
       );
     },
-    [isLiked]
+    [navigation]
   );
 
   const renderSkeleton = useCallback(() => {
     return (
-      <View style={[styles.courseCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <View style={[styles.courseImage, { backgroundColor: theme.border, justifyContent: 'center', alignItems: 'center' }]}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
-        <View style={styles.courseInfo}>
-          <View style={{ height: 14, width: '80%', backgroundColor: theme.border, marginBottom: 8, borderRadius: 4 }} />
-          <View style={{ height: 14, width: '60%', backgroundColor: theme.border, marginBottom: 12, borderRadius: 4 }} />
-          <View style={{ height: 12, width: '40%', backgroundColor: theme.border, marginBottom: 8, borderRadius: 4 }} />
-
-          <View style={styles.actionButtons}>
-            <View style={{ width: 30, height: 30, backgroundColor: theme.border, borderRadius: 6 }} />
-            <View style={{ width: 80, height: 26, backgroundColor: theme.border, borderRadius: 6 }} />
-          </View>
+      <View style={[styles.courseItem, { borderBottomColor: theme.border }]}>
+        <View style={[styles.courseImage, { backgroundColor: theme.border }]} />
+        <View style={styles.courseContent}>
+          <View style={{ height: 14, width: '60%', backgroundColor: theme.border, marginBottom: 6, borderRadius: 4 }} />
+          <View style={{ height: 12, width: '40%', backgroundColor: theme.border, borderRadius: 4 }} />
         </View>
       </View>
     );
   }, [theme]);
 
+  // Use useNavigation from generic import if we didn't use the hook above, 
+  // but we declared navigation above. Ensure import exists.
+  // Note: 'useNavigation' core import is missing in the file header block in the prompt context but was there in previous file? 
+  // Wait, the previous file had 'import React...'. Let's check imports. 
+  // Function component has 'const navigation = useNavigation();' usually. 
+  // I will assume useNavigation needs to be imported or used from props if not.
+  // The original file didn't use useNavigation hook? 
+  // Ah, I need to add import { useNavigation } from '@react-navigation/native';
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+      {/* Simple Back Button Header (Like NoticeBoard) */}
+      <View style={styles.simpleHeader}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={scale(24)} color={theme.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Courses</Text>
+        <View style={{ width: scale(32) }} />
+      </View>
+
       {isLoading ? (
         <FlatList
           data={[1, 2, 3, 4, 5, 6]}
@@ -116,8 +109,6 @@ export const CoursesScreen: React.FC = () => {
           renderItem={renderSkeleton}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
-          numColumns={2}
-          columnWrapperStyle={styles.columnWrapper}
           style={[styles.list, { backgroundColor: theme.background }]}
         />
       ) : (
@@ -127,17 +118,13 @@ export const CoursesScreen: React.FC = () => {
           renderItem={renderCourse}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
-          numColumns={2}
-          columnWrapperStyle={styles.columnWrapper}
           style={[styles.list, { backgroundColor: theme.background }]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
           }
-
-          // ⚡ Optimization props
-          initialNumToRender={6}
-          maxToRenderPerBatch={6}
-          windowSize={7}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={10}
           removeClippedSubviews
         />
       )}
@@ -146,101 +133,60 @@ export const CoursesScreen: React.FC = () => {
 };
 
 /* -------------------------------------
-          STYLES (Optimized)
+          STYLES (List View)
 -------------------------------------- */
-const CARD_WIDTH = '48%';
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
-
   list: { flex: 1 },
-
   listContent: {
-    paddingHorizontal: 16,
     paddingBottom: 100,
   },
-
-  columnWrapper: {
+  simpleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
   },
-
-  courseCard: {
-    width: CARD_WIDTH,
-    borderRadius: 16,
-    marginBottom: 18,
-    overflow: 'hidden',
-    borderWidth: 1,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+  headerTitle: {
+    fontSize: scale(20),
+    fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+    marginLeft: scale(-32), // Balance text center with left icon
   },
-
+  backButton: {
+    padding: scale(4),
+  },
+  courseItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(14),
+    borderBottomWidth: 1,
+  },
   courseImage: {
-    width: '100%',
-    height: 140,
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(8),
     backgroundColor: '#f0f0f0',
   },
-
-  courseInfo: { padding: 14 },
-
+  courseContent: {
+    flex: 1,
+    marginLeft: scale(12),
+    justifyContent: 'center',
+  },
   courseName: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 6,
-    height: 42,
-    lineHeight: 21,
+    fontSize: scale(15),
+    fontWeight: '600',
+    marginBottom: scale(4),
   },
-
   teacherName: {
-    fontSize: 13,
-    marginBottom: 12,
-    fontWeight: '500',
+    fontSize: scale(13),
   },
-
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-
-  likeButton: {
-    padding: 7,
-    borderRadius: 8,
-    borderWidth: 1.5,
-  },
-
-  likeButtonActive: {
-    backgroundColor: '#fee2e2',
-    borderColor: '#ef4444',
-  },
-
-  likeText: {
-    fontSize: 14,
-    color: '#9ca3af',
-  },
-
-  likeTextActive: {
-    color: '#ef4444',
-  },
-
-  enrollButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-
-  enrollText: {
-    color: '#ffffff',
-    fontSize: 11,
-    fontWeight: '700',
-  },
+  actionIcon: {
+    paddingLeft: scale(8),
+  }
 });
 
 export default CoursesScreen;

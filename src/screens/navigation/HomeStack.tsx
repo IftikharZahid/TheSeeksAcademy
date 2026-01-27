@@ -17,6 +17,12 @@ import { HelpCenterScreen } from '../SettingScreens/HelpCenterScreen';
 import { ComplaintsScreen } from '../AdminScreens/ComplaintsScreen';
 import { AdminTeachersScreen } from '../AdminScreens/AdminTeachersScreen';
 import { FeeDetailScreen } from '../FeeDetailScreen';
+import { VideoLecturesScreen } from '../VideoLecturesScreen';
+import { VideoGalleryScreen } from '../VideoGalleryScreen';
+import { SearchScreen } from '../SearchScreen';
+import { NoticesScreen } from '../NoticeScreen';
+import { AdminNoticeBoardScreen } from '../AdminScreens/AdminNoticeBoardScreen';
+import { MessagesScreen } from '../MessagesScreen';
 
 export type HomeStackParamList = {
   HomeScreen: undefined;
@@ -44,6 +50,17 @@ export type HomeStackParamList = {
   ComplaintsScreen: undefined;
   AdminTeachersScreen: undefined;
   FeeDetailScreen: undefined;
+  VideoLecturesScreen: {
+    subjectId?: string;
+    subjectName?: string;
+    subjectColor?: string;
+  };
+  VideoGalleryScreen: undefined;
+  SearchScreen: undefined;
+
+  NoticesScreen: undefined;
+  AdminNoticeBoardScreen: undefined;
+  MessagesScreen: undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -67,6 +84,12 @@ export const HomeStack: React.FC = () => {
       <Stack.Screen name="ComplaintsScreen" component={ComplaintsScreen} />
       <Stack.Screen name="AdminTeachersScreen" component={AdminTeachersScreen} />
       <Stack.Screen name="FeeDetailScreen" component={FeeDetailScreen} />
+      <Stack.Screen name="VideoLecturesScreen" component={VideoLecturesScreen} />
+      <Stack.Screen name="VideoGalleryScreen" component={VideoGalleryScreen} />
+      <Stack.Screen name="SearchScreen" component={SearchScreen} />
+      <Stack.Screen name="NoticesScreen" component={NoticesScreen} />
+      <Stack.Screen name="AdminNoticeBoardScreen" component={AdminNoticeBoardScreen} />
+      <Stack.Screen name="MessagesScreen" component={MessagesScreen} />
     </Stack.Navigator>
   );
 };

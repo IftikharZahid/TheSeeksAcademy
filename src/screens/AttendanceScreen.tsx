@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import Svg, { Circle, Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { useTheme } from '../context/ThemeContext';
+import { NavigationHeader } from '../components/NavigationHeader';
 
 const { width } = Dimensions.get("window");
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -187,8 +188,8 @@ export const AttendanceScreen: React.FC = () => {
         PROGRESS RING ANIMATION
   ------------------------------ */
   const progress = useRef(new Animated.Value(0)).current;
-  const RADIUS = 60;
-  const STROKE_WIDTH = 12;
+  const RADIUS = 50;
+  const STROKE_WIDTH = 10;
   const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
   useEffect(() => {
@@ -243,31 +244,40 @@ export const AttendanceScreen: React.FC = () => {
   ------------------------------ */
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={["top", "left", "right"]}>
-      {/* HEADER */}
-      <View style={[styles.header, { backgroundColor: theme.background }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={[styles.backIcon, { color: theme.text }]}>←</Text>
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Attendance</Text>
-        <View style={{ width: 40 }} />
+      {/* MODERN HEADER */}
+      <NavigationHeader
+        title="Attendance"
+        showBack={true}
+        rightAction={{
+          icon: 'calendar',
+          onPress: () => {/* Optional calendar view toggle */ }
+        }}
+      />
+
+      <View style={{ position: 'absolute', top: 16, right: 16, zIndex: 10 }}>
+        {/* Compact Present Score (Top Right - Overlay) */}
+        <View style={styles.compactScore}>
+          <Text style={[styles.compactPercentage, { color: theme.primary }]}>{summary.percentage}%</Text>
+          <Text style={[styles.compactLabel, { color: theme.textSecondary }]}>Present</Text>
+        </View>
       </View>
 
-      <ScrollView 
-        contentContainerStyle={{ paddingBottom: 150 }}
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
       >
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Monthly calendar view</Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Track your monthly attendance</Text>
 
-        {/* MONTH DROPDOWN */}
+        {/* COMPACT MONTH DROPDOWN */}
         <View style={styles.dropdownContainer}>
           <TouchableOpacity
             onPress={() => setDropdownVisible((s) => !s)}
-            style={[styles.dropdownButton, { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border }]}
+            style={[styles.compactDropdownButton, { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border }]}
             disabled={animating}
           >
-            <Text style={[styles.dropdownText, { color: theme.text }]}>{selectedMonth}</Text>
+            <Text style={[styles.compactDropdownText, { color: theme.text }]}>{selectedMonth}</Text>
             <Text style={[styles.dropdownArrow, { color: theme.textSecondary }]}>{dropdownVisible ? "▲" : "▼"}</Text>
           </TouchableOpacity>
 
@@ -286,87 +296,48 @@ export const AttendanceScreen: React.FC = () => {
           )}
         </View>
 
-        {/* PROGRESS RING */}
-        <View style={styles.progressContainer}>
-          <View style={styles.circleWrapper}>
-            <Svg width={160} height={160}>
-              <Defs>
-                <LinearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-                  <Stop offset="0" stopColor={theme.primary} />
-                  <Stop offset="0.5" stopColor="#a78bfa" />
-                  <Stop offset="1" stopColor="#c4b5fd" />
-                </LinearGradient>
-              </Defs>
 
-              <Circle
-                cx="80"
-                cy="80"
-                r={RADIUS}
-                stroke={isDark ? theme.border : "#E5E7EB"}
-                strokeWidth={STROKE_WIDTH}
-                fill="transparent"
-              />
-
-              <AnimatedCircle
-                cx="80"
-                cy="80"
-                r={RADIUS}
-                stroke="url(#grad)"
-                strokeWidth={STROKE_WIDTH}
-                strokeDasharray={CIRCUMFERENCE}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                fill="transparent"
-                transform="rotate(-90 80 80)"
-              />
-            </Svg>
-
-            <View style={styles.centerTextContainer}>
-              <Text style={[styles.percentageTextBig, { color: theme.primary }]}>{summary.percentage}%</Text>
-              <Text style={[styles.percentageLabel, { color: theme.textSecondary }]}>Present</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Animated calendar container */}
+        {/* CALENDAR CARD */}
         <Animated.View
           style={{
             transform: [{ translateX: animTranslate }],
             opacity: animOpacity,
           }}
         >
-          {/* WEEKDAY HEADERS */}
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Monthly Calendar</Text>
-          <View style={styles.calendarRow}>
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-              <Text key={d} style={[styles.calendarHeader, { color: theme.textSecondary }]}>
-                {d}
-              </Text>
-            ))}
-          </View>
+          <View style={[styles.calendarCard, { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border }]}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Monthly Calendar</Text>
 
-          {/* CALENDAR GRID */}
-          {monthCalendar.map((week, rowIndex) => (
-            <View key={rowIndex} style={styles.calendarRow}>
-              {week.map((day, colIndex) => {
-                const showDay = typeof day === "number";
-                // determine attendance key
-                const mm = (monthIndex + 1).toString().padStart(2, "0");
-                const dd = showDay ? day.toString().padStart(2, "0") : null;
-                const key = showDay ? `${currentYear}-${mm}-${dd}` : null;
-                const status = key ? attendanceMap[key] : undefined;
+            {/* WEEKDAY HEADERS */}
+            <View style={styles.calendarRow}>
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+                <Text key={d} style={[styles.calendarHeader, { color: theme.textSecondary }]}>
+                  {d}
+                </Text>
+              ))}
+            </View>
 
-                const isSunday = colIndex === 0;
-                const isToday = isCalendarMonthToday && showDay && day === todayDate;
+            {/* CALENDAR GRID */}
+            {monthCalendar.map((week, rowIndex) => (
+              <View key={rowIndex} style={styles.calendarRow}>
+                {week.map((day, colIndex) => {
+                  const showDay = typeof day === "number";
+                  // determine attendance key
+                  const mm = (monthIndex + 1).toString().padStart(2, "0");
+                  const dd = showDay ? day.toString().padStart(2, "0") : null;
+                  const key = showDay ? `${currentYear}-${mm}-${dd}` : null;
+                  const status = key ? attendanceMap[key] : undefined;
 
-                // Determine background color and text color
-                let bgColor = "transparent";
-                let textColor = showDay ? (isDark ? theme.text : "#1f2937") : "transparent";
+                  const isSunday = colIndex === 0;
+                  const isToday = isCalendarMonthToday && showDay && day === todayDate;
 
-                if (showDay) {
-                  if (isSunday) {
-                     textColor = "#EF4444"; // Red text for Sunday
-                  } else {
+                  // Determine background color and text color
+                  let bgColor = "transparent";
+                  let textColor = showDay ? (isDark ? theme.text : "#1f2937") : "transparent";
+
+                  if (showDay) {
+                    if (isSunday) {
+                      textColor = "#EF4444"; // Red text for Sunday
+                    } else {
                       if (status === 'present') {
                         bgColor = "#10B981"; // Green
                         textColor = "#ffffff";
@@ -380,37 +351,38 @@ export const AttendanceScreen: React.FC = () => {
                         bgColor = theme.primary; // Purple (Primary)
                         textColor = "#ffffff";
                       }
+                    }
                   }
-                }
 
-                return (
-                  <TouchableOpacity
-                    key={colIndex}
-                    style={styles.calendarCell}
-                    disabled={!showDay}
-                    onPress={() => showDay && openDayModal(currentYear, monthIndex, day)}
-                  >
-                    <View style={{ alignItems: "center", justifyContent: 'center' }}>
-                      <View style={[
-                        styles.dayCircle, 
-                        { backgroundColor: bgColor },
-                        isSunday && !isToday && { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2' }
-                      ]}>
-                        <Text style={[
-                          styles.calendarDate, 
-                          { color: textColor },
+                  return (
+                    <TouchableOpacity
+                      key={colIndex}
+                      style={styles.calendarCell}
+                      disabled={!showDay}
+                      onPress={() => showDay && openDayModal(currentYear, monthIndex, day)}
+                    >
+                      <View style={{ alignItems: "center", justifyContent: 'center' }}>
+                        <View style={[
+                          styles.dayCircle,
+                          { backgroundColor: bgColor },
+                          isSunday && !isToday && { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.1)' : '#FEF2F2' }
                         ]}>
-                          {showDay ? day : ""}
-                        </Text>
+                          <Text style={[
+                            styles.calendarDate,
+                            { color: textColor },
+                          ]}>
+                            {showDay ? day : ""}
+                          </Text>
+                        </View>
+
+                        {/* Optional: Label for Sunday/Off if needed, or just visual */}
                       </View>
-                      
-                      {/* Optional: Label for Sunday/Off if needed, or just visual */}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          ))}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
         </Animated.View>
 
         {/* MONTH SUMMARY */}
@@ -473,7 +445,7 @@ export const AttendanceScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 };
 
@@ -486,16 +458,29 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
   },
   backIcon: { fontSize: 24, fontWeight: "700" },
-  headerTitle: { fontSize: 20, fontWeight: "700" },
-  subtitle: { textAlign: "center", marginBottom: 15 },
+  headerTitle: { fontSize: 20, fontWeight: "700", flex: 1, marginLeft: 12 },
 
-  dropdownContainer: { marginHorizontal: 16 },
-  dropdownButton: {
-    padding: 14,
-    borderRadius: 12,
+  compactScore: {
+    alignItems: "flex-end",
+  },
+  compactPercentage: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  compactLabel: {
+    fontSize: 10,
+    marginTop: -2,
+  },
+  subtitle: { textAlign: "center", marginBottom: 12, fontSize: 13 },
+
+  dropdownContainer: { marginHorizontal: 16, marginBottom: 12 },
+  compactDropdownButton: {
+    padding: 10,
+    borderRadius: 10,
     flexDirection: "row",
     justifyContent: "space-between",
     borderWidth: 1,
@@ -505,7 +490,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
   },
-  dropdownText: { fontSize: 15, fontWeight: "600" },
+  compactDropdownText: { fontSize: 14, fontWeight: "600" },
   dropdownArrow: { fontSize: 16 },
   dropdownList: {
     marginTop: 6,
@@ -516,19 +501,39 @@ const styles = StyleSheet.create({
   dropdownItem: { padding: 12 },
   dropdownItemText: { fontSize: 14 },
 
-  progressContainer: { alignItems: "center", marginVertical: 20 },
-  circleWrapper: { width: 160, height: 160, justifyContent: "center", alignItems: "center" },
+  progressContainer: { alignItems: "center", marginVertical: 12 },
+  circleWrapper: { width: 130, height: 130, justifyContent: "center", alignItems: "center" },
   centerTextContainer: { position: "absolute", alignItems: "center" },
-  percentageTextBig: { fontSize: 30, fontWeight: "700" },
-  percentageLabel: { },
+  percentageTextBig: { fontSize: 24, fontWeight: "700" },
+  percentageLabel: {},
 
-  sectionTitle: { fontSize: 18, fontWeight: "700", marginLeft: 16, marginBottom: 10 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", marginLeft: 16, marginBottom: 8, marginTop: 8 },
+
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 12,
+  },
+
+  /* CALENDAR CARD */
+  calendarCard: {
+    borderRadius: 12,
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+  },
 
   /* CALENDAR */
   calendarRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 10,
+    paddingHorizontal: 4,
   },
   calendarHeader: {
     width: width / 7 - 12,
@@ -538,21 +543,21 @@ const styles = StyleSheet.create({
   },
   calendarCell: {
     width: width / 7 - 12,
-    height: 64,
+    height: 52,
     justifyContent: "center",
     alignItems: "center",
   },
   calendarDate: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
   },
 
   /* today highlight - REPLACED by generic dayCircle logic but keeping for ref if needed, 
      actually we can remove todayOuter/todayInner and use dayCircle */
   dayCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -563,9 +568,10 @@ const styles = StyleSheet.create({
   /* SUMMARY */
   summaryCard: {
     borderRadius: 12,
-    padding: 16,
+    padding: 14,
     marginHorizontal: 16,
-    marginBottom: 20,
+    marginBottom: 16,
+    marginTop: 8,
     borderWidth: 1,
     elevation: 2,
     shadowColor: '#000',
@@ -573,18 +579,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
   },
-  summaryTitle: { fontSize: 16, fontWeight: "700", marginBottom: 10 },
+  summaryTitle: { fontSize: 15, fontWeight: "700", marginBottom: 10 },
   summaryRow: { flexDirection: "row", justifyContent: "space-between" },
   summaryBox: { alignItems: "center", flex: 1 },
-  summaryNumber: { fontSize: 22, fontWeight: "700", color: "#10B981" },
-  summaryLabel: { fontSize: 12 },
+  summaryNumber: { fontSize: 20, fontWeight: "700", color: "#10B981" },
+  summaryLabel: { fontSize: 11, marginTop: 2 },
 
   /* DAILY LOGS */
   logCard: {
-    padding: 16,
-    borderRadius: 12,
+    padding: 12,
+    borderRadius: 10,
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 10,
     borderWidth: 1,
     elevation: 2,
     shadowColor: '#000',
@@ -593,10 +599,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   logHeader: { flexDirection: "row", justifyContent: "space-between" },
-  logDate: { fontSize: 15, fontWeight: "700" },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-  badgeText: { color: "#fff", fontWeight: "700" },
-  logText: { marginTop: 6 },
+  logDate: { fontSize: 14, fontWeight: "700" },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 5 },
+  badgeText: { color: "#fff", fontWeight: "700", fontSize: 11 },
+  logText: { marginTop: 4, fontSize: 13 },
 
   /* MODAL */
   modalOverlay: {

@@ -7,8 +7,8 @@ import { ProfileStack } from './ProfileStack';
 import { CoursesScreen } from '../CoursesScreen';
 import { MessagesScreen } from '../MessagesScreen';
 import { TopHeader } from '../../components/TopHeader';
-import { NoticesScreen } from '../NoticesScreen';
-import { CustomTabBar } from '../../components/CustomTabBar';
+import { NoticesScreen } from '../NoticeScreen';
+import { EducationalTabBar } from '../../components/CustomTabBar';
 
 type TabParamList = {
   Home: undefined;
@@ -23,7 +23,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 export const MainTabs: React.FC = () => {
   return (
     <Tab.Navigator
-      tabBar={props => <CustomTabBar {...props} />}
+      tabBar={props => <EducationalTabBar {...props} />}
       screenOptions={{
         headerShown: true,
         header: () => <TopHeader />
@@ -34,7 +34,7 @@ export const MainTabs: React.FC = () => {
         component={HomeStack}
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeScreen';
-          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'CoursesScreen', 'StaffInfoScreen', 'SettingsScreen', 'SimTrackerScreen', 'ChangePasswordScreen', 'AboutScreen', 'PrivacyPolicyScreen', 'HelpCenterScreen', 'ComplaintsScreen', 'AdminTeachersScreen', 'FeeDetailScreen'];
+          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'CoursesScreen', 'StaffInfoScreen', 'SettingsScreen', 'SimTrackerScreen', 'ChangePasswordScreen', 'AboutScreen', 'PrivacyPolicyScreen', 'HelpCenterScreen', 'ComplaintsScreen', 'AdminTeachersScreen', 'FeeDetailScreen', 'VideoLecturesScreen', 'VideoGalleryScreen', 'NoticesScreen', 'MessagesScreen', 'SearchScreen'];
 
           const isHidden = hiddenRoutes.includes(routeName);
 
@@ -51,6 +51,7 @@ export const MainTabs: React.FC = () => {
         name="Courses"
         component={CoursesScreen}
         options={{
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="book" size={size} color={color} />
           ),
@@ -71,6 +72,7 @@ export const MainTabs: React.FC = () => {
         name="NoticeBoard"
         component={NoticesScreen}
         options={{
+          headerShown: false,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="notifications" size={size} color={color} />
           ),

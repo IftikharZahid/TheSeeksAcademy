@@ -1,16 +1,58 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, CommonActions } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { signOut } from "firebase/auth";
 import { auth } from "../../api/firebaseConfig";
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
+interface SettingItemProps {
+  icon: string;
+  iconColor: string;
+  title: string;
+  onPress?: () => void;
+  rightElement?: React.ReactNode;
+  showChevron?: boolean;
+}
+
+const SettingItem: React.FC<SettingItemProps> = ({
+  icon,
+  iconColor,
+  title,
+  onPress,
+  rightElement,
+  showChevron = true
+}) => {
+  const { theme } = useTheme();
+
+  const Content = (
+    <View style={styles.settingRow}>
+      <View style={[styles.iconContainer, { backgroundColor: `${iconColor}15` }]}>
+        <Ionicons name={icon as any} size={18} color={iconColor} />
+      </View>
+      <Text style={[styles.settingText, { color: theme.text }]}>{title}</Text>
+      {rightElement || (showChevron && (
+        <Ionicons name="chevron-forward" size={18} color={theme.textTertiary} />
+      ))}
+    </View>
+  );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+        {Content}
+      </TouchableOpacity>
+    );
+  }
+  return Content;
+};
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark, toggleTheme } = useTheme();
 
-  // Admin email list
   const ADMIN_EMAILS = ['theseeksacademyfta@gmail.com', 'iftikharzahid@outlook.com'];
   const currentUserEmail = auth.currentUser?.email?.toLowerCase() || '';
   const isAdmin = ADMIN_EMAILS.includes(currentUserEmail);
@@ -23,195 +65,158 @@ export const SettingsScreen: React.FC = () => {
     }
   };
 
+  const accountItems = [
+    { icon: 'phone-portrait', color: '#6366f1', title: 'SIM Tracker', screen: 'SimTrackerScreen' },
+    { icon: 'bar-chart', color: '#0ea5e9', title: 'Attendance Log', screen: null },
+    { icon: 'document-text', color: '#10b981', title: 'Assignments', screen: null },
+    { icon: 'chatbubbles', color: '#f59e0b', title: 'Messages', screen: null },
+    { icon: 'notifications', color: '#ef4444', title: 'Notifications', screen: null },
+  ];
+
+  const generalItems = [
+    { icon: 'key', color: '#8b5cf6', title: 'Change Password', screen: 'ChangePasswordScreen' },
+    { icon: 'globe', color: '#14b8a6', title: 'Language', value: 'English' },
+  ];
+
+  const preferenceItems = [
+    { icon: 'information-circle', color: '#6366f1', title: 'About App', screen: 'AboutScreen' },
+    { icon: 'shield-checkmark', color: '#10b981', title: 'Privacy Policy', screen: 'PrivacyPolicyScreen' },
+    { icon: 'help-circle', color: '#f59e0b', title: 'Help Center', screen: 'HelpCenterScreen' },
+  ];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundSecondary }]} edges={['top', 'left', 'right']}>
-      {/* Header */}
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: theme.background }]}>
-          <Text style={[styles.backIcon, { color: theme.text }]}>‹</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+      {/* Compact Header */}
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <TouchableOpacity
+          style={[styles.backButton, { backgroundColor: theme.backgroundSecondary }]}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={20} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Settings</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Account Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Account</Text>
-          
-          <View style={[styles.card, { backgroundColor: theme.card }]}>
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={() => navigation.navigate('SimTrackerScreen' as never)}
-            >
-              <View style={styles.settingLeft}>
-                <Text style={styles.settingIcon}>📱</Text>
-                <Text style={[styles.settingText, { color: theme.text }]}>SIM Tracker</Text>
-              </View>
-              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
-            </TouchableOpacity>
-
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            <TouchableOpacity style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <Text style={styles.settingIcon}>📊</Text>
-                <Text style={[styles.settingText, { color: theme.text }]}>Attendance Log</Text>
-              </View>
-              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
-            </TouchableOpacity>
-
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            <TouchableOpacity style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <Text style={styles.settingIcon}>📝</Text>
-                <Text style={[styles.settingText, { color: theme.text }]}>Assignments</Text>
-              </View>
-              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
-            </TouchableOpacity>
-
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            <TouchableOpacity style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <Text style={styles.settingIcon}>💬</Text>
-                <Text style={[styles.settingText, { color: theme.text }]}>Messages</Text>
-              </View>
-              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
-            </TouchableOpacity>
-
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            <TouchableOpacity style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <Text style={styles.settingIcon}>🔔</Text>
-                <Text style={[styles.settingText, { color: theme.text }]}>Notification Settings</Text>
-              </View>
-              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
-            </TouchableOpacity>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>ACCOUNT</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            {accountItems.map((item, index) => (
+              <React.Fragment key={item.title}>
+                {index > 0 && <View style={[styles.divider, { backgroundColor: theme.border }]} />}
+                <SettingItem
+                  icon={item.icon}
+                  iconColor={item.color}
+                  title={item.title}
+                  onPress={item.screen ? () => navigation.navigate(item.screen as never) : undefined}
+                />
+              </React.Fragment>
+            ))}
           </View>
         </View>
 
         {/* General Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>General</Text>
-          
-          <View style={[styles.card, { backgroundColor: theme.card }]}>
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={() => navigation.navigate('ChangePasswordScreen' as never)}
-            >
-              <View style={styles.settingLeft}>
-                <Text style={styles.settingIcon}>🔑</Text>
-                <Text style={[styles.settingText, { color: theme.text }]}>Change Password</Text>
-              </View>
-              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
-            </TouchableOpacity>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>GENERAL</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            {generalItems.map((item, index) => (
+              <React.Fragment key={item.title}>
+                {index > 0 && <View style={[styles.divider, { backgroundColor: theme.border }]} />}
+                <SettingItem
+                  icon={item.icon}
+                  iconColor={item.color}
+                  title={item.title}
+                  onPress={item.screen ? () => navigation.navigate(item.screen as never) : undefined}
+                  rightElement={item.value ? (
+                    <View style={styles.valueContainer}>
+                      <Text style={[styles.valueText, { color: theme.textSecondary }]}>{item.value}</Text>
+                      <Ionicons name="chevron-forward" size={18} color={theme.textTertiary} />
+                    </View>
+                  ) : undefined}
+                />
+              </React.Fragment>
+            ))}
 
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-            <View style={[styles.settingRow, { backgroundColor: theme.card }]}>
-              <View style={styles.settingLeft}>
-                <Text style={styles.settingIcon}>☀️</Text>
-                <Text style={[styles.settingText, { color: theme.text }]}>Dark Mode</Text>
-              </View>
-              <Switch
-                value={isDark}
-                onValueChange={toggleTheme}
-                trackColor={{ false: theme.border, true: theme.primaryLight }}
-                thumbColor={isDark ? theme.primary : theme.background}
-              />
-            </View>
-
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            <TouchableOpacity style={styles.settingRow}>
-              <View style={styles.settingLeft}>
-                <Text style={styles.settingIcon}>🌐</Text>
-                <Text style={[styles.settingText, { color: theme.text }]}>Language</Text>
-              </View>
-              <View style={styles.settingRight}>
-                <Text style={[styles.languageValue, { color: theme.textSecondary }]}>English</Text>
-                <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
-              </View>
-            </TouchableOpacity>
+            {/* Dark Mode Toggle */}
+            <SettingItem
+              icon={isDark ? 'moon' : 'sunny'}
+              iconColor="#f59e0b"
+              title="Dark Mode"
+              showChevron={false}
+              rightElement={
+                <Switch
+                  value={isDark}
+                  onValueChange={toggleTheme}
+                  trackColor={{ false: theme.border, true: theme.primaryLight }}
+                  thumbColor={isDark ? theme.primary : '#fff'}
+                  style={{ transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }] }}
+                />
+              }
+            />
           </View>
         </View>
 
         {/* Preferences Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Preferences</Text>
-          
-          <View style={[styles.card, { backgroundColor: theme.card }]}>
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={() => navigation.navigate('AboutScreen' as never)}
-            >
-              <View style={styles.settingLeft}>
-                <Text style={styles.settingIcon}>ℹ️</Text>
-                <Text style={[styles.settingText, { color: theme.text }]}>About The App</Text>
-              </View>
-              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
-            </TouchableOpacity>
-
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={() => navigation.navigate('PrivacyPolicyScreen' as never)}
-            >
-              <View style={styles.settingLeft}>
-                <Text style={styles.settingIcon}>🛡️</Text>
-                <Text style={[styles.settingText, { color: theme.text }]}>Privacy & Policy</Text>
-              </View>
-              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
-            </TouchableOpacity>
-
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-            <TouchableOpacity 
-              style={styles.settingRow}
-              onPress={() => navigation.navigate('HelpCenterScreen' as never)}
-            >
-              <View style={styles.settingLeft}>
-                <Text style={styles.settingIcon}>📞</Text>
-                <Text style={[styles.settingText, { color: theme.text }]}>Help Center</Text>
-              </View>
-              <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
-            </TouchableOpacity>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>PREFERENCES</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            {preferenceItems.map((item, index) => (
+              <React.Fragment key={item.title}>
+                {index > 0 && <View style={[styles.divider, { backgroundColor: theme.border }]} />}
+                <SettingItem
+                  icon={item.icon}
+                  iconColor={item.color}
+                  title={item.title}
+                  onPress={() => navigation.navigate(item.screen as never)}
+                />
+              </React.Fragment>
+            ))}
           </View>
         </View>
 
-        {/* Admin Panel - Only visible for admin users */}
+        {/* Admin Panel */}
         {isAdmin && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Admin Panel</Text>
-            
-            <View style={[styles.card, { backgroundColor: theme.card }]}>
-              <TouchableOpacity 
-                style={styles.settingRow}
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>ADMIN</Text>
+            <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <TouchableOpacity
+                style={styles.adminRow}
                 onPress={() => navigation.navigate('Admin' as never)}
+                activeOpacity={0.7}
               >
-                <View style={styles.settingLeft}>
-                  <Text style={styles.settingIcon}>🛠️</Text>
-                  <Text style={[styles.settingText, { color: theme.text }]}>Admin Dashboard</Text>
+                <LinearGradient
+                  colors={['#6366f1', '#8b5cf6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.adminIconGradient}
+                >
+                  <Ionicons name="settings" size={18} color="#fff" />
+                </LinearGradient>
+                <View style={styles.adminTextContainer}>
+                  <Text style={[styles.adminTitle, { color: theme.text }]}>Admin Dashboard</Text>
+                  <Text style={[styles.adminSubtitle, { color: theme.textSecondary }]}>Manage academy</Text>
                 </View>
-                <Text style={[styles.chevron, { color: theme.textTertiary }]}>›</Text>
+                <Ionicons name="chevron-forward" size={18} color={theme.textTertiary} />
               </TouchableOpacity>
             </View>
           </View>
         )}
 
-        {/* Delete Account Button */}
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Log Out</Text>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
+          <Ionicons name="log-out-outline" size={20} color="#fff" />
+          <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -220,122 +225,125 @@ export const SettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  backIcon: {
-    fontSize: 30,
-    fontWeight: '700',
-    marginTop: -3,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
   content: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 16,
+  },
   section: {
-    marginTop: 24,
-    paddingHorizontal: 16,
+    marginTop: 16,
+    paddingHorizontal: 12,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1f2937',
-    marginBottom: 12,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    marginLeft: 4,
   },
   card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 14,
+    borderWidth: 1,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
   },
-  settingLeft: {
-    flexDirection: 'row',
+  iconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
     alignItems: 'center',
-    flex: 1,
-  },
-  settingIcon: {
-    fontSize: 20,
     marginRight: 12,
   },
   settingText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1f2937',
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
   },
-  settingRight: {
+  valueContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
   },
-  languageValue: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginRight: 4,
-  },
-  chevron: {
-    fontSize: 24,
-    color: '#9ca3af',
-    fontWeight: '600',
+  valueText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   divider: {
     height: 1,
-    backgroundColor: '#f3f4f6',
-    marginHorizontal: 16,
+    marginLeft: 56,
+  },
+  adminRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+  },
+  adminIconGradient: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  adminTextContainer: {
+    flex: 1,
+  },
+  adminTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  adminSubtitle: {
+    fontSize: 11,
+    marginTop: 1,
   },
   logoutButton: {
-    marginHorizontal: 16,
-    marginTop: 32,
-    paddingVertical: 16,
-    backgroundColor: '#ef4444',
-    borderRadius: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 12,
+    marginTop: 24,
+    paddingVertical: 12,
+    backgroundColor: '#ef4444',
+    borderRadius: 12,
+    gap: 8,
     shadowColor: '#ef4444',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
     elevation: 4,
   },
-  logoutButtonText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#ffffff',
+  logoutText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

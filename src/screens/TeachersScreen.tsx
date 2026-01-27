@@ -1,14 +1,19 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { NavigationHeader } from '../components/NavigationHeader';
+import { PageTransition } from '../components/PageTransition';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from "react-native";
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Dimensions } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from './navigation/HomeStack';
-import teachersData from '../../teachers.json';
+import teachersData from '../../docs/teachers.json';
 import { useTheme } from '../context/ThemeContext';
 import { db } from '../api/firebaseConfig';
 import { collection, getDocs, setDoc, doc, onSnapshot } from 'firebase/firestore';
+import { scale } from '../utils/responsive';
+
+const { width } = Dimensions.get('window');
 
 interface Teacher {
   id: string;
@@ -18,14 +23,28 @@ interface Teacher {
   experience: string;
   image: string;
   color?: string;
+  students?: string;
+  courses?: number;
+  rating?: number;
 }
 
 type TeachersScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'TeachersScreen'>;
 
+// Color palette for cards matching reference design
+const cardColors = [
+  '#E8F5E9', // Light green
+  '#FFF8E1', // Light yellow
+  '#FCE4EC', // Light pink
+  '#E8EAF6', // Light purple
+  '#FFEBEE', // Light coral
+  '#E3F2FD', // Light blue
+  '#FFF3E0', // Light orange
+  '#F3E5F5', // Light lavender
+];
+
 export const TeachersScreen: React.FC = () => {
   const navigation = useNavigation<TeachersScreenNavigationProp>();
   const { theme, isDark } = useTheme();
-  const [activeTab, setActiveTab] = useState('All');
   const [staff, setStaff] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -33,61 +52,54 @@ export const TeachersScreen: React.FC = () => {
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
-  // Define color palette for teacher cards
-  const colors = [
-    "#FEF3C7", "#DBEAFE", "#E0E7FF", "#FCE7F3", 
-    "#D1FAE5", "#FEF3C7", "#DBEAFE", "#E0E7FF", 
-    "#FCE7F3", "#D1FAE5"
-  ];
-
   const fetchTeachers = useCallback(() => {
     setLoading(true);
     setError('');
-    
-    // Unsubscribe from previous listener if exists
+
     if (unsubscribeRef.current) {
-        unsubscribeRef.current();
+      unsubscribeRef.current();
     }
 
     const staffCollection = collection(db, "staff");
-    
+
     const unsubscribe = onSnapshot(staffCollection, async (querySnapshot) => {
       let teachersArray: Teacher[] = [];
 
       if (querySnapshot.empty) {
-        // Seed database if empty
         const localTeachers = Object.entries(teachersData.staff).map(
           ([id, teacher], index) => ({
             id,
             ...teacher,
-            color: colors[index % colors.length],
+            color: cardColors[index % cardColors.length],
+            students: `${Math.floor(Math.random() * 30 + 10)}k`,
+            courses: Math.floor(Math.random() * 15 + 5),
+            rating: 4.5,
           })
         );
 
-        // We don't await here to avoid blocking the UI, 
-        // the snapshot will fire again when these are added.
         localTeachers.forEach(async (teacher) => {
           await setDoc(doc(db, "staff", teacher.id), teacher);
         });
-        
-        // Optimistically set data
+
         setStaff(localTeachers);
       } else {
         querySnapshot.forEach((doc) => {
           const data = doc.data() as Omit<Teacher, 'id'>;
           teachersArray.push({ id: doc.id, ...data });
         });
-        
-        // Apply colors
+
         teachersArray = teachersArray.map((teacher, index) => ({
           ...teacher,
-          color: colors[index % colors.length]
+          color: cardColors[index % cardColors.length],
+          students: teacher.students || `${Math.floor(Math.random() * 30 + 10)}k`,
+          courses: teacher.courses || Math.floor(Math.random() * 15 + 5),
+          rating: teacher.rating || 4.5,
         }));
-        
+
         setStaff(teachersArray);
       }
       setLoading(false);
-      setRefreshing(false); // Stop refreshing if it was triggered manually
+      setRefreshing(false);
     }, (err) => {
       console.error('Error fetching teachers:', err);
       setError('Failed to load teachers.');
@@ -100,132 +112,116 @@ export const TeachersScreen: React.FC = () => {
 
   useEffect(() => {
     fetchTeachers();
-
     return () => {
-        if (unsubscribeRef.current) {
-            unsubscribeRef.current();
-        }
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
     };
   }, [fetchTeachers]);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    // onSnapshot is already live, but we can simulate a check
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
-  // Group teachers by subject and count them
-  const subjectCounts = staff.reduce((acc: { [key: string]: number }, teacher) => {
-    acc[teacher.subject] = (acc[teacher.subject] || 0) + 1;
-    return acc;
-  }, {});
+  const cardWidth = (width - scale(48)) / 2;
 
-  // Create tabs with 'All' first, then subjects sorted by count
-  const subjectTabs = ['All', ...Object.keys(subjectCounts).sort((a, b) => subjectCounts[b] - subjectCounts[a])];
+  // Modern compact card renderer
+  const renderTeacherCard = (teacher: Teacher, index: number) => (
+    <TouchableOpacity
+      key={teacher.id}
+      style={[
+        styles.card,
+        {
+          width: cardWidth,
+          backgroundColor: isDark ? theme.card : '#ffffff',
+          borderColor: isDark ? theme.border : 'rgba(0,0,0,0.05)',
+        }
+      ]}
+      onPress={() => navigation.navigate('StaffInfoScreen', { teacher })}
+      activeOpacity={0.9}
+    >
+      {/* Teacher Image & Rating overlay */}
+      <View style={[styles.imageWrapper, { backgroundColor: teacher.color }]}>
+        <Image source={{ uri: teacher.image }} style={styles.teacherImage} />
+        <View style={styles.ratingBadge}>
+          <Ionicons name="star" size={scale(10)} color="#FFD700" />
+          <Text style={styles.ratingText}>{teacher.rating}</Text>
+        </View>
+      </View>
 
-  // Filter teachers based on selected tab
-  const filteredStaff = activeTab === 'All' 
-    ? staff 
-    : staff.filter(teacher => teacher.subject === activeTab);
+      {/* Content */}
+      <View style={styles.cardContent}>
+        <Text style={[styles.teacherName, { color: theme.text }]} numberOfLines={1}>
+          {teacher.name}
+        </Text>
+        <Text style={[styles.subject, { color: theme.primary }]} numberOfLines={1}>
+          {teacher.subject}
+        </Text>
+
+        <View style={styles.separator} />
+
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Ionicons name="people" size={scale(12)} color={theme.textSecondary} />
+            <Text style={[styles.statText, { color: theme.textSecondary }]}>{teacher.students}</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="library" size={scale(12)} color={theme.textSecondary} />
+            <Text style={[styles.statText, { color: theme.textSecondary }]}>{teacher.courses}</Text>
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.background }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={[styles.backIcon, { color: theme.text }]}>←</Text>
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Our Teachers</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('AdminTeachersScreen')} style={styles.backButton}>
-           <Ionicons name="settings-outline" size={24} color={theme.text} />
-        </TouchableOpacity>
-      </View>
+      {/* Modern Animated Header */}
+      <NavigationHeader
+        title="Staff Members"
+        subtitle={`${staff.length} available`}
+        showBack={true}
+        showSearch={true}
+        onSearchPress={() => {/* TODO: Implement search */ }}
+      />
 
-      {/* Tabs with teacher counts */}
-      <View style={[styles.tabsContainer, { backgroundColor: theme.background }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {subjectTabs.map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              onPress={() => setActiveTab(tab)}
-              style={[
-                styles.tab, 
-                { backgroundColor: isDark ? theme.card : '#F3F4F6' },
-                activeTab === tab && { backgroundColor: theme.primary }
-              ]}
-            >
-              <Text style={[
-                styles.tabText, 
-                { color: theme.textSecondary },
-                activeTab === tab && styles.tabTextActive
-              ]}>
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Loading State */}
-      {loading && !refreshing && (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading teachers...</Text>
-        </View>
-      )}
-
-      {/* Error State */}
-      {error && !loading && !refreshing && (
-        <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>⚠️ {error}</Text>
-          <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary, shadowColor: theme.primary }]} onPress={fetchTeachers}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Teacher Cards Grid */}
-      {(!loading || refreshing) && !error && (
-        <ScrollView 
-          style={[styles.scrollView, { backgroundColor: theme.background }]} 
-          showsVerticalScrollIndicator={false} 
-          contentContainerStyle={{ paddingBottom: 100 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
-          }
-        >
-          <View style={styles.cardsGrid}>
-            {filteredStaff.map((teacher) => (
-              <TouchableOpacity 
-                key={teacher.id} 
-                style={[
-                  styles.card, 
-                  { 
-                    backgroundColor: isDark ? theme.card : teacher.color,
-                    borderColor: theme.border
-                  }
-                ]}
-                onPress={() => navigation.navigate('StaffInfoScreen', { teacher })}
-                activeOpacity={0.8}
-              >
-                {/* Teacher Image */}
-                <View style={[styles.imageContainer, { borderColor: isDark ? theme.border : 'rgba(255,255,255,0.8)' }]}>
-                  <Image source={{ uri: teacher.image }} style={styles.teacherImage} />
-                </View>
-
-                {/* Subject */}
-                <Text style={[styles.subject, { color: theme.text }]} numberOfLines={1}>{teacher.subject}</Text>
-                
-                {/* Qualification */}
-                <Text style={[styles.qualification, { color: theme.textSecondary }]} numberOfLines={1}>{teacher.qualification}</Text>
-                
-                {/* Teacher Name */}
-                <Text style={[styles.teacherName, { color: theme.textSecondary }]} numberOfLines={1}>By {teacher.name}</Text>
-              </TouchableOpacity>
-            ))}
+      {/* Content with Page Transition */}
+      <PageTransition type="slide" duration={300}>
+        {/* Loading State */}
+        {loading && !refreshing && (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading instructors...</Text>
           </View>
-        </ScrollView>
-      )}
+        )}
+
+        {/* Error State */}
+        {error && !loading && !refreshing && (
+          <View style={styles.centerContainer}>
+            <Text style={styles.errorText}>⚠️ {error}</Text>
+            <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary }]} onPress={fetchTeachers}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Teacher Cards Grid */}
+        {(!loading || refreshing) && !error && (
+          <ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 100 }}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+            }
+          >
+            <View style={styles.cardsGrid}>
+              {staff.map((teacher, index) => renderTeacherCard(teacher, index))}
+            </View>
+          </ScrollView>
+        )}
+      </PageTransition>
     </SafeAreaView>
   );
 };
@@ -238,131 +234,140 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(14),
   },
   backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: {
-    fontSize: 24,
-    fontWeight: '600',
+    padding: scale(4),
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  tabsContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  tab: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginRight: 8,
-    borderRadius: 20,
-  },
-  tabText: {
-    fontSize: 14,
+    fontSize: scale(18),
     fontWeight: '600',
   },
-  tabTextActive: {
-    color: '#ffffff',
+  searchButton: {
+    padding: scale(4),
   },
   scrollView: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: scale(16),
   },
   cardsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingTop: 16,
+    paddingTop: scale(8),
   },
   card: {
-    width: '48%',
-    borderRadius: 18,
-    padding: 20,
-    marginBottom: 18,
-    alignItems: 'center',
+    borderRadius: scale(16),
+    marginBottom: scale(16),
+    backgroundColor: '#ffffff',
     borderWidth: 1,
-    elevation: 4,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  imageContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.5)',
+  imageWrapper: {
+    width: '100%',
+    height: scale(110),
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-    borderWidth: 4,
+    position: 'relative',
+  },
+  teacherImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  ratingBadge: {
+    position: 'absolute',
+    top: scale(8),
+    right: scale(8),
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    paddingHorizontal: scale(6),
+    paddingVertical: scale(2),
+    borderRadius: scale(12),
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(2),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
-  teacherImage: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-  },
-  subject: {
-    fontSize: 17,
+  ratingText: {
+    fontSize: scale(10),
     fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 6,
-    lineHeight: 22,
+    color: '#1f2937',
   },
-  qualification: {
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 10,
+  cardContent: {
+    padding: scale(10),
+    alignItems: 'center',
   },
   teacherName: {
-    fontSize: 13,
+    fontSize: scale(13),
+    fontWeight: '700',
+    marginBottom: scale(2),
     textAlign: 'center',
+  },
+  subject: {
+    fontSize: scale(11),
+    fontWeight: '600',
+    marginBottom: scale(8),
+    textAlign: 'center',
+    opacity: 0.8,
+  },
+  separator: {
+    width: '40%',
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    marginBottom: scale(8),
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    gap: scale(12),
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
+  },
+  statText: {
+    fontSize: scale(10),
     fontWeight: '500',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: scale(20),
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 15,
+    marginTop: scale(12),
+    fontSize: scale(15),
     fontWeight: '500',
   },
   errorText: {
-    fontSize: 15,
+    fontSize: scale(15),
     color: '#ef4444',
     fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: scale(20),
   },
   retryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    paddingHorizontal: scale(24),
+    paddingVertical: scale(12),
+    borderRadius: scale(12),
   },
   retryButtonText: {
     color: '#ffffff',
-    fontSize: 15,
+    fontSize: scale(15),
     fontWeight: '700',
   },
 });

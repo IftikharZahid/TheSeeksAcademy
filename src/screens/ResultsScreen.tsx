@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Image, ActivityIndicator, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, TextInput, Alert, Platform, Image, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { db, auth } from '../api/firebaseConfig';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Circle, G } from 'react-native-svg';
+import { captureRef } from 'react-native-view-shot';
+import * as MediaLibrary from 'expo-media-library';
+import * as Sharing from 'expo-sharing';
 
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isSmallScreen = SCREEN_WIDTH < 380;
 
 interface BookEntry {
   name: string;
@@ -25,730 +28,337 @@ interface ExamEntry {
   studentName?: string;
   studentEmail?: string;
   studentClass?: string;
-  books?: BookEntry[]; // NEW: Multiple books support
-  bookName?: string; // LEGACY
-  totalMarks?: string; // LEGACY
-  obtainedMarks?: string; // LEGACY
-  status?: string; 
+  books?: BookEntry[];
+  bookName?: string;
+  totalMarks?: string;
+  obtainedMarks?: string;
+  status?: string;
   description: string;
 }
 
-const CATEGORIES = ['Weekly', 'Monthly', 'Quarterly', 'Half-Year', 'Final'];
-const TITLE_FILTERS = ['All', ...Array.from({ length: 20 }, (_, i) => `T${i + 1}`)];
+const CATEGORIES = ['All', 'Weekly', 'Monthly', 'Quarterly', 'Final'];
 
-const ScoreCircle = ({ percentage, color }: { percentage: number, color: string }) => {
-    const animatedValue = useRef(new Animated.Value(0)).current;
-    const radius = 35;
-    const strokeWidth = 8;
-    const circumference = 2 * Math.PI * radius;
-    const halfCircle = radius + strokeWidth;
-
-    useEffect(() => {
-        Animated.timing(animatedValue, {
-            toValue: percentage,
-            duration: 1500,
-            useNativeDriver: true,
-            easing: Easing.out(Easing.ease),
-        }).start();
-    }, [percentage]);
-
-    const strokeDashoffset = animatedValue.interpolate({
-        inputRange: [0, 100],
-        outputRange: [circumference, 0],
-        extrapolate: 'clamp',
-    });
-
-    return (
-        <View style={{ width: halfCircle * 2, height: halfCircle * 2, alignItems: 'center', justifyContent: 'center' }}>
-            <Svg width={halfCircle * 2} height={halfCircle * 2} viewBox={`0 0 ${halfCircle * 2} ${halfCircle * 2}`}>
-                <G rotation="-90" origin={`${halfCircle}, ${halfCircle}`}>
-                    {/* Background Circle */}
-                    <Circle
-                        cx={halfCircle}
-                        cy={halfCircle}
-                        r={radius}
-                        stroke="rgba(255,255,255,0.2)"
-                        strokeWidth={strokeWidth}
-                        fill="transparent"
-                    />
-                    {/* Progress Circle */}
-                    <AnimatedCircle
-                        cx={halfCircle}
-                        cy={halfCircle}
-                        r={radius}
-                        stroke={color}
-                        strokeWidth={strokeWidth}
-                        fill="transparent"
-                        strokeDasharray={circumference}
-                        strokeDashoffset={strokeDashoffset}
-                        strokeLinecap="round"
-                    />
-                </G>
-            </Svg>
-            <View style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>{percentage}%</Text>
-                <Text style={{ color: '#e0e7ff', fontSize: 10, fontWeight: '600', textTransform: 'uppercase' }}>Score</Text>
-            </View>
-        </View>
-    );
+const getGradeAndRemarks = (percentage: number): { grade: string; remarks: string } => {
+  if (percentage >= 90) return { grade: 'A+', remarks: 'Excellent' };
+  if (percentage >= 80) return { grade: 'A', remarks: 'Very Good' };
+  if (percentage >= 70) return { grade: 'B', remarks: 'Good' };
+  if (percentage >= 60) return { grade: 'C', remarks: 'Satisfactory' };
+  if (percentage >= 50) return { grade: 'D', remarks: 'Needs Improvement' };
+  if (percentage >= 40) return { grade: 'E', remarks: 'Hard work required' };
+  return { grade: 'Fail', remarks: 'Hard work required' };
 };
 
 export const ResultsScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { theme, isDark } = useTheme();
+  const { isDark } = useTheme();
 
-  const [activeTab, setActiveTab] = useState('Weekly');
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-
+  const [activeTab, setActiveTab] = useState('All');
   const [refreshing, setRefreshing] = useState(false);
   const [entries, setEntries] = useState<ExamEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [userRollNo, setUserRollNo] = useState<string | null>(null);
+  const [studentName, setStudentName] = useState<string | null>(null);
+  const [fatherName, setFatherName] = useState<string | null>(null);
+  const [studentClass, setStudentClass] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch Profile Image
+  const viewShotRef = useRef<View>(null);
+  const [status, requestPermission] = MediaLibrary.usePermissions();
+
+  // Fetch student profile data
   useEffect(() => {
     const user = auth.currentUser;
     if (!user?.email) return;
-
     const q = query(collection(db, "profile"), where("email", "==", user.email));
-    
-    // Real-time listener for profile changes
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        if (!snapshot.empty) {
-            const docData = snapshot.docs[0].data();
-            if (docData.image) {
-                setProfileImage(docData.image);
-            }
-        }
+      if (!snapshot.empty) {
+        const d = snapshot.docs[0].data();
+        setUserRollNo(d.rollNo || d.roll || d.rollNumber || null);
+        setStudentName(d.name || d.displayName || d.studentName || null);
+        setFatherName(d.fatherName || d.father || d.parentName || null);
+        setStudentClass(d.class || d.className || d.grade || d.studentClass || null);
+      }
     });
-
     return () => unsubscribe();
   }, []);
 
-  // Fetch Exams - Filter by Student Email
-  useEffect(() => {
-    const user = auth.currentUser;
-    if (!user?.email) {
-      setLoading(false);
-      return;
-    }
-
-    fetchExams();
-
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-      }
-    };
-  }, []);
-
-  // Dedicated function to fetch/refresh exams data
   const unsubscribeRef = useRef<(() => void) | null>(null);
-  
+  const unsubscribeRollRef = useRef<(() => void) | null>(null);
+
   const fetchExams = useCallback(() => {
     const user = auth.currentUser;
-    console.log('👤 ResultsScreen: Current user:', user?.email);
-    
-    if (!user?.email) {
-      console.log('⚠️ No user email found, cannot fetch exams');
-      setLoading(false);
-      return;
-    }
-
-    // Unsubscribe from previous listener if exists
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-    }
-
-    // Query exams where studentEmail matches logged-in user's email
-    console.log('🔍 Querying exams for studentEmail:', user.email);
-    const q = query(
-      collection(db, 'exams'),
-      where('studentEmail', '==', user.email)
-    );
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      console.log('📥 ResultsScreen: Snapshot received, size:', snapshot.size);
-      const list: ExamEntry[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        console.log('📄 Exam found - Full data:', {
-          id: doc.id,
-          title: data.title,
-          category: data.category,
-          studentEmail: data.studentEmail,
-          studentName: data.studentName,
-          date: data.date
-        });
-        list.push({ id: doc.id, ...data } as ExamEntry);
-      });
-      console.log('✅ ResultsScreen: Total exams loaded:', list.length);
-      console.log('📋 All exams:', list.map(e => ({ title: e.title, category: e.category })));
-      setEntries(list);
-      setLoading(false);
-    }, (error) => {
-      console.error('❌ ResultsScreen: Error fetching exams:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
-      setLoading(false);
-    });
-
-    unsubscribeRef.current = unsubscribe;
-  }, []);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
+    if (!user?.email) { setLoading(false); return; }
     setLoading(true);
-    await fetchExams();
-    // Small delay to show refresh animation
-    await new Promise(resolve => setTimeout(resolve, 300));
-    setRefreshing(false);
-  }, [fetchExams]);
+    let emailExams: ExamEntry[] = [];
+    let rollNoExams: ExamEntry[] = [];
+    const updateMerged = () => {
+      const map = new Map();
+      [...emailExams, ...rollNoExams].forEach(e => map.set(e.id, e));
+      const merged = Array.from(map.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setEntries(merged);
 
-  // Calculate Overall Percentage and Grade
-  const { percentageVal } = useMemo(() => {
-    let totalObtained = 0;
-    let totalPossible = 0;
+      // Fallback: Get student info from exam data if not in profile
+      if (merged.length > 0) {
+        const firstExam = merged[0];
+        if (!studentName && firstExam.studentName) setStudentName(firstExam.studentName);
+        if (!userRollNo && firstExam.rollNo) setUserRollNo(firstExam.rollNo);
+        if (!studentClass && firstExam.studentClass) setStudentClass(firstExam.studentClass);
+      }
+      setLoading(false);
+    };
+    if (unsubscribeRef.current) unsubscribeRef.current();
+    unsubscribeRef.current = onSnapshot(query(collection(db, 'exams'), where('studentEmail', '==', user.email)), (snap) => {
+      emailExams = snap.docs.map(d => ({ id: d.id, ...d.data() } as ExamEntry));
+      updateMerged();
+    }, () => setLoading(false));
+    if (userRollNo) {
+      if (unsubscribeRollRef.current) unsubscribeRollRef.current();
+      unsubscribeRollRef.current = onSnapshot(query(collection(db, 'exams'), where('rollNo', '==', userRollNo)), (snap) => {
+        rollNoExams = snap.docs.map(d => ({ id: d.id, ...d.data() } as ExamEntry));
+        updateMerged();
+      });
+    } else { updateMerged(); }
+  }, [userRollNo, studentName, studentClass]);
 
-    entries.forEach(entry => {
-      const obtained = parseFloat(entry.obtainedMarks || '0');
-      const total = parseFloat(entry.totalMarks || '0');
+  useEffect(() => { fetchExams(); }, [fetchExams]);
+  const onRefresh = useCallback(async () => { setRefreshing(true); await fetchExams(); setRefreshing(false); }, [fetchExams]);
 
-      if (!isNaN(obtained) && !isNaN(total) && total > 0) {
-        totalObtained += obtained;
-        totalPossible += total;
+  // Process data for the result sheet - aggregate by subject
+  const processedData = useMemo(() => {
+    let filtered = activeTab === 'All' ? entries : entries.filter(e => e.category === activeTab);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(e => e.title.toLowerCase().includes(q) || e.category.toLowerCase().includes(q));
+    }
+
+    // Aggregate marks by subject (sum if same subject appears multiple times)
+    const subjectMap: Map<string, { total: number; obtained: number }> = new Map();
+
+    filtered.forEach(exam => {
+      if (exam.books && exam.books.length > 0) {
+        exam.books.forEach(book => {
+          const total = parseFloat(book.totalMarks) || 0;
+          const obtained = parseFloat(book.obtainedMarks) || 0;
+          const existing = subjectMap.get(book.name) || { total: 0, obtained: 0 };
+          subjectMap.set(book.name, { total: existing.total + total, obtained: existing.obtained + obtained });
+        });
+      } else if (exam.bookName) {
+        const total = parseFloat(exam.totalMarks || '0');
+        const obtained = parseFloat(exam.obtainedMarks || '0');
+        const existing = subjectMap.get(exam.bookName) || { total: 0, obtained: 0 };
+        subjectMap.set(exam.bookName, { total: existing.total + total, obtained: existing.obtained + obtained });
       }
     });
 
-    if (totalPossible === 0) return { percentageVal: 0 };
-    const val = Math.round((totalObtained / totalPossible) * 100);
-    return { percentageVal: val };
-  }, [entries]);
+    const subjectsData: { name: string; total: number; obtained: number; percentage: number; grade: string; remarks: string }[] = [];
+    let grandTotal = 0, grandObtained = 0;
 
-  const filteredEntries = useMemo(() => {
-    const filtered = entries.filter(e => e.category === activeTab);
-    console.log('🔍 Filtering - activeTab:', activeTab, '| Total entries:', entries.length, '| Filtered:', filtered.length);
-    console.log('📊 Entries by category:', entries.map(e => ({ title: e.title, category: e.category })));
-    return filtered;
-  }, [entries, activeTab]);
-
-  // Group entries by title (T1, T2, etc.)
-  const groupedEntries = useMemo(() => {
-    const groups: { [key: string]: ExamEntry[] } = {};
-    filteredEntries.forEach(entry => {
-      const title = entry.title || 'Other';
-      if (!groups[title]) {
-        groups[title] = [];
-      }
-      groups[title].push(entry);
+    subjectMap.forEach((marks, name) => {
+      const percentage = marks.total > 0 ? (marks.obtained / marks.total) * 100 : 0;
+      const { grade, remarks } = getGradeAndRemarks(percentage);
+      subjectsData.push({ name, total: marks.total, obtained: marks.obtained, percentage, grade, remarks });
+      grandTotal += marks.total;
+      grandObtained += marks.obtained;
     });
-    return groups;
-  }, [filteredEntries]);
 
-  // Score Color
-  const getScoreColor = () => {
-      if (percentageVal >= 80) return '#4ade80'; // Green
-      if (percentageVal >= 60) return '#facc15'; // Yellow
-      if (percentageVal >= 40) return '#fb923c'; // Orange
-      return '#f87171'; // Red
+    // Sort subjects alphabetically
+    subjectsData.sort((a, b) => a.name.localeCompare(b.name));
+
+    const overallPercentage = grandTotal > 0 ? (grandObtained / grandTotal) * 100 : 0;
+    const testType = activeTab === 'All' ? 'Grand Test' : `${activeTab} Test`;
+
+    return { subjects: subjectsData, grandTotal, grandObtained, overallPercentage, testType, examCount: filtered.length };
+  }, [entries, activeTab, searchQuery]);
+
+  const handleSaveResult = async () => {
+    try {
+      if (status?.status !== 'granted') {
+        const permission = await requestPermission();
+        if (!permission.granted) {
+          Alert.alert("Permission Required", "Need library access to save results.");
+          return;
+        }
+      }
+      if (viewShotRef.current) {
+        const uri = await captureRef(viewShotRef, { format: "png", quality: 1, result: "tmpfile" });
+        if (Platform.OS === 'android') {
+          try {
+            await MediaLibrary.createAssetAsync(uri);
+            Alert.alert("Saved!", "Result card saved to gallery.");
+          } catch (e) {
+            await Sharing.shareAsync(uri);
+          }
+        } else {
+          await Sharing.shareAsync(uri);
+        }
+      }
+    } catch (error) {
+      console.error("Snapshot error:", error);
+      Alert.alert("Error", "Failed to save result.");
+    }
+  };
+
+  const fontSize = {
+    header: isSmallScreen ? 14 : 16,
+    title: isSmallScreen ? 12 : 14,
+    cell: isSmallScreen ? 8 : 10,
+    label: isSmallScreen ? 9 : 11,
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0f172a' : '#f8fafc' }]} edges={['top', 'left', 'right']}>
+      <View style={[styles.header, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
+          <Ionicons name="chevron-back" size={20} color={isDark ? '#e2e8f0' : '#1e293b'} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Exams & Results</Text>
+        <Text style={[styles.headerTitle, { color: isDark ? '#f8fafc' : '#0f172a', fontSize: fontSize.header }]}>Result Detail</Text>
+        <View style={{ width: 28 }} />
       </View>
 
+      <ScrollView contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? '#fff' : '#000'} />}>
+        <View style={[styles.searchContainer, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
+          <Ionicons name="search-outline" size={18} color={isDark ? '#94a3b8' : '#64748b'} />
+          <TextInput placeholder="Search exams..." placeholderTextColor={isDark ? '#64748b' : '#94a3b8'} style={[styles.searchInput, { color: isDark ? '#fff' : '#0f172a' }]} value={searchQuery} onChangeText={setSearchQuery} />
+        </View>
 
-        {/* Student Info Card */}
-        <View style={[styles.studentCard, { backgroundColor: theme.primary }]}>
-          <View style={styles.studentCardContent}>
-            <View style={styles.profileSection}>
-                <View style={[styles.studentAvatar, { borderColor: getScoreColor() }]}>
-                  <Image 
-                    source={profileImage ? { uri: profileImage } : (auth.currentUser?.photoURL ? { uri: auth.currentUser.photoURL } : require('../assets/default-profile.png'))} 
-                    style={styles.avatarImage}
-                  />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+          {CATEGORIES.map(cat => (
+            <TouchableOpacity key={cat} onPress={() => setActiveTab(cat)} style={[styles.filterChip, activeTab === cat ? { backgroundColor: '#334155' } : { backgroundColor: isDark ? '#334155' : '#fff', borderWidth: 1, borderColor: isDark ? '#475569' : '#e2e8f0' }]}>
+              <Text style={[styles.filterText, { color: activeTab === cat ? '#fff' : isDark ? '#cbd5e1' : '#64748b' }]}>{cat}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {loading ? <ActivityIndicator color="#334155" style={{ marginTop: 20 }} /> :
+          processedData.subjects.length === 0 ? <Text style={{ textAlign: 'center', color: '#94a3b8', marginTop: 20 }}>No results found.</Text> : (
+            <View ref={viewShotRef} collapsable={false} style={styles.resultSheet}>
+
+              <View style={styles.sheetHeader}>
+                <Image source={require('../assets/the-seeks-logo.png')} style={[styles.sheetLogo, { width: isSmallScreen ? 40 : 50, height: isSmallScreen ? 40 : 50 }]} resizeMode="contain" />
+                <View style={styles.sheetHeaderCenter}>
+                  <Text style={[styles.sheetAcademyName, { fontSize: isSmallScreen ? 14 : 16 }]}>The Seeks Academy Fort Abbas</Text>
+                  <Text style={[styles.sheetTitle, { fontSize: isSmallScreen ? 10 : 11 }]}>Result Sheet ({processedData.testType} Session 2025-26)</Text>
                 </View>
-                <View style={styles.studentInfo}>
-                  <Text style={styles.studentName}>{auth.currentUser?.displayName || 'Student'}</Text>
-                  <Text style={styles.studentClass}>The Seeks Academy</Text>
-                  <View style={[styles.statusPill, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                      <Text style={styles.statusText}>Active Student</Text>
+              </View>
+
+              <View style={styles.studentInfoSection}>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { fontSize: fontSize.label }]}>Name:</Text>
+                  <Text style={[styles.infoValue, { fontSize: fontSize.label }]}>{studentName || auth.currentUser?.displayName || 'N/A'}</Text>
+                  <Text style={[styles.infoLabel, { fontSize: fontSize.label }]}>Roll No.</Text>
+                  <Text style={[styles.infoValue, { fontSize: fontSize.label }]}>{userRollNo || 'N/A'}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Text style={[styles.infoLabel, { fontSize: fontSize.label }]}>Father Name:</Text>
+                  <Text style={[styles.infoValue, { fontSize: fontSize.label }]}>{fatherName || 'N/A'}</Text>
+                  <Text style={[styles.infoLabel, { fontSize: fontSize.label }]}>Class:</Text>
+                  <Text style={[styles.infoValue, { fontSize: fontSize.label }]}>{studentClass || 'N/A'}</Text>
+                </View>
+              </View>
+
+              <View style={styles.table}>
+                <View style={styles.tableHeaderRow}>
+                  <Text style={[styles.tableHeaderCell, { flex: 2, fontSize: fontSize.cell }]}>Subjects</Text>
+                  <Text style={[styles.tableHeaderCell, { fontSize: fontSize.cell }]}>Total</Text>
+                  <Text style={[styles.tableHeaderCell, { fontSize: fontSize.cell }]}>Obtained</Text>
+                  <Text style={[styles.tableHeaderCell, { fontSize: fontSize.cell }]}>%</Text>
+                  <Text style={[styles.tableHeaderCell, { fontSize: fontSize.cell }]}>Grade</Text>
+                  <Text style={[styles.tableHeaderCell, { flex: 1.5, fontSize: fontSize.cell }]}>Remarks</Text>
+                </View>
+
+                {processedData.subjects.map((sub, i) => (
+                  <View key={i} style={[styles.tableRow, i % 2 === 1 && styles.tableRowAlt]}>
+                    <Text style={[styles.tableCell, styles.subjectCell, { flex: 2, fontSize: fontSize.cell }]}>{sub.name}</Text>
+                    <Text style={[styles.tableCell, { fontSize: fontSize.cell }]}>{sub.total}</Text>
+                    <Text style={[styles.tableCell, { fontSize: fontSize.cell }]}>{sub.obtained}</Text>
+                    <Text style={[styles.tableCell, { fontSize: fontSize.cell }]}>{sub.percentage.toFixed(1)}</Text>
+                    <Text style={[styles.tableCell, { fontSize: fontSize.cell }, sub.grade === 'Fail' && { color: '#dc2626' }]}>{sub.grade}</Text>
+                    <Text style={[styles.tableCell, styles.remarksCell, { flex: 1.5, fontSize: isSmallScreen ? 6 : 8 }]} numberOfLines={1}>{sub.remarks}</Text>
+                  </View>
+                ))}
+
+                <View style={styles.totalRow}>
+                  <Text style={[styles.totalCell, { flex: 2, fontWeight: '700', fontSize: fontSize.cell }]}>Total</Text>
+                  <Text style={[styles.totalCell, { fontSize: fontSize.cell }]}>{processedData.grandTotal}</Text>
+                  <Text style={[styles.totalCell, { fontSize: fontSize.cell }]}>{processedData.grandObtained}</Text>
+                  <Text style={[styles.totalCell, { fontSize: fontSize.cell }]}>{processedData.overallPercentage.toFixed(1)}</Text>
+                  <Text style={[styles.totalCell, { flex: 2.5, fontSize: fontSize.cell }]}>Position: -</Text>
+                </View>
+              </View>
+
+              <View style={styles.sheetFooter}>
+                <Text style={[styles.footerMessage, { fontSize: isSmallScreen ? 8 : 10 }]}>Please contact the Principal for further support with your child's progress.</Text>
+                <View style={styles.signatureSection}>
+                  <View style={styles.signatureRow}>
+                    <Text style={[styles.signatureLabel, { fontSize: isSmallScreen ? 8 : 10 }]}>Parent's Signature:</Text>
+                    <View style={styles.signatureLine} />
                   </View>
                 </View>
+                <View style={styles.addressRow}>
+                  <Ionicons name="location-outline" size={12} color="#64748b" />
+                  <Text style={[styles.addressText, { fontSize: isSmallScreen ? 7 : 9 }]}>Near Mudrassa Mazhar Aloom Fort Abbas. 0348-7000302</Text>
+                </View>
+              </View>
             </View>
-            
-            {/* Animated Score Circle */}
-            <View style={styles.scoreContainer}>
-               <ScoreCircle percentage={percentageVal} color={getScoreColor()} />
-            </View>
-          </View>
-        </View>
-
-        {/* Categories Tabs */}
-        {/* Categories Tabs & Filter */}
-        <View style={[styles.tabsContainer, { paddingRight: 16 }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingRight: 8 }} style={{ flex: 1 }}>
-            {CATEGORIES.map((tab) => (
-              <TouchableOpacity
-                key={tab}
-                onPress={() => setActiveTab(tab)}
-                style={[
-                  styles.tab, 
-                  { backgroundColor: isDark ? theme.card : '#f3f4f6' },
-                  activeTab === tab && { backgroundColor: theme.primary }
-                ]}
-              >
-                <Text style={[
-                  styles.tabText, 
-                  { color: theme.textSecondary },
-                  activeTab === tab && { color: '#ffffff' }
-                ]}>
-                  {tab}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-        </View>
-
-      <ScrollView 
-        contentContainerStyle={{ paddingBottom: 100 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
-        }
-      >
-
-        {/* List */}
-        {loading ? (
-          <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
-        ) : (
-          <View style={styles.listContainer}>
-             {filteredEntries.length === 0 ? (
-               <Text style={{ textAlign: 'center', marginTop: 20, color: theme.textSecondary }}>No entries found.</Text>
-             ) : 
-             Object.keys(groupedEntries).map((groupTitle) => {
-                 const groupCards = groupedEntries[groupTitle];
-                 const isGroupExpanded = expandedGroups.has(groupTitle);
-                 
-                 // Check if this is a T1-T20 format group
-                 const titleRegex = /^T\d{1,2}$/i;
-                 const isCollapsibleGroup = titleRegex.test(groupTitle.trim());
-
-                 const toggleGroup = () => {
-                     setExpandedGroups(prev => {
-                         const newSet = new Set(prev);
-                         if (newSet.has(groupTitle)) {
-                             newSet.delete(groupTitle);
-                         } else {
-                             newSet.add(groupTitle);
-                         }
-                         return newSet;
-                     });
-                 };
-
-                 return (
-                   <View key={groupTitle} style={{ marginBottom: 16 }}>
-                     {/* Group Header with Arrow - Modern Lite UI: Soft fill, no borders, tight spacing */}
-                     {isCollapsibleGroup && (
-                       <TouchableOpacity 
-                         onPress={toggleGroup}
-                         activeOpacity={0.7}
-                         style={styles.groupHeader}
-                       >
-                         <View style={styles.groupTitleContainer}>
-                           <View style={[styles.groupTitleBadge, { backgroundColor: theme.primary + '15' }]}>
-                             <Text style={[styles.groupTitleText, { color: theme.primary }]}>{groupTitle}</Text>
-                           </View>
-                           <Text style={[styles.groupCountText, { color: theme.textSecondary }]}>
-                             {groupCards.length} {groupCards.length === 1 ? 'Exam' : 'Exams'}
-                           </Text>
-                         </View>
-                         <View style={styles.groupArrowButton}>
-                           <Animated.View style={{ transform: [{ rotate: isGroupExpanded ? '180deg' : '0deg' }] }}>
-                             <Ionicons 
-                               name={isGroupExpanded ? 'chevron-up' : 'chevron-down'} 
-                               size={16} 
-                               color={theme.textSecondary}
-                             />
-                           </Animated.View>
-                         </View>
-                       </TouchableOpacity>
-                     )}
-
-                     {/* Group Cards - Show if not collapsible OR if expanded */}
-                     {(!isCollapsibleGroup || isGroupExpanded) && groupCards.map((item, index) => {
-                       //Calculate status based on marks if available
-                       let displayStatus = item.status;
-                       let statusColor = '#ca8a04'; // Default/Pending color
-
-                       const obtained = parseFloat(item.obtainedMarks || '0');
-                       const total = parseFloat(item.totalMarks || '0');
-
-                       if (item.totalMarks && item.obtainedMarks && total > 0) {
-                           const percentage = (obtained / total) * 100;
-                           displayStatus = percentage >= 40 ? 'Pass' : 'Fail';
-                       }
-
-                       if (displayStatus === 'Pass') statusColor = '#16a34a';
-                       else if (displayStatus === 'Fail') statusColor = '#dc2626';
-                       else if (item.status === 'Pass') statusColor = '#16a34a';
-                       else if (item.status === 'Fail') statusColor = '#dc2626';
-
-                       return (
-                         <View key={item.id} style={styles.resultRow}>
-                           {/* Timeline Dot */}
-                           <View style={styles.timelineContainer}>
-                             <View style={[styles.timelineDot, { backgroundColor: statusColor }]} />
-                             {index < groupCards.length - 1 && (
-                               <View style={[styles.timelineLine, { backgroundColor: theme.border }]} />
-                             )}
-                           </View>
-
-                           <View style={[styles.card, { flex: 1, backgroundColor: theme.card, borderColor: statusColor, borderWidth: 1 }]}>
-                             {/* Row 1: Date | Book Name | Title */}
-                             <View style={styles.tableRow}>
-                               {/* Date */}
-                               <View style={[styles.tableCell, { backgroundColor: theme.primary + '08' }]}>
-                                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                   <Ionicons name="calendar-outline" size={12} color={theme.textSecondary} style={{ marginRight: 4 }} />
-                                   <Text style={[styles.cellText, { color: theme.textSecondary }]}>{item.date || 'Date'}</Text>
-                                 </View>
-                               </View>
-
-                               {/* Book Name (Middle, Flex) */}
-                               <View style={[styles.tableCell, { flex: 1, backgroundColor: theme.background }]}>
-                                 <Text style={[styles.cellText, { color: theme.textSecondary }]} numberOfLines={1}>{item.bookName || 'No Book'}</Text>
-                               </View>
-
-                               {/* Title Badge (Right) - Text Only */}
-                               <View style={[styles.titleBadge, { backgroundColor: theme.primary + '10', paddingHorizontal: 10 }]}>
-                                 <Text style={[styles.cellText, { color: theme.primary, fontWeight: '700', fontSize: 13 }]} numberOfLines={1}>{item.title}</Text>
-                               </View>
-                             </View>
-
-                             {/* Row 2: Category | Status | Marks */}
-                             <View style={[styles.tableRow, { alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }]}>
-                               {/* Category (Left) */}
-                               <View style={[styles.tableCell, { backgroundColor: theme.primary + '15' }]}>
-                                 <Text style={[styles.cellText, { color: theme.primary }]}>{item.category || 'Exam'}</Text>
-                               </View>
-
-                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                 {/* Status */}
-                                 {displayStatus && (
-                                   <View style={[styles.tableCell, { 
-                                     backgroundColor: displayStatus === 'Pass' ? '#dcfce7' : displayStatus === 'Fail' ? '#fee2e2' : '#fef9c3',
-                                   }]}>
-                                     <Text style={[styles.cellText, { 
-                                       color: displayStatus === 'Pass' ? '#166534' : displayStatus === 'Fail' ? '#991b1b' : '#854d0e' 
-                                     }]}>{displayStatus}</Text>
-                                   </View>
-                                 )}
-
-                                 {/* Marks */}
-                                 {(item.totalMarks || item.obtainedMarks) ? (
-                                   <View style={[styles.marksBox, { backgroundColor: theme.primary + '10' }]}>
-                                     <Text style={[styles.marksObtained, { color: theme.primary }]}>
-                                       {item.obtainedMarks || '-'}
-                                     </Text>
-                                     <Text style={[styles.marksTotal, { color: theme.primary + '80' }]}>
-                                       /{item.totalMarks || '100'}
-                                     </Text>
-                                   </View>
-                                 ) : null}
-                               </View>
-                             </View>
-
-                             {/* Row 3: Remarks Content */}
-                             {item.description ? (
-                               <View style={[styles.remarksContainer, { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.border, opacity: 0.98 }]}>
-                                 <Text style={[styles.description, { color: theme.textSecondary }]}>{item.description}</Text>
-                               </View>
-                             ) : null}
-                           </View>
-                         </View>
-                       );
-                     })}
-                   </View>
-                 );
-             })
-          }
-           </View>
-         )}
+          )}
+        <View style={{ height: 80 }} />
       </ScrollView>
 
+      <View style={styles.fabContainer}>
+        <TouchableOpacity style={styles.saveButton} activeOpacity={0.8} onPress={handleSaveResult}>
+          <Ionicons name="download-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
+          <Text style={styles.saveButtonText}>Save Result</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
 
-
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 16,
-    borderBottomWidth: 1,
-  },
-  headerTitle: { fontSize: 18, fontWeight: 'bold' },
-  backButton: { padding: 4 },
-  studentCard: {
-    margin: 8,
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 16,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  studentCardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  profileSection: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flex: 1,
-  },
-  studentAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    overflow: 'hidden',
-    borderWidth: 3,
-    backgroundColor: '#ccc'
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  studentInfo: {
-    marginLeft: 16,
-  },
-  studentName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginBottom: 4,
-  },
-  studentClass: {
-    fontSize: 13,
-    color: '#e0e7ff',
-    marginBottom: 4,
-  },
-  statusPill: {
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: 12,
-      alignSelf: 'flex-start',
-  },
-  statusText: {
-      color: '#fff',
-      fontSize: 10,
-      fontWeight: '600',
-  },
-  scoreContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    marginBottom: 12,
-    marginLeft: 16,
-  },
-  tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginRight: 8,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  listContainer: {
-    paddingHorizontal: 16,
-  },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, elevation: 2 },
+  headerTitle: { fontWeight: '700' },
+  iconBtn: { padding: 4 },
+  scrollContent: { padding: 10 },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, marginBottom: 8, elevation: 1, borderWidth: 1, borderColor: '#e2e8f0' },
+  searchInput: { flex: 1, marginLeft: 6, fontSize: 13, paddingVertical: 0 },
+  filterRow: { marginBottom: 8 },
+  filterChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, marginRight: 6 },
+  filterText: { fontSize: 10, fontWeight: '600' },
 
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  categoryBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  categoryText: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  date: {
-    fontSize: 12,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  metaContainer: {
-    flexDirection: 'column',
-    gap: 4,
-    marginBottom: 8,
-    backgroundColor: 'rgba(0,0,0,0.02)',
-    padding: 6,
-    borderRadius: 8,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  metaText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  description: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 4,
-  },
-  resultRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  timelineContainer: {
-    width: 24,
-    alignItems: 'center',
-    position: 'relative',
-  },
-  timelineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    zIndex: 1,
-    marginTop: 6,
-  },
-  timelineLine: {
-    position: 'absolute',
-    top: 16,
-    width: 2,
-    bottom: -8,
-  },
-  card: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    elevation: 2,
-    gap: 6,
-  },
-  titleBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
-  },
-  dateText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  tableRow: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-  tableCell: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cellText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  cellTextLarge: {
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  marksBox: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  marksObtained: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    lineHeight: 16,
-  },
-  marksTotal: {
-    fontSize: 9,
-    fontWeight: '600',
-    lineHeight: 12,
-  },
-  remarksContainer: {
-    padding: 12,
-    borderRadius: 12,
-    // borderWidth: 2, // Removed
-    marginTop: 4,
-  },
-  groupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 0, // Minimized gap
-    marginHorizontal: 0,
-    paddingHorizontal: 0, // Flush with content 
-    paddingVertical: 6,
-    minHeight: 36,
-  },
-  groupTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 8,
-  },
-  groupTitleBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  groupTitleText: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  groupCountText: {
-    fontSize: 12,
-    fontWeight: '500',
-    opacity: 0.6,
-  },
-  groupArrowButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  resultSheet: { backgroundColor: '#fff', borderRadius: 8, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0' },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  sheetLogo: { marginRight: 8 },
+  sheetHeaderCenter: { flex: 1, alignItems: 'center' },
+  sheetAcademyName: { fontWeight: '800', color: '#0f172a', textAlign: 'center' },
+  sheetTitle: { fontWeight: '600', color: '#475569', marginTop: 2, textAlign: 'center' },
+
+  studentInfoSection: { marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingBottom: 10 },
+  infoRow: { flexDirection: 'row', marginBottom: 4, alignItems: 'center' },
+  infoLabel: { fontWeight: '700', color: '#0f172a', width: 70 },
+  infoValue: { color: '#334155', flex: 1 },
+
+  table: { borderWidth: 1, borderColor: '#1e293b', marginBottom: 12 },
+  tableHeaderRow: { flexDirection: 'row', backgroundColor: '#f1f5f9', borderBottomWidth: 1, borderBottomColor: '#1e293b' },
+  tableHeaderCell: { flex: 1, fontWeight: '700', color: '#0f172a', textAlign: 'center', paddingVertical: 5, paddingHorizontal: 2, borderRightWidth: 1, borderRightColor: '#cbd5e1' },
+  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+  tableRowAlt: { backgroundColor: '#fafafa' },
+  tableCell: { flex: 1, color: '#334155', textAlign: 'center', paddingVertical: 5, paddingHorizontal: 2, borderRightWidth: 1, borderRightColor: '#e2e8f0' },
+  subjectCell: { textAlign: 'left', fontWeight: '600', fontStyle: 'italic', paddingLeft: 4 },
+  remarksCell: { textAlign: 'left', paddingLeft: 3 },
+  totalRow: { flexDirection: 'row', backgroundColor: '#f1f5f9' },
+  totalCell: { flex: 1, fontWeight: '600', color: '#0f172a', textAlign: 'center', paddingVertical: 5, borderRightWidth: 1, borderRightColor: '#cbd5e1' },
+
+  sheetFooter: { marginTop: 6 },
+  footerMessage: { fontWeight: '600', color: '#0f172a', textAlign: 'center', marginBottom: 8 },
+  signatureSection: { marginBottom: 8 },
+  signatureRow: { flexDirection: 'row', alignItems: 'center' },
+  signatureLabel: { fontWeight: '600', color: '#0f172a', width: 100 },
+  signatureLine: { flex: 1, height: 1, backgroundColor: '#94a3b8', marginLeft: 8, maxWidth: 120 },
+  addressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 6 },
+  addressText: { color: '#64748b', marginLeft: 4, textAlign: 'center' },
+
+  fabContainer: { position: 'absolute', bottom: 40, left: 0, right: 0, alignItems: 'center', zIndex: 100 },
+  saveButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#334155', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 30, elevation: 5 },
+  saveButtonText: { color: '#fff', fontSize: 13, fontWeight: '700' }
 });

@@ -23,6 +23,7 @@ import { AdminCoursesScreen } from "../AdminScreens/AdminCoursesScreen";
 import { AdminStudentRecordsScreen } from "../AdminScreens/AdminStudentRecordsScreen";
 import { AdminExamsScreen } from "../AdminScreens/AdminExamsScreen";
 import { AdminFeeScreen } from "../AdminScreens/AdminFeeScreen";
+import { AdminNoticeBoardScreen } from "../AdminScreens/AdminNoticeBoardScreen";
 
 export type RootStackParamList = {
   Welcome: undefined;
@@ -38,6 +39,7 @@ export type RootStackParamList = {
   AdminStudentRecords: undefined;
   AdminExams: undefined;
   AdminFeeScreen: undefined;
+  AdminNoticeBoardScreen: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -83,7 +85,14 @@ export const AppNavigator: React.FC = () => {
       <NavigationContainer theme={navigationTheme}>
         <Stack.Navigator
           initialRouteName={user ? "Main" : "Welcome"}
-          screenOptions={{ headerShown: false }}
+          screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right',
+            gestureEnabled: true,
+            gestureDirection: 'horizontal',
+            presentation: 'card',
+            animationDuration: 300,
+          }}
         >
           {!user ? (
             <>
@@ -103,7 +112,9 @@ export const AppNavigator: React.FC = () => {
               <Stack.Screen name="AdminCourses" component={AdminCoursesScreen} />
               <Stack.Screen name="AdminStudentRecords" component={AdminStudentRecordsScreen} />
               <Stack.Screen name="AdminExams" component={AdminExamsScreen} />
+
               <Stack.Screen name="AdminFeeScreen" component={AdminFeeScreen} />
+              <Stack.Screen name="AdminNoticeBoardScreen" component={AdminNoticeBoardScreen} />
             </>
           )}
         </Stack.Navigator>

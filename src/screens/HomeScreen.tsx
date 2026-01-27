@@ -1,51 +1,32 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, StatusBar, Dimensions, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, StatusBar, Dimensions, RefreshControl, Image, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useCourses } from '../context/CoursesContext';
-import { DeckSwiper } from '../components/DeckSwiper';
-import { QuickActions } from '../components/QuickActions';
 import { useTheme } from '../context/ThemeContext';
-import { LinearGradient } from 'expo-linear-gradient';
 import { scale } from '../utils/responsive';
+
+// Components
+// Components
+import { CourseCategories } from '../components/CourseCategories';
+import { TopperSlider } from '../components/TopperSlider';
+import { CourseList } from '../components/CourseList';
 
 const { width } = Dimensions.get('window');
 
-const slides = [
-  {
-    id: 1,
-    title: 'Admissions Open 👨‍🎓',
-    subtitle: 'Apply now for Session 2026-27 —limited seats',
-    colors: ['#667eea', '#764ba2'] as const,
-  },
-  {
-    id: 2,
-    title: 'Test Series Started ✍',
-    subtitle: 'Join our Test series to prepare for your exams',
-    colors: ['#f093fb', '#f5576c'] as const,
-  },
-  {
-    id: 3,
-    title: 'Scholarships Available 📚',
-    subtitle: 'Merit-based scholarships up to 50%',
-    colors: ['#4facfe', '#00f2fe'] as const,
-  },
-  {
-    id: 4,
-    title: 'Pass Guarantee 🐥',
-    subtitle: 'Pass in all exams with our expert guidance',
-    colors: ['#43e97b', '#38f9d7'] as const,
-  },
-];
-
-
+// Top Courses data
+interface TopCourse {
+  id: string;
+  category: string;
+  title: string;
+  image: string;
+}
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { courses, isLiked, refreshCourses } = useCourses();
+  const { courses, refreshCourses } = useCourses();
   const { theme, isDark } = useTheme();
-  const scrollViewRef = useRef<ScrollView>(null);
-  const [activeSlide, setActiveSlide] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -54,26 +35,35 @@ export const HomeScreen: React.FC = () => {
     setRefreshing(false);
   }, [refreshCourses]);
 
-  // Auto-scroll slides
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveSlide((current) => {
-        const next = (current + 1) % slides.length;
-        scrollViewRef.current?.scrollTo({
-          x: next * (width - 32),
-          animated: true,
-        });
-        return next;
-      });
-    }, 4000);
+  // Transform courses for top courses section
+  const topCourses: TopCourse[] = courses.slice(0, 5).map((course: any, index) => ({
+    id: course.id || index.toString(),
+    category: course.category || ['Programming', 'Business', 'Science', 'Arts', 'Design'][index % 5],
+    title: course.title || course.name || 'Course Title',
+    image: course.image || course.thumbnail || `https://picsum.photos/200/150?random=${index}`,
+  }));
 
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleScroll = (event: any) => {
-    const slideIndex = Math.round(event.nativeEvent.contentOffset.x / (width - 32));
-    setActiveSlide(slideIndex);
-  };
+  const renderTopCourse = ({ item, index }: { item: TopCourse; index: number }) => (
+    <TouchableOpacity
+      style={[styles.topCourseCard, { backgroundColor: theme.card }]}
+      onPress={() => navigation.navigate('VideoLecturesScreen')}
+      activeOpacity={0.9}
+    >
+      <Image
+        source={{ uri: item.image }}
+        style={styles.topCourseImage}
+        defaultSource={require('../assets/default-profile.png')}
+      />
+      <View style={styles.topCourseInfo}>
+        <Text style={[styles.topCourseCategory, { color: theme.textSecondary }]}>
+          {item.category}
+        </Text>
+        <Text style={[styles.topCourseTitle, { color: theme.text }]} numberOfLines={2}>
+          {item.title}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right']}>
@@ -81,62 +71,46 @@ export const HomeScreen: React.FC = () => {
       <ScrollView
         style={styles.container}
         contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
       >
-
         <View style={styles.content}>
-          {/* Carousel Banner */}
-          <View style={styles.carouselContainer}>
-            <ScrollView
-              ref={scrollViewRef}
+
+
+
+
+          {/* Topper Students Slider */}
+          <TopperSlider />
+
+          {/* Course Categories */}
+          <CourseCategories />
+
+          {/* Top Course This Week */}
+          <View style={styles.topCoursesSection}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Top Course This Week</Text>
+            <FlatList
+              data={topCourses}
+              renderItem={renderTopCourse}
+              keyExtractor={(item) => item.id}
               horizontal
-              pagingEnabled
               showsHorizontalScrollIndicator={false}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-              snapToInterval={width - 32}
-              decelerationRate="fast"
-            >
-              {slides.map((slide) => (
-                <LinearGradient key={slide.id} colors={[...slide.colors]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.banner, { width: width - 32 }]}>
-                  <Text style={styles.bannerTitle}>{slide.title}</Text>
-                  <Text style={styles.bannerSubtitle}>{slide.subtitle}</Text>
-                  <TouchableOpacity style={styles.applyButton}>
-                    <Text style={[styles.applyButtonText, { color: slide.colors[0] }]}>Get Started!</Text>
-                  </TouchableOpacity>
-                </LinearGradient>
-              ))}
-            </ScrollView>
-
-            {/* Pagination Dots */}
-            <View style={styles.pagination}>
-              {slides.map((_, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.paginationDot,
-                    activeSlide === index && styles.paginationDotActive,
-                  ]}
-                />
-              ))}
-            </View>
+              contentContainerStyle={styles.topCoursesList}
+              ItemSeparatorComponent={() => <View style={{ width: scale(12) }} />}
+            />
           </View>
 
-          {/* Quick Actions Grid */}
-          <QuickActions />
-
-          {/* Featured Courses */}
-          <View style={styles.featuredSection}>
-            <Text style={[styles.featuredTitle, { color: theme.text }]}>Featured Courses</Text>
-            <DeckSwiper data={courses} />
-          </View>
+          {/* Course List */}
+          <CourseList />
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
+
+const cardWidth = width * 0.42;
+
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -147,62 +121,81 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: scale(16),
-    paddingTop: scale(16),
+    paddingTop: 0,
   },
-  carouselContainer: {
-    marginBottom: scale(8),
-  },
-  banner: {
-    borderRadius: scale(16),
-    padding: scale(16),
-    marginRight: 0,
-  },
-  bannerTitle: {
-    color: '#ffffff',
-    fontSize: scale(18),
-    fontWeight: '700',
-  },
-  bannerSubtitle: {
-    color: '#ffffff',
-    marginTop: scale(6),
-    fontSize: scale(12),
-    opacity: 0.9,
-  },
-  applyButton: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(8),
-    borderRadius: scale(18),
-    marginTop: scale(12),
-    alignSelf: 'flex-start',
-  },
-  applyButtonText: {
-    fontWeight: '700',
-    fontSize: scale(12),
-  },
-  pagination: {
+  header: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: scale(12),
-    gap: scale(6),
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: scale(16),
+    marginTop: scale(8),
   },
-  paginationDot: {
+  profileHeaderImage: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: '#f0f0f0',
+  },
+  notificationButton: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  badge: {
+    position: 'absolute',
+    top: scale(8),
+    right: scale(10),
     width: scale(8),
     height: scale(8),
     borderRadius: scale(4),
-    backgroundColor: '#d1d5db',
+    backgroundColor: '#F44336',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
   },
-  paginationDotActive: {
-    backgroundColor: '#3b82f6',
-    width: scale(24),
+  topCoursesSection: {
+    marginTop: scale(12),
   },
-
-  featuredSection: {
-    marginTop: scale(10),
-  },
-  featuredTitle: {
+  sectionTitle: {
+    fontSize: scale(16),
     fontWeight: '700',
-    fontSize: scale(18),
-    marginBottom: scale(12),
+    marginBottom: scale(8),
+  },
+  topCoursesList: {
+    paddingRight: scale(16),
+  },
+  topCourseCard: {
+    width: cardWidth,
+    borderRadius: scale(12),
+    overflow: 'hidden',
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  topCourseImage: {
+    width: '100%',
+    height: cardWidth * 0.65,
+    backgroundColor: '#f3f4f6',
+  },
+  topCourseInfo: {
+    padding: scale(10),
+  },
+  topCourseCategory: {
+    fontSize: scale(11),
+    marginBottom: scale(4),
+  },
+  topCourseTitle: {
+    fontSize: scale(13),
+    fontWeight: '600',
+    lineHeight: scale(18),
   },
 });

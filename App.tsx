@@ -4,12 +4,16 @@ import { CoursesProvider } from './src/context/CoursesContext';
 import { ThemeProvider } from './src/context/ThemeContext';
 import { AppNavigator } from './src/screens/navigation/AppNavigator';
 
+import { NotificationProvider } from './src/context/NotificationContext';
+
 export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
         <CoursesProvider>
-          <AppNavigator />
+          <NotificationProvider>
+            <AppNavigator />
+          </NotificationProvider>
         </CoursesProvider>
       </ThemeProvider>
     </SafeAreaProvider>

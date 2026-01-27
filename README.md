@@ -70,6 +70,31 @@ Follow these instructions to set up and run the project locally.
 - **Android Emulator**: Press `a` in the terminal.
 - **iOS Simulator**: Press `i` in the terminal (macOS only).
 
+## 💻 Moving to Another Laptop
+
+If you want to move this project to another laptop, follow these steps:
+
+1.  **Copy the Project**:
+    - Copy the entire project folder to the new laptop.
+    - **Tip**: You can skip copying the `node_modules` folder to save time and space, as you will reinstall dependencies anyway.
+
+2.  **Install Setup Tools** (on the new laptop):
+    - Install **Node.js** (LTS version recommended) from [nodejs.org](https://nodejs.org/).
+    - Install a code editor like **VS Code**.
+
+3.  **Install Dependencies**:
+    - Open a terminal/command prompt in the project folder on the new laptop.
+    - Run the following command to download all necessary libraries:
+      ```bash
+      npm install
+      ```
+
+4.  **Run the Project**:
+    - Start the app using:
+      ```bash
+      npx expo start
+      ```
+
 ## 📂 Project Structure
 
 ```
@@ -82,6 +107,45 @@ src/
 │   └── navigation/  # Navigation configuration (MainTabs, HomeStack)
 └── ...
 ```
+
+## 📦 Moving to a New System
+
+If you want to move this project to another laptop or computer, follow these steps to ensure a smooth transition:
+
+### 1. Preparation
+- **Node.js**: Ensure the new machine has **Node.js** installed. Download it from [nodejs.org](https://nodejs.org/).
+- **Copy Files**: Copy the entire project folder to the new machine.
+  > **Important**: You do NOT need to copy the `node_modules` or `.expo` folders. These will be recreated during installation. `package.json` and `package-lock.json` MUST be included.
+
+### 2. Installation on New Machine
+1.  Open a terminal (Command Prompt, PowerShell, or Terminal) on the new system.
+2.  Navigate to the project folder:
+    ```bash
+    cd path/to/TheSeeksAcademy
+    ```
+3.  Install the dependencies:
+    ```bash
+    npm install
+    # or if you use yarn
+    yarn install
+    ```
+    *This process may take a few minutes as it downloads all necessary libraries.*
+
+### 3. Running the Project
+Once the installation is complete, you can start the project just like before:
+
+```bash
+npx expo start
+```
+- A QR code will appear. Scan it with the **Expo Go** app on your phone.
+- Press `a` to run on Android Emulator.
+- Press `i` to run on iOS Simulator (macOS only).
+
+### Troubleshooting
+- If you face any issues, try starting with the clear cache flag:
+  ```bash
+  npx expo start --clear
+  ```
 
 ## 🤝 Contributing
 

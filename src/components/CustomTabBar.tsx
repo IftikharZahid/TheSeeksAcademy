@@ -1,212 +1,330 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Svg, Path, Circle } from 'react-native-svg';
 
-import { scale } from '../utils/responsive'; // Verify import path
+// Modern sleek icons with rounded corners
+const TabIcons = {
+  Dashboard: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* Modern grid dashboard */}
+      <Path
+        d="M4 6C4 4.89543 4.89543 4 6 4H9C10.1046 4 11 4.89543 11 6V9C11 10.1046 10.1046 11 9 11H6C4.89543 11 4 10.1046 4 9V6Z"
+        stroke={color}
+        strokeWidth={focused ? 2 : 1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill={focused ? color : 'none'}
+        fillOpacity={focused ? 0.1 : 0}
+      />
+      <Path
+        d="M13 6C13 4.89543 13.8954 4 15 4H18C19.1046 4 20 4.89543 20 6V9C20 10.1046 19.1046 11 18 11H15C13.8954 11 13 10.1046 13 9V6Z"
+        stroke={color}
+        strokeWidth={focused ? 2 : 1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <Path
+        d="M4 15C4 13.8954 4.89543 13 6 13H9C10.1046 13 11 13.8954 11 15V18C11 19.1046 10.1046 20 9 20H6C4.89543 20 4 19.1046 4 18V15Z"
+        stroke={color}
+        strokeWidth={focused ? 2 : 1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <Path
+        d="M13 15C13 13.8954 13.8954 13 15 13H18C19.1046 13 20 13.8954 20 15V18C20 19.1046 19.1046 20 18 20H15C13.8954 20 13 19.1046 13 18V15Z"
+        stroke={color}
+        strokeWidth={focused ? 2 : 1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  ),
 
-const { width } = Dimensions.get('window');
-const TAB_HEIGHT = scale(70);
+  Courses: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* Modern stacked layers / books */}
+      <Path
+        d="M2 6C2 4.89543 2.89543 4 4 4H20C21.1046 4 22 4.89543 22 6V8C22 9.10457 21.1046 10 20 10H4C2.89543 10 2 9.10457 2 8V6Z"
+        stroke={color}
+        strokeWidth={focused ? 2 : 1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill={focused ? color : 'none'}
+        fillOpacity={focused ? 0.1 : 0}
+      />
+      <Path
+        d="M4 10V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V10"
+        stroke={color}
+        strokeWidth={focused ? 2 : 1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M8 10V20M16 10V20"
+        stroke={color}
+        strokeWidth={focused ? 2 : 1.5}
+        strokeLinecap="round"
+      />
+      <Circle cx="12" cy="15" r="2" stroke={color} strokeWidth={focused ? 2 : 1.5} fill="none" />
+    </Svg>
+  ),
 
-export const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
+  Messages: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* Modern chat bubbles */}
+      <Path
+        d="M8 10H8.01M12 10H12.01M16 10H16.01M21 12C21 16.4183 16.9706 20 12 20C10.4607 20 9.01172 19.6565 7.74467 19.0511L3 20L4.39499 16.28C3.51156 15.0423 3 13.5743 3 12C3 7.58172 7.02944 4 12 4C16.9706 4 21 7.58172 21 12Z"
+        stroke={color}
+        strokeWidth={focused ? 2 : 1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill={focused ? color : 'none'}
+        fillOpacity={focused ? 0.05 : 0}
+      />
+    </Svg>
+  ),
+
+  NoticeBoard: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* Modern notification bell */}
+      <Path
+        d="M15 17H20L18.5951 5.52786C18.4596 4.64373 17.7269 4 16.8549 4H7.14509C6.27309 4 5.54041 4.64373 5.40486 5.52786L4 17H9M15 17V18C15 19.6569 13.6569 21 12 21C10.3431 21 9 19.6569 9 18V17M15 17H9"
+        stroke={color}
+        strokeWidth={focused ? 2 : 1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      {focused && (
+        <Circle cx="18" cy="6" r="3" fill="#EF4444" stroke="#FFFFFF" strokeWidth="1.5" />
+      )}
+    </Svg>
+  ),
+
+  Profile: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* Modern user avatar */}
+      <Circle
+        cx="12"
+        cy="12"
+        r="10"
+        stroke={color}
+        strokeWidth={focused ? 2 : 1.5}
+        fill={focused ? color : 'none'}
+        fillOpacity={focused ? 0.05 : 0}
+      />
+      <Circle cx="12" cy="10" r="3" stroke={color} strokeWidth={focused ? 2 : 1.5} fill="none" />
+      <Path
+        d="M6.16797 18.8344C6.90024 17.0086 8.63244 15.75 10.6562 15.75H13.3438C15.3676 15.75 17.0998 17.0086 17.832 18.8344"
+        stroke={color}
+        strokeWidth={focused ? 2 : 1.5}
+        strokeLinecap="round"
+      />
+    </Svg>
+  ),
+};
+
+interface TabData {
+  id: string;
+  label: string;
+  icon: keyof typeof TabIcons;
+  badgeCount?: number;
+}
+
+const TAB_CONFIG: TabData[] = [
+  { id: 'Home', label: 'Home', icon: 'Dashboard' },
+  { id: 'Courses', label: 'Courses', icon: 'Courses' },
+  { id: 'Messages', label: 'Messages', icon: 'Messages', badgeCount: 3 },
+  { id: 'NoticeBoard', label: 'Notices', icon: 'NoticeBoard' },
+  { id: 'Profile', label: 'Profile', icon: 'Profile' },
+];
+
+export const EducationalTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const PADDING_BOTTOM = insets.bottom > 0 ? insets.bottom : scale(10);
-  const TOTAL_HEIGHT = TAB_HEIGHT + PADDING_BOTTOM;
-
-  const center = width / 2;
-
-  const CURVE_WIDTH = scale(65);
-  const CURVE_DEPTH = scale(25);
-  const BUTTON_RADIUS = scale(15);
-
-  // Note: Path string structure depends on exact coordinate values
-  // We need to construct calculations carefully.
-  // It is safer to keep the path logic relative to calculated CURVE_WIDTH etc.
-
-  const path = `
-    M0,0
-    L${center - CURVE_WIDTH},0
-    C${center - CURVE_WIDTH + scale(15)},0 ${center - BUTTON_RADIUS - scale(25)},0 ${center - BUTTON_RADIUS - scale(10)},${scale(20)}
-    C${center - BUTTON_RADIUS},${scale(40)} ${center - BUTTON_RADIUS / 2},${CURVE_DEPTH} ${center},${CURVE_DEPTH}
-    C${center + BUTTON_RADIUS / 2},${CURVE_DEPTH} ${center + BUTTON_RADIUS},${scale(40)} ${center + BUTTON_RADIUS + scale(10)},${scale(20)}
-    C${center + BUTTON_RADIUS + scale(25)},0 ${center + CURVE_WIDTH - scale(15)},0 ${center + CURVE_WIDTH},0
-    L${width},0
-    L${width},${TOTAL_HEIGHT}
-    L0,${TOTAL_HEIGHT}
-    Z
-  `;
-
-  // ... rest of component ...
-
 
   const focusedRoute = state.routes[state.index];
   const focusedDescriptor = descriptors[focusedRoute.key];
   const focusedOptions = focusedDescriptor.options;
+  const tabBarStyle = focusedOptions.tabBarStyle;
 
-  if ((focusedOptions.tabBarStyle as any)?.display === 'none') {
+  // If display is none, return null to completely hide it
+  if ((tabBarStyle as any)?.display === 'none') {
     return null;
   }
 
   return (
-    <View style={[styles.container, { height: TOTAL_HEIGHT }]}>
-      <Svg width={width} height={TOTAL_HEIGHT} style={styles.svg}>
-        <Path
-          d={path}
-          fill={isDark ? theme.card : "white"}
-          stroke={theme.border}
-          strokeWidth={1}
+    <View
+      style={[
+        styles.container,
+        {
+          paddingBottom: Math.max(insets.bottom, 4),
+          backgroundColor: isDark ? theme.card : '#FFFFFF',
+          borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+        },
+        tabBarStyle as any,
+      ]}
+    >
+      {/* Active indicator */}
+      <View
+        style={[
+          styles.indicator,
+          {
+            left: `${(state.index / TAB_CONFIG.length) * 100}%`,
+            width: `${100 / TAB_CONFIG.length}%`,
+          },
+        ]}
+      >
+        <LinearGradient
+          colors={isDark ? [theme.primary, theme.accent] : ['#667eea', '#764ba2']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.indicatorGradient}
         />
-      </Svg>
-
-      <View style={[styles.tabsContainer, { paddingBottom: PADDING_BOTTOM }]}>
-        {state.routes.map((route, index) => {
-          const { options } = descriptors[route.key];
-          const label = options.tabBarLabel !== undefined
-            ? options.tabBarLabel
-            : options.title !== undefined
-              ? options.title
-              : route.name;
-
-          const isFocused = state.index === index;
-          const isCenter = index === 2; // Messages is the 3rd item (index 2)
-
-          const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
-
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
-          };
-
-          // Extract the icon from the options
-          // Note: We assume tabBarIcon is a function returning a ReactNode
-          const Icon = options.tabBarIcon ? (options.tabBarIcon as any)({
-            focused: isFocused,
-            color: isFocused ? theme.primary : theme.textSecondary,
-            size: 24
-          }) : null;
-
-          if (isCenter) {
-            return (
-              <View key={route.key} style={styles.centerButtonContainer}>
-                <TouchableOpacity
-                  onPress={onPress}
-                  style={[styles.centerButton, { backgroundColor: theme.primary, shadowColor: theme.primary }]}
-                  activeOpacity={0.8}
-                >
-                  {/* Custom Chat Bubble SVG Icon */}
-                  <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
-                    <Path
-                      d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z"
-                      fill="#ffffff"
-                    />
-                    <Path
-                      d="M7 9H17"
-                      stroke={theme.primary}
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                    <Path
-                      d="M7 13H13"
-                      stroke={theme.primary}
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                  </Svg>
-                </TouchableOpacity>
-                <Text style={[styles.label, { color: isFocused ? theme.primary : theme.textSecondary, marginTop: scale(18) }]}>
-                  {label as string}
-                </Text>
-              </View>
-            );
-          }
-
-          return (
-            <TouchableOpacity
-              key={route.key}
-              onPress={onPress}
-              style={styles.tab}
-              activeOpacity={0.7}
-            >
-              {Icon}
-              <Text style={[styles.label, { color: isFocused ? theme.primary : theme.textSecondary }]}>
-                {label as string}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
       </View>
+
+      {/* Tabs */}
+      {TAB_CONFIG.map((tabData, index) => {
+        const route = state.routes.find((r) => r.name === tabData.id) || state.routes[index];
+        const isFocused = state.index === index;
+
+        // Icon color
+        const iconColor = isFocused
+          ? isDark
+            ? theme.primary
+            : '#4F46E5'
+          : isDark
+            ? theme.textTertiary
+            : '#9CA3AF';
+
+        const IconComponent = TabIcons[tabData.icon];
+
+        const onPress = () => {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+
+          if (!isFocused && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
+        };
+
+        return (
+          <TouchableOpacity
+            key={tabData.id}
+            accessibilityRole="button"
+            accessibilityState={isFocused ? { selected: true } : {}}
+            accessibilityLabel={`${tabData.label} tab`}
+            testID={`tab-${tabData.id}`}
+            onPress={onPress}
+            style={styles.tab}
+            activeOpacity={0.7}
+          >
+            <View style={styles.tabContent}>
+              <View style={styles.iconContainer}>
+                <IconComponent color={iconColor} size={22} focused={isFocused} />
+
+                {/* Badge */}
+                {tabData.badgeCount && tabData.badgeCount > 0 && (
+                  <View
+                    style={[
+                      styles.badge,
+                      { backgroundColor: isDark ? '#EF4444' : '#DC2626' },
+                    ]}
+                  >
+                    <Text style={styles.badgeText}>
+                      {tabData.badgeCount > 9 ? '9+' : tabData.badgeCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <Text
+                style={[
+                  styles.label,
+                  {
+                    color: iconColor,
+                    fontWeight: isFocused ? '600' : '400',
+                  },
+                ]}
+                numberOfLines={1}
+              >
+                {tabData.label}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    bottom: 0,
-    width: '100%',
-    backgroundColor: 'transparent',
-    elevation: 0,
-    borderTopWidth: 0,
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    paddingTop: 6,
+    position: 'relative',
   },
-  svg: {
+  indicator: {
     position: 'absolute',
     top: 0,
-    left: 0,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: scale(-2),
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: scale(3),
-    elevation: 5,
+    height: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  tabsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+  indicatorGradient: {
     height: '100%',
-    paddingHorizontal: scale(4),
+    width: '60%',
+    borderRadius: 2,
   },
   tab: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    height: scale(60),
-    marginBottom: scale(5),
+    paddingVertical: 6,
   },
-  centerButtonContainer: {
-    flex: 1,
-    justifyContent: 'flex-start',
+  tabContent: {
     alignItems: 'center',
-    height: scale(100),
-    marginTop: scale(-25), // Pull up to float
-    zIndex: 10,
-  },
-  centerButton: {
-    width: scale(50),
-    height: scale(50),
-    borderRadius: scale(25),
     justifyContent: 'center',
+    gap: 2,
+  },
+  iconContainer: {
+    position: 'relative',
     alignItems: 'center',
-    shadowOffset: {
-      width: 0,
-      height: scale(4),
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
-    elevation: 8,
+    justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+    paddingHorizontal: 3,
   },
   label: {
-    fontSize: scale(10),
-    marginTop: scale(4),
+    fontSize: 10,
+    marginTop: 2,
+    textAlign: 'center',
   },
 });
+
+export default EducationalTabBar;

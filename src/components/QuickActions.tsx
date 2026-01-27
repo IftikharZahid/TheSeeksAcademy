@@ -120,9 +120,9 @@ const styles = StyleSheet.create({
     fontSize: scale(18),
   },
   actionTitle: {
-    fontSize: scale(9),
+    fontSize: scale(12),
     fontWeight: '600',
     textAlign: 'center',
-    lineHeight: scale(11),
+    lineHeight: scale(14),
   },
 });
