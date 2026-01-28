@@ -17,7 +17,7 @@ interface Course {
 export const AdminCoursesScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
-  
+
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -112,7 +112,7 @@ export const AdminCoursesScreen: React.FC = () => {
     setImage('');
   };
 
-  const filteredCourses = courses.filter(c => 
+  const filteredCourses = courses.filter(c =>
     (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (c.teacher || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -121,11 +121,11 @@ export const AdminCoursesScreen: React.FC = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+          <Ionicons name="chevron-back" size={20} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Manage Courses</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Courses</Text>
         <TouchableOpacity onPress={() => openModal()} style={styles.addButton}>
-          <Ionicons name="add" size={24} color={theme.primary} />
+          <Ionicons name="add" size={20} color={theme.primary} />
         </TouchableOpacity>
       </View>
 
@@ -140,15 +140,18 @@ export const AdminCoursesScreen: React.FC = () => {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
+        <ActivityIndicator size="small" color={theme.primary} style={{ marginTop: 16 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={[styles.listTitle, { color: theme.text }]}>Courses List ({courses.length})</Text>
           {filteredCourses.length === 0 ? (
             <Text style={[styles.noDataText, { color: theme.textSecondary }]}>No courses found.</Text>
           ) : (
-            filteredCourses.map((item) => (
+            filteredCourses.map((item, index) => (
               <View key={item.id} style={[styles.card, { backgroundColor: theme.card }]}>
+                <View style={[styles.serialNo, { backgroundColor: theme.primary + '12' }]}>
+                  <Text style={[styles.serialNoText, { color: theme.primary }]}>{index + 1}</Text>
+                </View>
                 <Image source={{ uri: item.image }} style={styles.courseImage} />
                 <View style={styles.cardInfo}>
                   <Text style={[styles.name, { color: theme.text }]}>{item.name}</Text>
@@ -156,10 +159,10 @@ export const AdminCoursesScreen: React.FC = () => {
                 </View>
                 <View style={styles.cardActions}>
                   <TouchableOpacity onPress={() => openModal(item)} style={styles.actionBtn}>
-                    <Ionicons name="pencil" size={20} color={theme.primary} />
+                    <Ionicons name="pencil" size={16} color={theme.primary} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDeleteCourse(item.id)} style={styles.actionBtn}>
-                    <Ionicons name="trash" size={20} color={theme.error} />
+                    <Ionicons name="trash" size={16} color={theme.error} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -173,33 +176,33 @@ export const AdminCoursesScreen: React.FC = () => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>{editingCourse ? 'Edit Course' : 'Add Course'}</Text>
-            
+
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={[styles.label, { color: theme.text }]}>Course Name</Text>
-              <TextInput 
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]} 
-                placeholder="e.g. Advanced React Native" 
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                placeholder="e.g. Advanced React Native"
                 placeholderTextColor={theme.textSecondary}
-                value={name} 
-                onChangeText={setName} 
+                value={name}
+                onChangeText={setName}
               />
-              
+
               <Text style={[styles.label, { color: theme.text }]}>Teacher Name</Text>
-              <TextInput 
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]} 
-                placeholder="e.g. Prof. Smith" 
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                placeholder="e.g. Prof. Smith"
                 placeholderTextColor={theme.textSecondary}
-                value={teacher} 
-                onChangeText={setTeacher} 
+                value={teacher}
+                onChangeText={setTeacher}
               />
-              
+
               <Text style={[styles.label, { color: theme.text }]}>Image URL</Text>
-              <TextInput 
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]} 
-                placeholder="https://..." 
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                placeholder="https://..."
                 placeholderTextColor={theme.textSecondary}
-                value={image} 
-                onChangeText={setImage} 
+                value={image}
+                onChangeText={setImage}
               />
             </ScrollView>
 
@@ -224,68 +227,83 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
   },
-  headerTitle: { fontSize: 18, fontWeight: 'bold' },
-  backButton: { padding: 4 },
-  addButton: { padding: 4 },
-  searchContainer: { padding: 16, paddingBottom: 0 },
+  headerTitle: { fontSize: 16, fontWeight: '600' },
+  backButton: { padding: 2 },
+  addButton: { padding: 2 },
+  searchContainer: { padding: 12, paddingBottom: 0 },
   searchInput: {
-    padding: 12,
-    borderRadius: 8,
+    padding: 10,
+    borderRadius: 6,
     borderWidth: 1,
+    fontSize: 13,
   },
-  content: { padding: 16 },
-  listTitle: { fontSize: 16, fontWeight: '600', marginBottom: 16 },
-  noDataText: { textAlign: 'center', marginTop: 20, fontSize: 16 },
+  content: { padding: 12 },
+  listTitle: { fontSize: 13, fontWeight: '600', marginBottom: 10 },
+  noDataText: { textAlign: 'center', marginTop: 16, fontSize: 13 },
   card: {
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 12,
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  serialNo: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  serialNoText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   courseImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginRight: 12,
-    backgroundColor: '#ccc',
+    width: 44,
+    height: 44,
+    borderRadius: 6,
+    marginRight: 10,
+    backgroundColor: '#e5e5e5',
   },
   cardInfo: { flex: 1 },
-  name: { fontSize: 16, fontWeight: 'bold', marginBottom: 2 },
-  teacher: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
-  cardActions: { flexDirection: 'column', gap: 12, paddingLeft: 8 },
-  actionBtn: { padding: 4 },
+  name: { fontSize: 13, fontWeight: '600', marginBottom: 1 },
+  teacher: { fontSize: 11, fontWeight: '500', marginBottom: 1 },
+  cardActions: { flexDirection: 'row', gap: 12, paddingLeft: 8, alignItems: 'center' },
+  actionBtn: { padding: 6, borderRadius: 6 },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
-    padding: 20,
+    padding: 16,
   },
   modalContent: {
-    borderRadius: 16,
-    padding: 20,
-    elevation: 5,
+    borderRadius: 12,
+    padding: 14,
+    elevation: 4,
     maxHeight: '80%',
   },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 6 },
+  modalTitle: { fontSize: 16, fontWeight: '600', marginBottom: 14, textAlign: 'center' },
+  label: { fontSize: 12, fontWeight: '600', marginBottom: 4 },
   input: {
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: 6,
+    padding: 10,
+    marginBottom: 10,
+    fontSize: 13,
   },
-  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 10 },
+  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8 },
   modalBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
   },
 });

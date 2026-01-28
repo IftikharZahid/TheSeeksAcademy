@@ -28,7 +28,7 @@ interface Student {
 export const AdminStudentRecordsScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme } = useTheme();
-  
+
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -80,11 +80,11 @@ export const AdminStudentRecordsScreen: React.FC = () => {
   const getNextStudentId = async (): Promise<string> => {
     const currentYear = new Date().getFullYear();
     const counterRef = doc(db, 'counters', 'studentId');
-    
+
     try {
       const counterSnap = await getDoc(counterRef);
       let nextNumber = 1;
-      
+
       if (counterSnap.exists()) {
         const data = counterSnap.data();
         // If same year, use next number; if new year, reset to 1
@@ -92,16 +92,16 @@ export const AdminStudentRecordsScreen: React.FC = () => {
           nextNumber = data.nextNumber;
         }
       }
-      
+
       // Generate ID: STD-2025-001
       const studentId = `STD-${currentYear}-${String(nextNumber).padStart(3, '0')}`;
-      
+
       // Increment counter for next student
       await setDoc(counterRef, {
         year: currentYear,
         nextNumber: nextNumber + 1
       });
-      
+
       return studentId;
     } catch (error) {
       console.error('Error generating student ID:', error);
@@ -136,7 +136,7 @@ export const AdminStudentRecordsScreen: React.FC = () => {
         const newStudentId = await getNextStudentId();
         const newEmail = `${newStudentId}@theseeksacademy.edu.pk`;
         const newPassword = generatePassword();
-        
+
         const studentData = {
           name,
           fatherName,
@@ -147,7 +147,7 @@ export const AdminStudentRecordsScreen: React.FC = () => {
           profileImage,
           updatedAt: serverTimestamp(),
         };
-        
+
         await setDoc(doc(db, 'students', newStudentId), studentData);
         Alert.alert('Success', `Student added successfully!\n\nStudent ID: ${newStudentId}\nEmail: ${newEmail}\nPassword: ${newPassword}`);
       }
@@ -200,11 +200,11 @@ Made with ❤ by The Seeks Academy`;
 
   const handlePickDocument = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({ 
-          type: '*/*',
-          copyToCacheDirectory: true 
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true
       });
-      
+
       if (result.canceled) return;
 
       setLoading(true);
@@ -217,23 +217,23 @@ Made with ❤ by The Seeks Academy`;
       // On Android, explicitly reading content:// URIs can fail with readAsStringAsync
       // Best practice: Copy the file to a known local path if likely external
       if (fileUri.startsWith('content://')) {
-          const tempUri = FileSystem.documentDirectory + 'temp_upload.json';
-          await FileSystem.copyAsync({
-              from: fileUri,
-              to: tempUri
-          });
-          fileUri = tempUri;
+        const tempUri = FileSystem.documentDirectory + 'temp_upload.json';
+        await FileSystem.copyAsync({
+          from: fileUri,
+          to: tempUri
+        });
+        fileUri = tempUri;
       }
 
       const fileContent = await FileSystem.readAsStringAsync(fileUri);
-      
+
       let data;
       try {
-          data = JSON.parse(fileContent);
+        data = JSON.parse(fileContent);
       } catch (parseError) {
-          Alert.alert('JSON Error', 'The file content is not valid JSON.');
-          setLoading(false);
-          return;
+        Alert.alert('JSON Error', 'The file content is not valid JSON.');
+        setLoading(false);
+        return;
       }
 
       if (!Array.isArray(data)) {
@@ -247,37 +247,37 @@ Made with ❤ by The Seeks Academy`;
 
       for (const item of data) {
         if (item.name && item.studentId && item.email) {
-            try {
-                // 1. Update/Add to 'students' collection
-                const docId = item.studentId.toString();
-                await setDoc(doc(db, 'students', docId), {
-                    name: item.name,
-                    studentId: item.studentId,
-                    email: item.email,
-                    grade: item.grade || 'N/A',
-                    profileImage: item.profileImage || '',
-                    updatedAt: serverTimestamp(),
-                }, { merge: true });
+          try {
+            // 1. Update/Add to 'students' collection
+            const docId = item.studentId.toString();
+            await setDoc(doc(db, 'students', docId), {
+              name: item.name,
+              studentId: item.studentId,
+              email: item.email,
+              grade: item.grade || 'N/A',
+              profileImage: item.profileImage || '',
+              updatedAt: serverTimestamp(),
+            }, { merge: true });
 
-                // 2. Sync profileImage to 'profile' collection if exists
-                if (item.profileImage && item.email) {
-                    const q = query(collection(db, 'profile'), where('email', '==', item.email));
-                    const querySnapshot = await getDocs(q);
-                    if (!querySnapshot.empty) {
-                        const profileDoc = querySnapshot.docs[0];
-                        await updateDoc(doc(db, 'profile', profileDoc.id), {
-                            image: item.profileImage
-                        });
-                    }
-                }
-
-                addedCount++;
-            } catch (err) {
-                console.error("Error adding student:", item, err);
-                errorCount++;
+            // 2. Sync profileImage to 'profile' collection if exists
+            if (item.profileImage && item.email) {
+              const q = query(collection(db, 'profile'), where('email', '==', item.email));
+              const querySnapshot = await getDocs(q);
+              if (!querySnapshot.empty) {
+                const profileDoc = querySnapshot.docs[0];
+                await updateDoc(doc(db, 'profile', profileDoc.id), {
+                  image: item.profileImage
+                });
+              }
             }
-        } else {
+
+            addedCount++;
+          } catch (err) {
+            console.error("Error adding student:", item, err);
             errorCount++;
+          }
+        } else {
+          errorCount++;
         }
       }
 
@@ -326,7 +326,7 @@ Made with ❤ by The Seeks Academy`;
 
   const filteredStudents = students.filter(s => {
     const matchesSearch = (s.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (s.studentId || '').toLowerCase().includes(searchTerm.toLowerCase());
+      (s.studentId || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesClass = filterClass === 'All' || s.grade === filterClass;
     return matchesSearch && matchesClass;
   });
@@ -335,11 +335,11 @@ Made with ❤ by The Seeks Academy`;
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+          <Ionicons name="chevron-back" size={20} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Student Records</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Students</Text>
         <TouchableOpacity onPress={() => openModal()} style={styles.addButton}>
-          <Ionicons name="add" size={24} color={theme.primary} />
+          <Ionicons name="add" size={20} color={theme.primary} />
         </TouchableOpacity>
       </View>
 
@@ -361,7 +361,7 @@ Made with ❤ by The Seeks Academy`;
               key={option}
               style={[
                 styles.filterChip,
-                { 
+                {
                   backgroundColor: filterClass === option ? theme.primary : theme.card,
                   borderColor: filterClass === option ? theme.primary : theme.border,
                 }
@@ -380,16 +380,19 @@ Made with ❤ by The Seeks Academy`;
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
+        <ActivityIndicator size="small" color={theme.primary} style={{ marginTop: 16 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={[styles.listTitle, { color: theme.text }]}>Students List ({filteredStudents.length})</Text>
           {filteredStudents.length === 0 ? (
             <Text style={[styles.noDataText, { color: theme.textSecondary }]}>No students found.</Text>
           ) : (
-            filteredStudents.map((item) => (
+            filteredStudents.map((item, index) => (
               <View key={item.id} style={[styles.card, { backgroundColor: theme.card }]}>
-                <Pressable 
+                <View style={[styles.serialNo, { backgroundColor: theme.primary + '12' }]}>
+                  <Text style={[styles.serialNoText, { color: theme.primary }]}>{index + 1}</Text>
+                </View>
+                <Pressable
                   style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
                   onPress={() => {
                     setViewingStudent(item);
@@ -398,12 +401,12 @@ Made with ❤ by The Seeks Academy`;
                   onLongPress={() => copyStudentRecord(item)}
                   delayLongPress={500}
                 >
-                  <View style={[styles.avatar, { backgroundColor: theme.primary + '20', overflow: 'hidden' }]}>
-                     {item.profileImage ? (
-                         <Image source={{ uri: item.profileImage }} style={{ width: '100%', height: '100%' }} />
-                     ) : (
-                         <Ionicons name="person" size={24} color={theme.primary} />
-                     )}
+                  <View style={[styles.avatar, { backgroundColor: theme.primary + '15', overflow: 'hidden' }]}>
+                    {item.profileImage ? (
+                      <Image source={{ uri: item.profileImage }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
+                    ) : (
+                      <Ionicons name="person" size={20} color={theme.primary} />
+                    )}
                   </View>
                   <View style={styles.cardInfo}>
                     <Text style={[styles.name, { color: theme.text }]}>{item.name}</Text>
@@ -414,10 +417,10 @@ Made with ❤ by The Seeks Academy`;
                 </Pressable>
                 <View style={styles.cardActions}>
                   <TouchableOpacity onPress={() => openModal(item)} style={styles.actionBtn}>
-                    <Ionicons name="pencil" size={20} color={theme.primary} />
+                    <Ionicons name="pencil" size={16} color={theme.primary} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDeleteStudent(item.id)} style={styles.actionBtn}>
-                    <Ionicons name="trash" size={20} color={theme.error} />
+                    <Ionicons name="trash" size={16} color={theme.error} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -431,39 +434,39 @@ Made with ❤ by The Seeks Academy`;
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>{editingStudent ? 'Edit Student' : 'Add Student'}</Text>
-            
+
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={[styles.label, { color: theme.text }]}>Full Name</Text>
-              <TextInput 
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]} 
-                placeholder="e.g. John Doe" 
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                placeholder="e.g. John Doe"
                 placeholderTextColor={theme.textSecondary}
-                value={name} 
-                onChangeText={setName} 
+                value={name}
+                onChangeText={setName}
               />
-              
+
               <Text style={[styles.label, { color: theme.text }]}>Father Name</Text>
-              <TextInput 
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]} 
-                placeholder="e.g. John Smith Sr." 
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                placeholder="e.g. John Smith Sr."
                 placeholderTextColor={theme.textSecondary}
-                value={fatherName} 
-                onChangeText={setFatherName} 
+                value={fatherName}
+                onChangeText={setFatherName}
               />
-              
+
               {/* Show Student ID and Email only when editing (read-only) */}
               {editingStudent && (
                 <>
                   <Text style={[styles.label, { color: theme.text }]}>Student ID (Auto-generated)</Text>
-                  <TextInput 
-                    style={[styles.input, { backgroundColor: theme.border, color: theme.textSecondary, borderColor: theme.border }]} 
+                  <TextInput
+                    style={[styles.input, { backgroundColor: theme.border, color: theme.textSecondary, borderColor: theme.border }]}
                     value={studentId}
                     editable={false}
                   />
-                  
+
                   <Text style={[styles.label, { color: theme.text }]}>Email (Auto-generated)</Text>
-                  <TextInput 
-                    style={[styles.input, { backgroundColor: theme.border, color: theme.textSecondary, borderColor: theme.border }]} 
+                  <TextInput
+                    style={[styles.input, { backgroundColor: theme.border, color: theme.textSecondary, borderColor: theme.border }]}
                     value={email}
                     editable={false}
                     autoCapitalize="none"
@@ -472,15 +475,15 @@ Made with ❤ by The Seeks Academy`;
               )}
 
               <Text style={[styles.label, { color: theme.text }]}>Profile Image URL</Text>
-              <TextInput 
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]} 
-                placeholder="https://example.com/image.jpg" 
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                placeholder="https://example.com/image.jpg"
                 placeholderTextColor={theme.textSecondary}
-                value={profileImage} 
+                value={profileImage}
                 onChangeText={setProfileImage}
                 autoCapitalize="none"
               />
-              
+
               <Text style={[styles.label, { color: theme.text }]}>Grade/Class</Text>
               <TouchableOpacity
                 style={[styles.input, styles.pickerInput, { backgroundColor: theme.background, borderColor: theme.border }]}
@@ -516,45 +519,45 @@ Made with ❤ by The Seeks Academy`;
               end={{ x: 1, y: 1 }}
               style={styles.viewModalHeader}
             >
-              <TouchableOpacity 
-                onPress={() => setViewModalVisible(false)} 
+              <TouchableOpacity
+                onPress={() => setViewModalVisible(false)}
                 style={styles.closeButton}
               >
                 <Ionicons name="close" size={24} color="#fff" />
               </TouchableOpacity>
             </LinearGradient>
-            
+
             {/* Floating Profile Section */}
             <View style={styles.floatingProfileSection}>
               <View style={styles.modalHeaderRow}>
                 <View style={styles.modalIdBadge}>
                   <Text style={styles.modalIdText}>{viewingStudent?.studentId}</Text>
                 </View>
-                
+
                 <View style={styles.profileImageContainer}>
                   {viewingStudent?.profileImage ? (
-                    <Image 
-                      source={{ uri: viewingStudent.profileImage }} 
-                      style={styles.profileImage} 
+                    <Image
+                      source={{ uri: viewingStudent.profileImage }}
+                      style={styles.profileImage}
                     />
                   ) : (
                     <Ionicons name="person" size={40} color="#fff" />
                   )}
                 </View>
-                
+
                 <View style={styles.modalGradeBadge}>
                   <Text style={styles.modalGradeText}>{viewingStudent?.grade}</Text>
                 </View>
               </View>
             </View>
-            
+
             {/* Compact Info Section */}
             <View style={styles.infoSection}>
               <View style={styles.compactInfoRow}>
                 <View style={[styles.iconBadge, { backgroundColor: '#e0e7ff' }]}>
                   <Ionicons name="person" size={18} color="#667eea" />
                 </View>
-                <Pressable 
+                <Pressable
                   style={styles.infoTextContainer}
                   onLongPress={async () => {
                     await Clipboard.setStringAsync(viewingStudent?.name || '');
@@ -571,7 +574,7 @@ Made with ❤ by The Seeks Academy`;
                 <View style={[styles.iconBadge, { backgroundColor: '#fef3c7' }]}>
                   <Ionicons name="person-outline" size={18} color="#f59e0b" />
                 </View>
-                <Pressable 
+                <Pressable
                   style={styles.infoTextContainer}
                   onLongPress={async () => {
                     await Clipboard.setStringAsync(viewingStudent?.fatherName || '');
@@ -588,7 +591,7 @@ Made with ❤ by The Seeks Academy`;
                 <View style={[styles.iconBadge, { backgroundColor: '#dcfce7' }]}>
                   <Ionicons name="mail-outline" size={18} color="#10b981" />
                 </View>
-                <Pressable 
+                <Pressable
                   style={styles.infoTextContainer}
                   onLongPress={async () => {
                     const credentials = `Email: ${viewingStudent?.email}\nPassword: ${viewingStudent?.password}`;
@@ -606,7 +609,7 @@ Made with ❤ by The Seeks Academy`;
                 <View style={[styles.iconBadge, { backgroundColor: '#fed7aa' }]}>
                   <Ionicons name="key-outline" size={18} color="#ea580c" />
                 </View>
-                <Pressable 
+                <Pressable
                   style={styles.infoTextContainer}
                   onLongPress={async () => {
                     const credentials = `Email: ${viewingStudent?.email}\nPassword: ${viewingStudent?.password}`;
@@ -627,10 +630,10 @@ Made with ❤ by The Seeks Academy`;
 
       {/* Choice Modal (Manual vs Upload) */}
       <Modal visible={choiceModalVisible} animationType="fade" transparent>
-        <TouchableOpacity 
-            style={styles.modalOverlay} 
-            activeOpacity={1} 
-            onPress={() => setChoiceModalVisible(false)}
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setChoiceModalVisible(false)}
         >
           <View style={[styles.modalContent, { backgroundColor: theme.card, alignItems: 'center', paddingHorizontal: 20, paddingVertical: 24 }]}>
             <View style={[styles.modalIconContainer, { backgroundColor: theme.primary + '15' }]}>
@@ -638,12 +641,12 @@ Made with ❤ by The Seeks Academy`;
             </View>
             <Text style={[styles.modalTitle, { color: theme.text, marginTop: 12, marginBottom: 6 }]}>Add New Student</Text>
             <Text style={{ color: theme.textSecondary, marginBottom: 20, textAlign: 'center', fontSize: 13, lineHeight: 18 }}>
-                Choose how you want to add students.
+              Choose how you want to add students.
             </Text>
-            
-            <TouchableOpacity 
-                onPress={handleManualEntry} 
-                style={[styles.modernChoiceBtn, styles.primaryChoiceBtn, { backgroundColor: theme.primary, shadowColor: theme.primary }]}
+
+            <TouchableOpacity
+              onPress={handleManualEntry}
+              style={[styles.modernChoiceBtn, styles.primaryChoiceBtn, { backgroundColor: theme.primary, shadowColor: theme.primary }]}
             >
               <View style={styles.choiceBtnIconContainer}>
                 <Ionicons name="create-outline" size={18} color="#fff" />
@@ -652,9 +655,9 @@ Made with ❤ by The Seeks Academy`;
               <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
             </TouchableOpacity>
 
-            <TouchableOpacity 
-                onPress={handlePickDocument} 
-                style={[styles.modernChoiceBtn, styles.secondaryChoiceBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
+            <TouchableOpacity
+              onPress={handlePickDocument}
+              style={[styles.modernChoiceBtn, styles.secondaryChoiceBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
             >
               <View style={[styles.choiceBtnIconContainer, { backgroundColor: theme.primary + '15' }]}>
                 <Ionicons name="cloud-upload-outline" size={18} color={theme.primary} />
@@ -663,11 +666,11 @@ Made with ❤ by The Seeks Academy`;
               <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
             </TouchableOpacity>
 
-            <TouchableOpacity 
-                onPress={() => setChoiceModalVisible(false)} 
-                style={{ marginTop: 12, padding: 8 }}
+            <TouchableOpacity
+              onPress={() => setChoiceModalVisible(false)}
+              style={{ marginTop: 12, padding: 8 }}
             >
-                <Text style={{ color: theme.textSecondary, fontSize: 14, fontWeight: '600' }}>Cancel</Text>
+              <Text style={{ color: theme.textSecondary, fontSize: 14, fontWeight: '600' }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -680,7 +683,7 @@ Made with ❤ by The Seeks Academy`;
         animationType="fade"
         onRequestClose={() => setClassPickerVisible(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.pickerOverlay}
           activeOpacity={1}
           onPress={() => setClassPickerVisible(false)}
@@ -696,8 +699,8 @@ Made with ❤ by The Seeks Academy`;
                   setClassPickerVisible(false);
                 }}
               >
-                <Text style={[styles.pickerOptionText, { 
-                  color: grade === classOption ? theme.primary : theme.text 
+                <Text style={[styles.pickerOptionText, {
+                  color: grade === classOption ? theme.primary : theme.text
                 }]}>
                   {classOption}
                 </Text>
@@ -719,124 +722,139 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
   },
-  headerTitle: { fontSize: 18, fontWeight: 'bold' },
-  backButton: { padding: 4 },
-  addButton: { padding: 4 },
-  searchContainer: { 
-    paddingHorizontal: 16, 
-    paddingTop: 12,
-    paddingBottom: 8,
+  headerTitle: { fontSize: 16, fontWeight: '600' },
+  backButton: { padding: 2 },
+  addButton: { padding: 2 },
+  searchContainer: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 6,
   },
   searchInput: {
     padding: 10,
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
+    fontSize: 13,
   },
-  content: { padding: 16, paddingTop: 12 },
-  listTitle: { fontSize: 16, fontWeight: '600', marginBottom: 16 },
-  noDataText: { textAlign: 'center', marginTop: 20, fontSize: 16 },
+  content: { padding: 12, paddingTop: 8 },
+  listTitle: { fontSize: 13, fontWeight: '600', marginBottom: 10 },
+  noDataText: { textAlign: 'center', marginTop: 16, fontSize: 13 },
   card: {
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 12,
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  serialNo: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  serialNoText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   idBadge: {
     backgroundColor: '#dbeafe',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    minWidth: 85,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    minWidth: 70,
   },
   idBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: 9,
+    fontWeight: '600',
     color: '#1e40af',
     textAlign: 'center',
   },
   gradeBadge: {
     backgroundColor: '#fce7f3',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    minWidth: 60,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    minWidth: 50,
   },
   gradeBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '600',
     color: '#9f1239',
     textAlign: 'center',
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   cardInfo: { flex: 1 },
-  name: { fontSize: 16, fontWeight: 'bold', marginBottom: 2 },
-  details: { fontSize: 12, marginBottom: 1 },
-  cardActions: { flexDirection: 'column', gap: 12, paddingLeft: 8 },
-  actionBtn: { padding: 4 },
+  name: { fontSize: 13, fontWeight: '600', marginBottom: 1 },
+  details: { fontSize: 10, marginBottom: 1 },
+  cardActions: { flexDirection: 'row', gap: 12, paddingLeft: 8, alignItems: 'center' },
+  actionBtn: { padding: 6, borderRadius: 6 },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   modalContent: {
-    borderRadius: 16,
-    padding: 20,
-    elevation: 5,
+    borderRadius: 12,
+    padding: 14,
+    elevation: 4,
     maxHeight: '80%',
   },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 6 },
+  modalTitle: { fontSize: 16, fontWeight: '600', marginBottom: 14, textAlign: 'center' },
+  label: { fontSize: 12, fontWeight: '600', marginBottom: 4 },
   input: {
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: 6,
+    padding: 10,
+    marginBottom: 10,
+    fontSize: 13,
   },
-  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 10 },
+  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8 },
   modalBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
   },
   filterContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 12,
+    paddingBottom: 6,
   },
   filterScroll: {
-    gap: 8,
+    gap: 6,
   },
   filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
     borderWidth: 1,
   },
   filterChipText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '500',
   },
   pickerInput: {
     flexDirection: 'row',
@@ -845,58 +863,58 @@ const styles = StyleSheet.create({
   },
   pickerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   pickerContainer: {
     width: '100%',
-    maxWidth: 300,
-    borderRadius: 16,
-    padding: 20,
+    maxWidth: 280,
+    borderRadius: 12,
+    padding: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
   pickerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 16,
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 12,
     textAlign: 'center',
   },
   pickerOption: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 6,
   },
   pickerOptionText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
   },
   choiceBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
   },
   choiceBtnText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#fff',
   },
   modalIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -904,61 +922,62 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
   },
   primaryChoiceBtn: {
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   secondaryChoiceBtn: {
-    borderWidth: 2,
+    borderWidth: 1.5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   choiceBtnIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   choiceBtnTextContainer: {
     flex: 1,
   },
   modernChoiceBtnTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#fff',
+    flex: 1,
   },
   // Modern Compact View Modal
   viewModalContent: {
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: 'hidden',
-    elevation: 5,
-    maxWidth: 400,
+    elevation: 4,
+    maxWidth: 340,
     width: '90%',
   },
   viewModalHeader: {
-    height: 80, // Shorter header - will extend to middle of profile via overlap
-    paddingTop: 16,
-    paddingHorizontal: 20,
+    height: 60,
+    paddingTop: 12,
+    paddingHorizontal: 16,
   },
   closeButton: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    top: 10,
+    right: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -966,114 +985,113 @@ const styles = StyleSheet.create({
   },
   floatingProfileSection: {
     alignItems: 'center',
-    marginTop: -40, // Negative margin creates overlap - profile sits half on gradient
-    paddingBottom: 8, // Reduced gap
+    marginTop: -30,
+    paddingBottom: 6,
   },
   modalHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
   },
   modalIdBadge: {
     backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-    minWidth: 100,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    minWidth: 85,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   modalIdText: {
-    fontSize: 11,
-    fontWeight: '800',
+    fontSize: 10,
+    fontWeight: '700',
     color: '#1e40af',
     textAlign: 'center',
   },
   modalGradeBadge: {
     backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-    minWidth: 75,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    minWidth: 60,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   modalGradeText: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 10,
+    fontWeight: '700',
     color: '#9f1239',
     textAlign: 'center',
   },
   profileSection: {
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 16,
   },
   profileImageContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: 'rgba(255,255,255,0.3)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: '#fff',
   },
   profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   studentName: {
-    fontSize: 20,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-
-  studentGrade: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '700',
+    marginBottom: 6,
+  },
+  studentGrade: {
+    fontSize: 11,
+    fontWeight: '600',
     color: '#fff',
   },
   infoSection: {
-    padding: 16,
+    padding: 12,
     paddingTop: 0,
   },
   compactInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
     borderBottomColor: '#f3f4f6',
   },
   iconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   infoTextContainer: {
     flex: 1,
   },
   compactLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 2,
+    letterSpacing: 0.4,
+    marginBottom: 1,
   },
   compactValue: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
     flexWrap: 'wrap',
   },
 });

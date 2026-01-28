@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
@@ -15,82 +15,38 @@ interface ClassSession {
   instructor: string;
 }
 
-
-
-
-
-const days = ['All', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const dayOrder: { [key: string]: number } = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 7 };
 
-const getTypeColor = (type: string) => {
-  switch (type) {
-    case 'LECTURE':
-      return '#3b82f6';
-    case 'PRACTICAL':
-      return '#8b5cf6';
-    case 'TUTORIAL':
-      return '#10b981';
-    default:
-      return '#6b7280';
-  }
-};
+const { width } = Dimensions.get('window');
+const pillWidth = (width - 48) / 3 - 8;
 
 export const TimetableScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
-  const [activeDay, setActiveDay] = useState('All');
+  const [activeDay, setActiveDay] = useState('Wednesday');
   const [refreshing, setRefreshing] = useState(false);
   const [scheduleData, setScheduleData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch schedule
     setLoading(true);
-    let unsubscribe: () => void;
-
-    if (activeDay === 'All') {
-      const colRef = collection(db, 'timetable');
-      unsubscribe = onSnapshot(colRef, (snapshot) => {
-        let allClasses: any[] = [];
-        snapshot.docs.forEach((doc) => {
-          const data = doc.data();
-          const dayName = doc.id;
-          if (data.classes && Array.isArray(data.classes)) {
-            // Add day name to each class for 'All' view context
-            const dayClasses = data.classes.map((c: any) => ({ ...c, day: dayName }));
-            allClasses = [...allClasses, ...dayClasses];
-          }
-        });
-
-        // Sort by Day then Time
-        allClasses.sort((a, b) => {
-          const dayDiff = (dayOrder[a.day] || 8) - (dayOrder[b.day] || 8);
-          if (dayDiff !== 0) return dayDiff;
-          return a.time.localeCompare(b.time);
-        });
-
-        setScheduleData(allClasses);
-        setLoading(false);
-      });
-    } else {
-      const docRef = doc(db, 'timetable', activeDay);
-      unsubscribe = onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          setScheduleData(data.classes || []);
-        } else {
-          setScheduleData([]);
-        }
-        setLoading(false);
-      });
-    }
+    const docRef = doc(db, 'timetable', activeDay);
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setScheduleData(data.classes || []);
+      } else {
+        setScheduleData([]);
+      }
+      setLoading(false);
+    });
 
     return () => unsubscribe && unsubscribe();
   }, [activeDay]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    // Re-trigger fetch or just wait a bit since it's real-time
     setTimeout(() => {
       setRefreshing(false);
     }, 1000);
@@ -98,108 +54,112 @@ export const TimetableScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      {/* Simple Header */}
+      {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.background }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={[styles.backIcon, { color: theme.text }]}>←</Text>
+          <Text style={[styles.backIcon, { color: '#1f2937' }]}>←</Text>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>My Timetable</Text>
+        <Text style={[styles.headerTitle, { color: '#1f2937' }]}>Timetable</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4338ca" />
         }
       >
-      
-        {/* Day Tabs */}
-        <View style={styles.tabsContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {days.map((day) => (
+        {/* Day Pills Grid - 3x2 Layout */}
+        <View style={styles.dayPillsContainer}>
+          <View style={styles.dayPillsRow}>
+            {days.slice(0, 3).map((day) => (
               <TouchableOpacity
                 key={day}
                 onPress={() => setActiveDay(day)}
                 style={[
-                  styles.tab, 
-                  { backgroundColor: isDark ? theme.card : '#f3f4f6' },
-                  activeDay === day && { backgroundColor: theme.primary }
+                  styles.dayPill,
+                  {
+                    backgroundColor: activeDay === day ? '#312e81' : 'transparent',
+                    borderColor: activeDay === day ? '#312e81' : '#6366f1',
+                  }
                 ]}
               >
                 <Text style={[
-                  styles.tabText, 
-                  { color: theme.textSecondary },
-                  activeDay === day && styles.tabTextActive
+                  styles.dayPillText,
+                  { color: activeDay === day ? '#ffffff' : '#4338ca' }
                 ]}>
                   {day}
                 </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
+          <View style={styles.dayPillsRow}>
+            {days.slice(3, 6).map((day) => (
+              <TouchableOpacity
+                key={day}
+                onPress={() => setActiveDay(day)}
+                style={[
+                  styles.dayPill,
+                  {
+                    backgroundColor: activeDay === day ? '#312e81' : 'transparent',
+                    borderColor: activeDay === day ? '#312e81' : '#6366f1',
+                  }
+                ]}
+              >
+                <Text style={[
+                  styles.dayPillText,
+                  { color: activeDay === day ? '#ffffff' : '#4338ca' }
+                ]}>
+                  {day}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
-          {/* Classes for Selected Day */}
-          <View style={styles.scheduleContainer}>
-            <View style={styles.scheduleHeader}>
-              <Text style={[styles.scheduleTitle, { color: theme.text }]}>{activeDay}'s Classes</Text>
-            </View>
+        {/* Selected Day Heading with Underline */}
+        <View style={styles.selectedDayContainer}>
+          <Text style={styles.selectedDayText}>{activeDay}</Text>
+          <View style={styles.selectedDayUnderline} />
+        </View>
 
-          {/* Timeline Classes */}
-          <View style={styles.classesContainer}>
-            {loading ? (
-                <Text style={{ textAlign: 'center', marginVertical: 20, color: theme.textSecondary }}>Loading...</Text>
-            ) : (
-                scheduleData.map((classItem, index) => (
-              <View key={classItem.id} style={styles.classRow}>
-                {/* Timeline Dot */}
-                <View style={styles.timelineContainer}>
-                  <View style={[styles.timelineDot, { backgroundColor: getTypeColor(classItem.type) }]} />
+        {/* Timeline Classes */}
+        <View style={styles.timelineWrapper}>
+          {loading ? (
+            <Text style={{ textAlign: 'center', marginVertical: 20, color: theme.textSecondary }}>Loading...</Text>
+          ) : (
+            scheduleData.map((classItem, index) => (
+              <View key={classItem.id || index} style={styles.timelineRow}>
+                {/* Time Column */}
+                <View style={styles.timeColumn}>
+                  <Text style={styles.timeText}>{classItem.time}</Text>
+                </View>
+
+                {/* Timeline Dot and Line */}
+                <View style={styles.timelineCenter}>
+                  <View style={styles.timelineDot} />
                   {index < scheduleData.length - 1 && (
                     <View style={styles.timelineLine} />
                   )}
                 </View>
 
-                {/* Class Card */}
-                <View style={[
-                  styles.classCard, 
-                  { 
-                    backgroundColor: theme.card,
-                    borderColor: getTypeColor(classItem.type) 
-                  }
-                ]}>
-                  <View style={styles.classHeader}>
-                    <View style={[styles.typeBadge, { backgroundColor: `${getTypeColor(classItem.type)}20` }]}>
-                      <Text style={[styles.typeText, { color: getTypeColor(classItem.type) }]}>
-                        {classItem.type}
-                      </Text>
-                    </View>
-                      <Text style={[styles.timeText, { color: theme.textSecondary }]}>
-                        {activeDay === 'All' ? `${classItem.day} • ` : ''}🕐 {classItem.time}
-                      </Text>
-                  </View>
-                  
-                  <Text style={[styles.subjectName, { color: theme.text }]}>{classItem.subject}</Text>
-                  
-                  <View style={styles.classDetails}>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailIcon}>📚 Room No:</Text>
-                      <Text style={[styles.detailText, { color: theme.textSecondary }]}>{classItem.room}</Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailIcon}>👨‍🏫 Instructor:</Text>
-                      <Text style={[styles.detailText, { color: theme.textSecondary }]}>{classItem.instructor}</Text>
-                    </View>
-                  </View>
+                {/* Content Card */}
+                <View style={styles.contentCard}>
+                  <Text style={styles.subjectText}>{classItem.subject}</Text>
+                  <Text style={styles.detailsText}>
+                    {classItem.instructor}
+                  </Text>
+                  <Text style={styles.detailsText}>
+                    {classItem.room}
+                  </Text>
                 </View>
               </View>
             ))
-            )}
-          </View>
+          )}
 
           {!loading && scheduleData.length === 0 && (
             <View style={styles.noClassesContainer}>
-              <Text style={[styles.noClassesText, { color: theme.textSecondary }]}>🎉 No classes scheduled for this day!</Text>
+              <Text style={styles.noClassesText}>🎉 No classes scheduled for this day!</Text>
             </View>
           )}
         </View>
@@ -211,159 +171,131 @@ export const TimetableScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#ffffff',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
   },
   backIcon: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '400',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  dateCard: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: 'center',
-  },
-  currentDate: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
-  semester: {
-    fontSize: 13,
-    color: '#e0e7ff',
-    marginTop: 4,
-  },
-  tabsContainer: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-  },
-  tabText: {
-    fontSize: 13,
+    fontSize: 17,
     fontWeight: '600',
   },
-  tabTextActive: {
-    color: '#ffffff',
-  },
-  scheduleContainer: {
-    paddingHorizontal: 16,
-  },
-  scheduleHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  scheduleTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  scheduleDate: {
-    fontSize: 14,
-  },
-  classesContainer: {
+  dayPillsContainer: {
+    paddingHorizontal: 12,
     marginTop: 4,
   },
-  classRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  timelineContainer: {
-    width: 24,
-    alignItems: 'center',
-    position: 'relative',
-  },
-  timelineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    zIndex: 1,
-  },
-  timelineLine: {
-    position: 'absolute',
-    top: 10,
-    width: 2,
-    bottom: -8,
-    backgroundColor: '#fed7aa',
-  },
-  classCard: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-  },
-  classHeader: {
+  dayPillsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  dayPill: {
+    width: pillWidth,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1,
     alignItems: 'center',
-    marginBottom: 8,
+    justifyContent: 'center',
   },
-  typeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
+  dayPillText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
-  typeText: {
-    fontSize: 10,
-    fontWeight: '700',
+  selectedDayContainer: {
+    paddingHorizontal: 12,
+    marginTop: 12,
+    marginBottom: 14,
+    alignSelf: 'flex-start',
+  },
+  selectedDayText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 2,
+  },
+  selectedDayUnderline: {
+    height: 2,
+    width: '100%',
+    backgroundColor: '#7c3aed',
+    borderRadius: 1,
+  },
+  timelineWrapper: {
+    paddingHorizontal: 12,
+  },
+  timelineRow: {
+    flexDirection: 'row',
+    marginBottom: 14,
+    minHeight: 60,
+  },
+  timeColumn: {
+    width: 100,
+    paddingRight: 8,
+    alignItems: 'flex-start',
   },
   timeText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '400',
+    color: '#6b7280',
+    lineHeight: 15,
   },
-  subjectName: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  classDetails: {
-    gap: 4,
-  },
-  detailRow: {
-    flexDirection: 'row',
+  timelineCenter: {
+    width: 16,
     alignItems: 'center',
   },
-  detailIcon: {
-    fontSize: 12,
-    marginRight: 6,
+  timelineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4338ca',
   },
-  detailText: {
+  timelineLine: {
+    position: 'absolute',
+    top: 8,
+    width: 1,
+    height: 70,
+    backgroundColor: '#c7d2fe',
+  },
+  contentCard: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    borderRadius: 6,
+    padding: 8,
+    borderLeftWidth: 2,
+    borderLeftColor: '#4338ca',
+    marginLeft: 6,
+  },
+  subjectText: {
     fontSize: 12,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 2,
+  },
+  detailsText: {
+    fontSize: 11,
+    color: '#6b7280',
+    lineHeight: 15,
   },
   noClassesContainer: {
-    padding: 40,
+    padding: 24,
     alignItems: 'center',
   },
   noClassesText: {
-    fontSize: 16,
+    fontSize: 13,
     textAlign: 'center',
+    color: '#6b7280',
   },
 });

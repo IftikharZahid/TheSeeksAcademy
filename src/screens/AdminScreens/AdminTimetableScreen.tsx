@@ -26,16 +26,16 @@ interface Teacher {
 }
 
 const SUBJECTS = [
-  'TarjumaTul Quran', 
-  'Urdu', 
-  'Pak Study', 
-  'English', 
-  'Computer Science', 
-  'Mathematics', 
-  'Physics', 
-  'Sociology', 
-  'Psychology', 
-  'Economics', 
+  'TarjumaTul Quran',
+  'Urdu',
+  'Pak Study',
+  'English',
+  'Computer Science',
+  'Mathematics',
+  'Physics',
+  'Sociology',
+  'Psychology',
+  'Economics',
   'Ethics',
   'Chemistry',
   'Biology'
@@ -47,7 +47,7 @@ const classGrades = ['9th', '10th', '1st Year', '2nd Year'];
 export const AdminTimetableScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
-  
+
   const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null);
   const [allClasses, setAllClasses] = useState<Record<string, ClassSession[]>>({});
   const [loading, setLoading] = useState(true);
@@ -70,12 +70,12 @@ export const AdminTimetableScreen: React.FC = () => {
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [startTime, setStartTime] = useState(new Date());
   const [endTime, setEndTime] = useState(new Date());
-  
+
   const [teachers, setTeachers] = useState<Teacher[]>([]);
 
   useEffect(() => {
     fetchAllTimetables();
-    
+
     // Fetch teachers
     const unsubscribe = onSnapshot(collection(db, 'staff'), (snapshot) => {
       const teacherList: Teacher[] = [];
@@ -95,28 +95,28 @@ export const AdminTimetableScreen: React.FC = () => {
     setLoading(true);
     try {
       const timetableData: Record<string, ClassSession[]> = {};
-      
+
       // We need to listen to all days. For simplicity in this 'All View', let's fetch once or set up listeners for all.
       // Setting up listeners for 7 documents is fine.
       const daysToFetch = days.filter(d => d !== 'All'); // All actual days
-      
+
       // Using onSnapshot for real-time updates on all days is complex to manage in a loop with hooks.
       // Easiest approach: Create a single listener via a collection query if possible?
       // Structure is doc per day. collection is 'timetable'.
       // let's listen to the collection.
-      
+
       const unsubscribe = onSnapshot(collection(db, 'timetable'), (snapshot) => {
-          const newData: Record<string, ClassSession[]> = {};
-          snapshot.forEach(doc => {
-              newData[doc.id] = doc.data().classes || [];
-          });
-          setAllClasses(newData);
-          setLoading(false);
+        const newData: Record<string, ClassSession[]> = {};
+        snapshot.forEach(doc => {
+          newData[doc.id] = doc.data().classes || [];
+        });
+        setAllClasses(newData);
+        setLoading(false);
       }, (error) => {
-          console.error("Fetch error", error);
-          setLoading(false);
+        console.error("Fetch error", error);
+        setLoading(false);
       });
-      
+
       return () => unsubscribe();
 
     } catch (error) {
@@ -144,45 +144,45 @@ export const AdminTimetableScreen: React.FC = () => {
 
     // Check for conflicts
     let hasConflict = false;
-    
+
     // Helper to check conflicts in a specific day's classes
     const checkConflictInDay = (dayClasses: ClassSession[], dayName: string) => {
-        return dayClasses.some(cls => {
-            if (editingClass && cls.id === editingClass.id) return false;
+      return dayClasses.some(cls => {
+        if (editingClass && cls.id === editingClass.id) return false;
 
-            const [startStr, endStr] = cls.time.split(' - ');
-            if (!startStr || !endStr) return false;
-            
-            const clsStart = parseTime(startStr);
-            const clsEnd = parseTime(endStr);
-            
-            if (checkTimeOverlap(startTime, endTime, clsStart, clsEnd)) {
-                if (cls.instructor === instructor) {
-                    Alert.alert('Conflict Detected', `In ${dayName}: Instructor ${instructor} is already teaching ${cls.subject} (${cls.className}) at this time.`);
-                    return true;
-                }
-                if (cls.className === selectedClass) {
-                    Alert.alert('Conflict Detected', `In ${dayName}: Class ${selectedClass} already has a lecture (${cls.subject}) at this time.`);
-                    return true;
-                }
-            }
-            return false;
-        });
+        const [startStr, endStr] = cls.time.split(' - ');
+        if (!startStr || !endStr) return false;
+
+        const clsStart = parseTime(startStr);
+        const clsEnd = parseTime(endStr);
+
+        if (checkTimeOverlap(startTime, endTime, clsStart, clsEnd)) {
+          if (cls.instructor === instructor) {
+            Alert.alert('Conflict Detected', `In ${dayName}: Instructor ${instructor} is already teaching ${cls.subject} (${cls.className}) at this time.`);
+            return true;
+          }
+          if (cls.className === selectedClass) {
+            Alert.alert('Conflict Detected', `In ${dayName}: Class ${selectedClass} already has a lecture (${cls.subject}) at this time.`);
+            return true;
+          }
+        }
+        return false;
+      });
     };
 
     // Check conflicts for the target day(s)
     if (day === 'All') {
-         const daysToCheck = days.filter(d => d !== 'All');
-         for (const d of daysToCheck) {
-             if (checkConflictInDay(allClasses[d] || [], d)) {
-                 hasConflict = true;
-                 break;
-             }
-         }
-    } else {
-        if (checkConflictInDay(allClasses[day] || [], day)) {
-            hasConflict = true;
+      const daysToCheck = days.filter(d => d !== 'All');
+      for (const d of daysToCheck) {
+        if (checkConflictInDay(allClasses[d] || [], d)) {
+          hasConflict = true;
+          break;
         }
+      }
+    } else {
+      if (checkConflictInDay(allClasses[day] || [], day)) {
+        hasConflict = true;
+      }
     }
 
     if (hasConflict) return;
@@ -200,46 +200,46 @@ export const AdminTimetableScreen: React.FC = () => {
     try {
       if (day === 'All') {
         const targetDays = days.filter(d => d !== 'All');
-        
+
         await Promise.all(targetDays.map(async (d) => {
           const docRef = doc(db, 'timetable', d);
           const currentClasses = allClasses[d] || [];
-          
+
           // Avoid duplicate ID issues in batch
           const classToAdd = { ...newClass, id: Date.now().toString() + Math.random().toString() };
           const updated = [...currentClasses, classToAdd];
-           
-           await setDoc(docRef, {
-             day: d,
-             classes: updated
-           });
+
+          await setDoc(docRef, {
+            day: d,
+            classes: updated
+          });
         }));
 
         Alert.alert('Success', 'Class added to all days!');
       } else {
         let currentClasses = allClasses[day] || [];
         let updatedClasses = [...currentClasses];
-        
+
         if (editingClass) {
-           // If editing, we need to handle if day changed.
-           // Ideally, we delete from old day and add to new day IF day changed.
-           // But here we are just saving to 'day'.
-           // Complex logic: IF editingClass exists AND it was from a different day, we must remove it from old day.
-           // BUT we don't track 'oldDay' easily here unless we pass it.
-           // Simplified: We assume editing stays in same day for now OR we handle it.
-           // To properly support day change, we need to know the original day.
-           // For now, let's just update in the target 'day'. 
-           
-           // If ID exists in target day, update it. If not, push it.
-           // If it was in another day, it won't be removed from there with this logic.
-           // FIX: We will strictly update the list of the TARGET day.
-           
-           const existsInTarget = updatedClasses.some(c => c.id === editingClass.id);
-           if (existsInTarget) {
-               updatedClasses = updatedClasses.map(c => c.id === editingClass.id ? newClass : c);
-           } else {
-               updatedClasses.push(newClass);
-           }
+          // If editing, we need to handle if day changed.
+          // Ideally, we delete from old day and add to new day IF day changed.
+          // But here we are just saving to 'day'.
+          // Complex logic: IF editingClass exists AND it was from a different day, we must remove it from old day.
+          // BUT we don't track 'oldDay' easily here unless we pass it.
+          // Simplified: We assume editing stays in same day for now OR we handle it.
+          // To properly support day change, we need to know the original day.
+          // For now, let's just update in the target 'day'. 
+
+          // If ID exists in target day, update it. If not, push it.
+          // If it was in another day, it won't be removed from there with this logic.
+          // FIX: We will strictly update the list of the TARGET day.
+
+          const existsInTarget = updatedClasses.some(c => c.id === editingClass.id);
+          if (existsInTarget) {
+            updatedClasses = updatedClasses.map(c => c.id === editingClass.id ? newClass : c);
+          } else {
+            updatedClasses.push(newClass);
+          }
         } else {
           updatedClasses.push(newClass);
         }
@@ -317,14 +317,14 @@ export const AdminTimetableScreen: React.FC = () => {
     setInstructor('');
     setSelectedClass('9th');
     setDay('Monday');
-    
+
     // Auto-select instructor if filter is active and not 'All'
     if (selectedTeacher && selectedTeacher !== 'All') {
-        const teacherObj = teachers.find(t => t.name === selectedTeacher || t.id === selectedTeacher); // Handle name or ID match
-        // Assuming selectedTeacher stores the identifier used in UI tab, which is Name or ID?
-        // UI uses teacher name or ID. Let's use Name for logic consistency if possible, or ID.
-        // Actually top bar shows Names.
-        setInstructor(teacherObj ? teacherObj.name : selectedTeacher); 
+      const teacherObj = teachers.find(t => t.name === selectedTeacher || t.id === selectedTeacher); // Handle name or ID match
+      // Assuming selectedTeacher stores the identifier used in UI tab, which is Name or ID?
+      // UI uses teacher name or ID. Let's use Name for logic consistency if possible, or ID.
+      // Actually top bar shows Names.
+      setInstructor(teacherObj ? teacherObj.name : selectedTeacher);
     }
   };
 
@@ -344,137 +344,137 @@ export const AdminTimetableScreen: React.FC = () => {
         <ScrollView contentContainerStyle={styles.gridContainer}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Select Staff Member</Text>
           <View style={styles.grid}>
-             {/* All Teachers Option */}
-             <TouchableOpacity 
-                style={[styles.gridCard, { backgroundColor: theme.card }]}
-                onPress={() => setSelectedTeacher('All')}
-             >
-                <View style={[styles.iconContainer, { backgroundColor: theme.primary + '20' }]}>
-                    <Ionicons name="people" size={32} color={theme.primary} />
-                </View>
-                <Text style={[styles.gridTitle, { color: theme.text }]}>All Staff</Text>
-                <Text style={[styles.gridSubtitle, { color: theme.textSecondary }]}>View Master Schedule</Text>
-             </TouchableOpacity>
+            {/* All Teachers Option */}
+            <TouchableOpacity
+              style={[styles.gridCard, { backgroundColor: theme.card }]}
+              onPress={() => setSelectedTeacher('All')}
+            >
+              <View style={[styles.iconContainer, { backgroundColor: theme.primary + '20' }]}>
+                <Ionicons name="people" size={32} color={theme.primary} />
+              </View>
+              <Text style={[styles.gridTitle, { color: theme.text }]}>All Staff</Text>
+              <Text style={[styles.gridSubtitle, { color: theme.textSecondary }]}>View Master Schedule</Text>
+            </TouchableOpacity>
 
-             {teachers.map(t => (
-                <TouchableOpacity 
-                  key={t.id} 
-                  style={[styles.gridCard, { backgroundColor: theme.card }]}
-                  onPress={() => setSelectedTeacher(t.name)}
-                >
-                    <View style={[styles.iconContainer, { backgroundColor: theme.primary + '20' }]}>
-                        {t.image ? (
-                           <Image source={{ uri: t.image }} style={styles.teacherImage} />
-                        ) : (
-                           <Ionicons name="person" size={32} color={theme.primary} />
-                        )}
-                    </View>
-                    <Text style={[styles.gridTitle, { color: theme.text }]}>{t.name}</Text>
-                    <Text style={[styles.gridSubtitle, { color: theme.textSecondary }]}>{t.subject}</Text>
-                </TouchableOpacity>
-             ))}
+            {teachers.map(t => (
+              <TouchableOpacity
+                key={t.id}
+                style={[styles.gridCard, { backgroundColor: theme.card }]}
+                onPress={() => setSelectedTeacher(t.name)}
+              >
+                <View style={[styles.iconContainer, { backgroundColor: theme.primary + '20' }]}>
+                  {t.image ? (
+                    <Image source={{ uri: t.image }} style={styles.teacherImage} />
+                  ) : (
+                    <Ionicons name="person" size={32} color={theme.primary} />
+                  )}
+                </View>
+                <Text style={[styles.gridTitle, { color: theme.text }]}>{t.name}</Text>
+                <Text style={[styles.gridSubtitle, { color: theme.textSecondary }]}>{t.subject}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </ScrollView>
       ) : (
         <>
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}>
-                <TouchableOpacity onPress={() => setSelectedTeacher(null)} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="arrow-back" size={20} color={theme.primary} />
-                    <Text style={{ color: theme.primary, marginLeft: 4, fontWeight: '600' }}>Back to Staff List</Text>
-                </TouchableOpacity>
-            </View>
-            <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
-                <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.text }}>
-                    {selectedTeacher === 'All' ? 'Master Timetable' : `${selectedTeacher}'s Schedule`}
-                </Text>
-            </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8 }}>
+            <TouchableOpacity onPress={() => setSelectedTeacher(null)} style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="arrow-back" size={16} color={theme.primary} />
+              <Text style={{ color: theme.primary, marginLeft: 4, fontWeight: '500', fontSize: 13 }}>Back to Staff</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ paddingHorizontal: 12, marginBottom: 6 }}>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: theme.text }}>
+              {selectedTeacher === 'All' ? 'Master Timetable' : `${selectedTeacher}'s Schedule`}
+            </Text>
+          </View>
         </>
       )}
 
       {loading ? (
-        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
+        <ActivityIndicator size="small" color={theme.primary} style={{ marginTop: 16 }} />
       ) : selectedTeacher && (
         <ScrollView contentContainerStyle={styles.content}>
-            {classGrades.map(grade => {
-               // Gather all classes for this grade across all days
-               let gradeClasses: { session: ClassSession, day: string }[] = [];
-               
-               days.filter(d => d !== 'All').forEach(dayName => {
-                   const daySessions = allClasses[dayName] || [];
-                   daySessions.forEach(session => {
-                       if (session.className === grade || (!session.className && grade === '9th')) {
-                           gradeClasses.push({ session, day: dayName });
-                       }
-                   });
-               });
+          {classGrades.map(grade => {
+            // Gather all classes for this grade across all days
+            let gradeClasses: { session: ClassSession, day: string }[] = [];
 
-               // Apply Teacher Filter
-               if (selectedTeacher && selectedTeacher !== 'All') {
-                   gradeClasses = gradeClasses.filter(item => item.session.instructor === selectedTeacher);
-               }
+            days.filter(d => d !== 'All').forEach(dayName => {
+              const daySessions = allClasses[dayName] || [];
+              daySessions.forEach(session => {
+                if (session.className === grade || (!session.className && grade === '9th')) {
+                  gradeClasses.push({ session, day: dayName });
+                }
+              });
+            });
 
-               // Sort by Day (Mon-Sat) and then Time
-               const dayOrder: Record<string, number> = { 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
-               gradeClasses.sort((a, b) => {
-                   const dayDiff = (dayOrder[a.day] || 0) - (dayOrder[b.day] || 0);
-                   if (dayDiff !== 0) return dayDiff;
-                   return a.session.time.localeCompare(b.session.time);
-               });
+            // Apply Teacher Filter
+            if (selectedTeacher && selectedTeacher !== 'All') {
+              gradeClasses = gradeClasses.filter(item => item.session.instructor === selectedTeacher);
+            }
 
-               if (gradeClasses.length === 0) return null;
+            // Sort by Day (Mon-Sat) and then Time
+            const dayOrder: Record<string, number> = { 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+            gradeClasses.sort((a, b) => {
+              const dayDiff = (dayOrder[a.day] || 0) - (dayOrder[b.day] || 0);
+              if (dayDiff !== 0) return dayDiff;
+              return a.session.time.localeCompare(b.session.time);
+            });
 
-               return (
-                   <View key={grade} style={{ marginBottom: 20 }}>
-                       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                           <View style={{ width: 4, height: 20, backgroundColor: theme.primary, marginRight: 8, borderRadius: 2 }} />
-                           <Text style={[styles.dayTitle, { color: theme.text, marginBottom: 0, fontSize: 22 }]}>{grade} Class</Text>
-                       </View>
-                       
-                       {gradeClasses.map((item, index) => (
-                           <View key={`${item.session.id}-${index}`} style={[styles.classCard, { backgroundColor: theme.card, borderLeftWidth: 4, borderLeftColor: theme.primary }]}>
-                                <View style={styles.classInfo}>
-                                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                                      <Text style={[styles.classSubject, { color: theme.text, fontSize: 18 }]}>
-                                        {item.session.lectureNumber ? `Lec ${item.session.lectureNumber}: ` : ''}{item.session.subject}
-                                      </Text>
-                                      <View style={{ paddingHorizontal: 8, paddingVertical: 2, backgroundColor: theme.primary + '20', borderRadius: 6 }}>
-                                          <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 12 }}>{item.session.time}</Text>
-                                      </View>
-                                  </View>
-                                  
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                                      <Ionicons name="calendar-outline" size={14} color={theme.textSecondary} style={{ marginRight: 6 }} />
-                                      <Text style={[styles.classDetail, { color: theme.textSecondary }]}>Weekly</Text>
-                                  </View>
-                                  
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                                      <Ionicons name="location-outline" size={14} color={theme.textSecondary} style={{ marginRight: 6 }} />
-                                      <Text style={[styles.classDetail, { color: theme.textSecondary }]}>{item.session.room}</Text>
-                                  </View>
+            if (gradeClasses.length === 0) return null;
 
-                                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                      <Ionicons name="person-outline" size={14} color={theme.textSecondary} style={{ marginRight: 6 }} />
-                                      <Text style={[styles.classDetail, { color: theme.textSecondary, fontWeight: '500' }]}>{item.session.instructor}</Text>
-                                  </View>
-                                </View>
-                                <View style={styles.cardActions}>
-                                  <TouchableOpacity onPress={() => openModal(item.session, item.day)} style={styles.actionBtn}>
-                                    <Ionicons name="pencil" size={20} color={theme.primary} />
-                                  </TouchableOpacity>
-                                  <TouchableOpacity onPress={() => handleDeleteClass(item.session.id, item.day)} style={styles.actionBtn}>
-                                    <Ionicons name="trash" size={20} color={theme.error} />
-                                  </TouchableOpacity>
-                                </View>
-                           </View>
-                       ))}
-                   </View>
-               );
-           })}
-           
-           {/* Show message if no data at all */}
-           {teachers.length === 0 && !loading && (
-               <Text style={[styles.noDataText, { color: theme.textSecondary }]}>No teachers found.</Text>
-           )}
+            return (
+              <View key={grade} style={{ marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                  <View style={{ width: 3, height: 14, backgroundColor: theme.primary, marginRight: 6, borderRadius: 1.5 }} />
+                  <Text style={[styles.dayTitle, { color: theme.text, marginBottom: 0, fontSize: 15 }]}>{grade} Class</Text>
+                </View>
+
+                {gradeClasses.map((item, index) => (
+                  <View key={`${item.session.id}-${index}`} style={[styles.classCard, { backgroundColor: theme.card, borderLeftWidth: 3, borderLeftColor: theme.primary }]}>
+                    <View style={styles.classInfo}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4, alignItems: 'flex-start' }}>
+                        <Text style={[styles.classSubject, { color: theme.text, fontSize: 13, flex: 1 }]}>
+                          {item.session.lectureNumber ? `Lec ${item.session.lectureNumber}: ` : ''}{item.session.subject}
+                        </Text>
+                        <View style={{ paddingHorizontal: 6, paddingVertical: 2, backgroundColor: theme.primary + '15', borderRadius: 4, marginLeft: 6 }}>
+                          <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 10 }}>{item.session.time}</Text>
+                        </View>
+                      </View>
+
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                        <Ionicons name="calendar-outline" size={11} color={theme.textSecondary} style={{ marginRight: 4 }} />
+                        <Text style={[styles.classDetail, { color: theme.textSecondary }]}>Weekly</Text>
+                      </View>
+
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                        <Ionicons name="location-outline" size={11} color={theme.textSecondary} style={{ marginRight: 4 }} />
+                        <Text style={[styles.classDetail, { color: theme.textSecondary }]}>{item.session.room}</Text>
+                      </View>
+
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Ionicons name="person-outline" size={11} color={theme.textSecondary} style={{ marginRight: 4 }} />
+                        <Text style={[styles.classDetail, { color: theme.textSecondary, fontWeight: '500' }]}>{item.session.instructor}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.cardActions}>
+                      <TouchableOpacity onPress={() => openModal(item.session, item.day)} style={styles.actionBtn}>
+                        <Ionicons name="pencil" size={16} color={theme.primary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDeleteClass(item.session.id, item.day)} style={styles.actionBtn}>
+                        <Ionicons name="trash" size={16} color={theme.error} />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            );
+          })}
+
+          {/* Show message if no data at all */}
+          {teachers.length === 0 && !loading && (
+            <Text style={[styles.noDataText, { color: theme.textSecondary }]}>No teachers found.</Text>
+          )}
         </ScrollView>
       )}
 
@@ -485,7 +485,7 @@ export const AdminTimetableScreen: React.FC = () => {
             <Text style={[styles.modalTitle, { color: theme.text }]}>{editingClass ? 'Edit Class' : 'Add Class'}</Text>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              
+
               <Text style={[styles.label, { color: theme.text }]}>Day</Text>
               <TouchableOpacity
                 style={[styles.input, styles.pickerInput, { backgroundColor: theme.background, borderColor: theme.border }]}
@@ -494,33 +494,33 @@ export const AdminTimetableScreen: React.FC = () => {
                 <Text style={{ color: theme.text, flex: 1 }}>{day}</Text>
                 <Ionicons name="calendar-outline" size={20} color={theme.textSecondary} />
               </TouchableOpacity>
-              
+
               {showDayPicker && (
-                  <View style={[styles.dropdown, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                      {days.map((d) => (
-                          <TouchableOpacity 
-                            key={d} 
-                            onPress={() => {
-                                setDay(d);
-                                setShowDayPicker(false);
-                            }}
-                            style={[
-                                styles.dropdownItem, 
-                                { borderBottomColor: theme.border, backgroundColor: day === d ? theme.primary + '20' : 'transparent' }
-                            ]}
-                          >
-                              <Text style={{ color: theme.text }}>{d}</Text>
-                          </TouchableOpacity>
-                      ))}
-                  </View>
+                <View style={[styles.dropdown, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  {days.map((d) => (
+                    <TouchableOpacity
+                      key={d}
+                      onPress={() => {
+                        setDay(d);
+                        setShowDayPicker(false);
+                      }}
+                      style={[
+                        styles.dropdownItem,
+                        { borderBottomColor: theme.border, backgroundColor: day === d ? theme.primary + '20' : 'transparent' }
+                      ]}
+                    >
+                      <Text style={{ color: theme.text }}>{d}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               )}
 
               <Text style={[styles.label, { color: theme.text }]}>Lecture Number</Text>
-              <TextInput 
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]} 
-                placeholder="e.g., 1" 
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                placeholder="e.g., 1"
                 placeholderTextColor={theme.textSecondary}
-                value={lectureNo} 
+                value={lectureNo}
                 onChangeText={setLectureNo}
                 keyboardType="numeric"
               />
@@ -530,39 +530,39 @@ export const AdminTimetableScreen: React.FC = () => {
                 onPress={() => setShowSubjectDropdown(!showSubjectDropdown)}
                 style={[styles.input, { backgroundColor: theme.background, borderColor: theme.border, justifyContent: 'center' }]}
               >
-                  <Text style={{ color: subject ? theme.text : theme.textSecondary }}>
-                      {subject || 'Select Subject'}
-                  </Text>
+                <Text style={{ color: subject ? theme.text : theme.textSecondary }}>
+                  {subject || 'Select Subject'}
+                </Text>
               </TouchableOpacity>
-              
+
               {showSubjectDropdown && (
-                  <View style={[styles.dropdown, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                      <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
-                          {SUBJECTS.map((sub) => (
-                              <TouchableOpacity 
-                                key={sub} 
-                                onPress={() => {
-                                    setSubject(sub);
-                                    setShowSubjectDropdown(false);
-                                    
-                                    // Auto-select instructor based on subject
-                                    const matchedTeacher = teachers.find(t => t.subject === sub);
-                                    if (matchedTeacher) {
-                                      setInstructor(matchedTeacher.name);
-                                    } else {
-                                      setInstructor(''); // Clear if no match found (optional, or keep previous)
-                                    }
-                                }}
-                                style={[
-                                    styles.dropdownItem, 
-                                    { borderBottomColor: theme.border, backgroundColor: subject === sub ? theme.primary + '20' : 'transparent' }
-                                ]}
-                              >
-                                  <Text style={{ color: theme.text }}>{sub}</Text>
-                              </TouchableOpacity>
-                          ))}
-                      </ScrollView>
-                  </View>
+                <View style={[styles.dropdown, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+                    {SUBJECTS.map((sub) => (
+                      <TouchableOpacity
+                        key={sub}
+                        onPress={() => {
+                          setSubject(sub);
+                          setShowSubjectDropdown(false);
+
+                          // Auto-select instructor based on subject
+                          const matchedTeacher = teachers.find(t => t.subject === sub);
+                          if (matchedTeacher) {
+                            setInstructor(matchedTeacher.name);
+                          } else {
+                            setInstructor(''); // Clear if no match found (optional, or keep previous)
+                          }
+                        }}
+                        style={[
+                          styles.dropdownItem,
+                          { borderBottomColor: theme.border, backgroundColor: subject === sub ? theme.primary + '20' : 'transparent' }
+                        ]}
+                      >
+                        <Text style={{ color: theme.text }}>{sub}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
               )}
 
 
@@ -589,12 +589,12 @@ export const AdminTimetableScreen: React.FC = () => {
               </TouchableOpacity>
 
               <Text style={[styles.label, { color: theme.text }]}>Room</Text>
-              <TextInput 
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]} 
-                placeholder="e.g., Room 101" 
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                placeholder="e.g., Room 101"
                 placeholderTextColor={theme.textSecondary}
-                value={room} 
-                onChangeText={setRoom} 
+                value={room}
+                onChangeText={setRoom}
               />
 
               <Text style={[styles.label, { color: theme.text }]}>Instructor</Text>
@@ -602,37 +602,37 @@ export const AdminTimetableScreen: React.FC = () => {
                 onPress={() => setShowInstructorDropdown(!showInstructorDropdown)}
                 style={[styles.input, { backgroundColor: theme.background, borderColor: theme.border, justifyContent: 'center' }]}
               >
-                  <Text style={{ color: instructor ? theme.text : theme.textSecondary }}>
-                      {instructor || 'Select Instructor'}
-                  </Text>
+                <Text style={{ color: instructor ? theme.text : theme.textSecondary }}>
+                  {instructor || 'Select Instructor'}
+                </Text>
               </TouchableOpacity>
 
               {showInstructorDropdown && (
-                  <View style={[styles.dropdown, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                      <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
-                          {teachers.map((teach) => (
-                              <TouchableOpacity 
-                                key={teach.id} 
-                                onPress={() => {
-                                    setInstructor(teach.name);
-                                    setShowInstructorDropdown(false);
-                                }}
-                                style={[
-                                    styles.dropdownItem, 
-                                    { borderBottomColor: theme.border, backgroundColor: instructor === teach.name ? theme.primary + '20' : 'transparent' }
-                                ]}
-                              >
-                                  <Text style={{ color: theme.text, fontWeight: '600' }}>{teach.name}</Text>
-                                  <Text style={{ color: theme.textSecondary, fontSize: 12 }}>{teach.subject}</Text>
-                              </TouchableOpacity>
-                          ))}
-                          {teachers.length === 0 && (
-                            <View style={styles.dropdownItem}>
-                                <Text style={{ color: theme.textSecondary }}>No instructors found</Text>
-                            </View>
-                          )}
-                      </ScrollView>
-                  </View>
+                <View style={[styles.dropdown, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+                    {teachers.map((teach) => (
+                      <TouchableOpacity
+                        key={teach.id}
+                        onPress={() => {
+                          setInstructor(teach.name);
+                          setShowInstructorDropdown(false);
+                        }}
+                        style={[
+                          styles.dropdownItem,
+                          { borderBottomColor: theme.border, backgroundColor: instructor === teach.name ? theme.primary + '20' : 'transparent' }
+                        ]}
+                      >
+                        <Text style={{ color: theme.text, fontWeight: '600' }}>{teach.name}</Text>
+                        <Text style={{ color: theme.textSecondary, fontSize: 12 }}>{teach.subject}</Text>
+                      </TouchableOpacity>
+                    ))}
+                    {teachers.length === 0 && (
+                      <View style={styles.dropdownItem}>
+                        <Text style={{ color: theme.textSecondary }}>No instructors found</Text>
+                      </View>
+                    )}
+                  </ScrollView>
+                </View>
               )}
 
               <Text style={[styles.label, { color: theme.text }]}>Class</Text>
@@ -666,7 +666,7 @@ export const AdminTimetableScreen: React.FC = () => {
         animationType="fade"
         onRequestClose={() => setClassPickerVisible(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.pickerOverlay}
           activeOpacity={1}
           onPress={() => setClassPickerVisible(false)}
@@ -682,8 +682,8 @@ export const AdminTimetableScreen: React.FC = () => {
                   setClassPickerVisible(false);
                 }}
               >
-                <Text style={[styles.pickerOptionText, { 
-                  color: selectedClass === grade ? theme.primary : theme.text 
+                <Text style={[styles.pickerOptionText, {
+                  color: selectedClass === grade ? theme.primary : theme.text
                 }]}>
                   {grade}
                 </Text>
@@ -737,37 +737,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
   },
-  headerTitle: { fontSize: 18, fontWeight: 'bold' },
-  backButton: { padding: 4 },
-  addButton: { padding: 4 },
-  gridContainer: { padding: 16 },
-  sectionTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 16 },
+  headerTitle: { fontSize: 16, fontWeight: '600' },
+  backButton: { padding: 2 },
+  addButton: { padding: 2 },
+  gridContainer: { padding: 12 },
+  sectionTitle: { fontSize: 15, fontWeight: '600', marginBottom: 12 },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
   },
   gridCard: {
-    width: '48%',
-    padding: 16,
-    borderRadius: 16,
+    width: '47%',
+    padding: 10,
+    borderRadius: 10,
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   iconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
     overflow: 'hidden',
   },
   teacherImage: {
@@ -775,58 +776,60 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   gridTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 13,
+    fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   gridSubtitle: {
-    fontSize: 12,
+    fontSize: 10,
     textAlign: 'center',
   },
-  content: { padding: 16 },
-  dayTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 16 },
-  noDataText: { textAlign: 'center', marginTop: 20, fontSize: 16 },
+  content: { padding: 12 },
+  dayTitle: { fontSize: 16, fontWeight: '600', marginBottom: 10 },
+  noDataText: { textAlign: 'center', marginTop: 16, fontSize: 13 },
   classCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center', // Changed from center to flex-start? No, center is fine for row
+    alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 1,
   },
   classInfo: { flex: 1 },
-  classSubject: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
-  classDetail: { fontSize: 14, marginBottom: 2 },
-  cardActions: { flexDirection: 'row', gap: 12 },
-  actionBtn: { padding: 4 },
+  classSubject: { fontSize: 13, fontWeight: '600', marginBottom: 2 },
+  classDetail: { fontSize: 11, marginBottom: 1 },
+  cardActions: { flexDirection: 'row', gap: 8 },
+  actionBtn: { padding: 2 },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
-    padding: 20,
+    padding: 16,
   },
   modalContent: {
-    borderRadius: 16,
-    padding: 20,
-    elevation: 5,
+    borderRadius: 12,
+    padding: 14,
+    elevation: 4,
+    maxHeight: '85%',
   },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  label: { 
-    fontSize: 14, 
-    fontWeight: '600', 
-    marginBottom: 6,
-    marginTop: 4,
+  modalTitle: { fontSize: 16, fontWeight: '600', marginBottom: 14, textAlign: 'center' },
+  label: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+    marginTop: 2,
   },
   input: {
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+    borderRadius: 6,
+    padding: 10,
+    marginBottom: 8,
+    fontSize: 13,
   },
   pickerInput: {
     flexDirection: 'row',
@@ -836,78 +839,78 @@ const styles = StyleSheet.create({
   typeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   typeBtn: {
     flex: 1,
     alignItems: 'center',
-    padding: 10,
-    borderRadius: 8,
+    padding: 8,
+    borderRadius: 6,
     borderWidth: 1,
-    marginHorizontal: 4,
+    marginHorizontal: 3,
   },
-  typeText: { fontSize: 12, fontWeight: 'bold' },
-  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+  typeText: { fontSize: 11, fontWeight: '600' },
+  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8 },
   modalBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
   },
   classSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
+    gap: 3,
+    marginTop: 2,
   },
   classSelectorText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   pickerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   pickerContainer: {
     width: '100%',
-    maxWidth: 300,
-    borderRadius: 16,
-    padding: 20,
+    maxWidth: 280,
+    borderRadius: 12,
+    padding: 14,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
   pickerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 16,
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 12,
     textAlign: 'center',
   },
   pickerOption: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 6,
   },
   pickerOptionText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
   },
   dropdown: {
     borderWidth: 1,
-    borderRadius: 8,
-    marginTop: -10,
-    marginBottom: 16,
+    borderRadius: 6,
+    marginTop: -6,
+    marginBottom: 10,
     overflow: 'hidden',
   },
   dropdownItem: {
-    padding: 12,
-    borderBottomWidth: 1,
+    padding: 10,
+    borderBottomWidth: 0.5,
   },
 });

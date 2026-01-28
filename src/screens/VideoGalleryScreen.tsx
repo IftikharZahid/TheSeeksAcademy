@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -8,120 +8,59 @@ import {
     Animated,
     Dimensions,
     Image,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { db } from '../api/firebaseConfig';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 36) / 2;
 
-interface Subject {
-    id: string;
-    name: string;
-    icon: string;
-    color: string;
-    gradientColors: string[];
-    lectureCount: number;
-    totalDuration: string;
-    instructor: string;
-}
-
-const subjects: Subject[] = [
-    {
-        id: '1',
-        name: 'Mathematics',
-        icon: 'calculator',
-        color: '#6366f1',
-        gradientColors: ['#6366f1', '#8b5cf6'],
-        lectureCount: 24,
-        totalDuration: '12h 30m',
-        instructor: 'Dr. Ahmed',
-    },
-    {
-        id: '2',
-        name: 'Physics',
-        icon: 'flash',
-        color: '#0ea5e9',
-        gradientColors: ['#0ea5e9', '#38bdf8'],
-        lectureCount: 18,
-        totalDuration: '9h 45m',
-        instructor: 'Prof. Khan',
-    },
-    {
-        id: '3',
-        name: 'Chemistry',
-        icon: 'flask',
-        color: '#10b981',
-        gradientColors: ['#10b981', '#34d399'],
-        lectureCount: 20,
-        totalDuration: '10h 15m',
-        instructor: 'Dr. Fatima',
-    },
-    {
-        id: '4',
-        name: 'Biology',
-        icon: 'leaf',
-        color: '#22c55e',
-        gradientColors: ['#22c55e', '#4ade80'],
-        lectureCount: 16,
-        totalDuration: '8h 20m',
-        instructor: 'Dr. Hassan',
-    },
-    {
-        id: '5',
-        name: 'English',
-        icon: 'book',
-        color: '#f59e0b',
-        gradientColors: ['#f59e0b', '#fbbf24'],
-        lectureCount: 15,
-        totalDuration: '7h 10m',
-        instructor: 'Ms. Sarah',
-    },
-    {
-        id: '6',
-        name: 'Computer Science',
-        icon: 'laptop',
-        color: '#ec4899',
-        gradientColors: ['#ec4899', '#f472b6'],
-        lectureCount: 22,
-        totalDuration: '11h 30m',
-        instructor: 'Mr. Ali',
-    },
-    {
-        id: '7',
-        name: 'Urdu',
-        icon: 'language',
-        color: '#8b5cf6',
-        gradientColors: ['#8b5cf6', '#a78bfa'],
-        lectureCount: 12,
-        totalDuration: '6h 15m',
-        instructor: 'Ms. Ayesha',
-    },
-    {
-        id: '8',
-        name: 'Islamiat',
-        icon: 'moon',
-        color: '#14b8a6',
-        gradientColors: ['#14b8a6', '#2dd4bf'],
-        lectureCount: 14,
-        totalDuration: '7h 45m',
-        instructor: 'Maulana Tariq',
-    },
+// Color palette for galleries
+const GALLERY_COLORS = [
+    { color: '#6366f1', gradientColors: ['#6366f1', '#8b5cf6'] },
+    { color: '#0ea5e9', gradientColors: ['#0ea5e9', '#38bdf8'] },
+    { color: '#10b981', gradientColors: ['#10b981', '#34d399'] },
+    { color: '#ec4899', gradientColors: ['#ec4899', '#f472b6'] },
+    { color: '#f59e0b', gradientColors: ['#f59e0b', '#fbbf24'] },
+    { color: '#8b5cf6', gradientColors: ['#8b5cf6', '#a78bfa'] },
+    { color: '#14b8a6', gradientColors: ['#14b8a6', '#2dd4bf'] },
+    { color: '#ef4444', gradientColors: ['#ef4444', '#f87171'] },
 ];
 
-interface SubjectCardProps {
-    subject: Subject;
+interface Video {
+    id: string;
+    title: string;
+    youtubeUrl: string;
+    duration?: string;
+    chapterNo?: string;
+}
+
+interface Gallery {
+    id: string;
+    name: string;
+    description: string;
+    thumbnail: string;
+    videos: Video[];
+}
+
+interface GalleryCardProps {
+    gallery: Gallery;
     index: number;
     onPress: () => void;
 }
 
-const SubjectCard: React.FC<SubjectCardProps> = ({ subject, index, onPress }) => {
+const GalleryCard: React.FC<GalleryCardProps> = ({ gallery, index, onPress }) => {
     const { theme, isDark } = useTheme();
     const scaleAnim = useRef(new Animated.Value(0)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    const colorScheme = GALLERY_COLORS[index % GALLERY_COLORS.length];
 
     useEffect(() => {
         Animated.parallel([
@@ -141,6 +80,8 @@ const SubjectCard: React.FC<SubjectCardProps> = ({ subject, index, onPress }) =>
         ]).start();
     }, []);
 
+    const videoCount = gallery.videos?.length || 0;
+
     return (
         <Animated.View
             style={[
@@ -153,7 +94,7 @@ const SubjectCard: React.FC<SubjectCardProps> = ({ subject, index, onPress }) =>
         >
             <TouchableOpacity
                 style={[
-                    styles.subjectCard,
+                    styles.galleryCard,
                     {
                         backgroundColor: isDark ? 'rgba(30, 41, 59, 0.9)' : '#fff',
                         borderColor: isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(229, 231, 235, 0.8)',
@@ -162,43 +103,44 @@ const SubjectCard: React.FC<SubjectCardProps> = ({ subject, index, onPress }) =>
                 onPress={onPress}
                 activeOpacity={0.7}
             >
-                {/* Icon with gradient background */}
-                <LinearGradient
-                    colors={subject.gradientColors as [string, string]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.iconGradient}
-                >
-                    <Ionicons name={subject.icon as any} size={22} color="#fff" />
-                </LinearGradient>
+                {/* Thumbnail or Default Video Icon */}
+                {gallery.thumbnail && gallery.thumbnail.trim() !== '' && !gallery.thumbnail.includes('placeholder') ? (
+                    <Image
+                        source={{ uri: gallery.thumbnail }}
+                        style={styles.thumbnailImage}
+                    />
+                ) : (
+                    <LinearGradient
+                        colors={colorScheme.gradientColors as [string, string]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.iconGradient}
+                    >
+                        <Ionicons name="videocam" size={22} color="#fff" />
+                    </LinearGradient>
+                )}
 
-                {/* Subject Info */}
-                <Text style={[styles.subjectName, { color: theme.text }]} numberOfLines={1}>
-                    {subject.name}
+                {/* Gallery Info */}
+                <Text style={[styles.galleryName, { color: theme.text }]} numberOfLines={1}>
+                    {gallery.name}
                 </Text>
-                <Text style={[styles.instructorName, { color: theme.textSecondary }]} numberOfLines={1}>
-                    {subject.instructor}
+                <Text style={[styles.galleryDescription, { color: theme.textSecondary }]} numberOfLines={1}>
+                    {gallery.description || 'Video collection'}
                 </Text>
 
                 {/* Stats Row */}
                 <View style={styles.statsRow}>
                     <View style={styles.statItem}>
-                        <Ionicons name="play-circle" size={12} color={subject.color} />
+                        <Ionicons name="play-circle" size={12} color={colorScheme.color} />
                         <Text style={[styles.statText, { color: theme.textSecondary }]}>
-                            {subject.lectureCount}
-                        </Text>
-                    </View>
-                    <View style={styles.statItem}>
-                        <Ionicons name="time" size={12} color={subject.color} />
-                        <Text style={[styles.statText, { color: theme.textSecondary }]}>
-                            {subject.totalDuration}
+                            {videoCount} {videoCount === 1 ? 'video' : 'videos'}
                         </Text>
                     </View>
                 </View>
 
                 {/* Arrow */}
-                <View style={[styles.arrowContainer, { backgroundColor: `${subject.color}15` }]}>
-                    <Ionicons name="chevron-forward" size={14} color={subject.color} />
+                <View style={[styles.arrowContainer, { backgroundColor: `${colorScheme.color}15` }]}>
+                    <Ionicons name="chevron-forward" size={14} color={colorScheme.color} />
                 </View>
             </TouchableOpacity>
         </Animated.View>
@@ -210,21 +152,52 @@ export const VideoGalleryScreen: React.FC = () => {
     const { theme, isDark } = useTheme();
     const headerAnim = useRef(new Animated.Value(0)).current;
 
+    const [galleries, setGalleries] = useState<Gallery[]>([]);
+    const [loading, setLoading] = useState(true);
+
     useEffect(() => {
         Animated.timing(headerAnim, {
             toValue: 1,
             duration: 500,
             useNativeDriver: true,
         }).start();
+
+        // Fetch galleries from Firebase
+        const unsubscribe = onSnapshot(collection(db, 'videoGalleries'), (snapshot) => {
+            const galleriesList: Gallery[] = [];
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                galleriesList.push({
+                    id: doc.id,
+                    name: data.name || '',
+                    description: data.description || '',
+                    thumbnail: data.thumbnail || '',
+                    videos: data.videos || [],
+                } as Gallery);
+            });
+            setGalleries(galleriesList);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching galleries:", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
     }, []);
 
-    const totalLectures = subjects.reduce((acc, s) => acc + s.lectureCount, 0);
+    const totalVideos = galleries.reduce((acc, g) => acc + (g.videos?.length || 0), 0);
 
-    const handleSubjectPress = (subject: Subject) => {
-        navigation.navigate('VideoLecturesScreen', {
-            subjectId: subject.id,
-            subjectName: subject.name,
-            subjectColor: subject.color,
+    const handleGalleryPress = (gallery: Gallery, index: number) => {
+        const colorScheme = GALLERY_COLORS[index % GALLERY_COLORS.length];
+        // Navigate to Home tab first, then to VideoLecturesScreen within HomeStack
+        navigation.navigate('Home', {
+            screen: 'VideoLecturesScreen',
+            params: {
+                galleryId: gallery.id,
+                galleryName: gallery.name,
+                galleryColor: colorScheme.color,
+                videos: gallery.videos,
+            },
         });
     };
 
@@ -235,72 +208,78 @@ export const VideoGalleryScreen: React.FC = () => {
                 style={[
                     styles.header,
                     {
-                        borderBottomColor: theme.border,
                         opacity: headerAnim,
                     }
                 ]}
             >
-                <TouchableOpacity
-                    style={[styles.backButton, { backgroundColor: theme.backgroundSecondary }]}
-                    onPress={() => navigation.goBack()}
-                >
-                    <Ionicons name="arrow-back" size={20} color={theme.text} />
-                </TouchableOpacity>
+                <View style={styles.headerIcon}>
+                    <Ionicons name="videocam" size={24} color={theme.primary} />
+                </View>
                 <View style={styles.headerCenter}>
                     <Text style={[styles.headerTitle, { color: theme.text }]}>Video Gallery</Text>
                     <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-                        {totalLectures} lectures available
+                        {totalVideos} videos available
                     </Text>
                 </View>
-                <TouchableOpacity
-                    style={[styles.searchButton, { backgroundColor: theme.backgroundSecondary }]}
-                >
-                    <Ionicons name="search" size={18} color={theme.text} />
-                </TouchableOpacity>
             </Animated.View>
 
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-            >
-                {/* Featured Banner */}
-                <View style={styles.bannerContainer}>
-                    <LinearGradient
-                        colors={isDark ? ['#1e293b', '#334155'] : ['#6366f1', '#8b5cf6']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={styles.banner}
-                    >
-                        <View style={styles.bannerContent}>
-                            <Text style={styles.bannerTitle}>Start Learning Today!</Text>
-                            <Text style={styles.bannerSubtitle}>
-                                Access {subjects.length} subjects with {totalLectures}+ video lectures
+            {loading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={theme.primary} />
+                </View>
+            ) : (
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* Featured Banner */}
+                    <View style={styles.bannerContainer}>
+                        <LinearGradient
+                            colors={isDark ? ['#1e293b', '#334155'] : ['#6366f1', '#8b5cf6']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={styles.banner}
+                        >
+                            <View style={styles.bannerContent}>
+                                <Text style={styles.bannerTitle}>Start Learning Today!</Text>
+                                <Text style={styles.bannerSubtitle}>
+                                    Access {galleries.length} galleries with {totalVideos}+ video lectures
+                                </Text>
+                            </View>
+                            <View style={styles.bannerDecoration} />
+                        </LinearGradient>
+                    </View>
+
+                    {/* Section Title */}
+                    <View style={styles.sectionHeader}>
+                        <Text style={[styles.sectionTitle, { color: theme.text }]}>All Galleries</Text>
+                        <Text style={[styles.sectionCount, { color: theme.textSecondary }]}>
+                            {galleries.length} galleries
+                        </Text>
+                    </View>
+
+                    {/* Gallery Grid */}
+                    {galleries.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <Ionicons name="videocam-outline" size={48} color={theme.textSecondary} />
+                            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                                No video galleries available yet
                             </Text>
                         </View>
-                        <View style={styles.bannerDecoration} />
-                    </LinearGradient>
-                </View>
-
-                {/* Section Title */}
-                <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>All Subjects</Text>
-                    <Text style={[styles.sectionCount, { color: theme.textSecondary }]}>
-                        {subjects.length} subjects
-                    </Text>
-                </View>
-
-                {/* Subject Grid */}
-                <View style={styles.grid}>
-                    {subjects.map((subject, index) => (
-                        <SubjectCard
-                            key={subject.id}
-                            subject={subject}
-                            index={index}
-                            onPress={() => handleSubjectPress(subject)}
-                        />
-                    ))}
-                </View>
-            </ScrollView>
+                    ) : (
+                        <View style={styles.grid}>
+                            {galleries.map((gallery, index) => (
+                                <GalleryCard
+                                    key={gallery.id}
+                                    gallery={gallery}
+                                    index={index}
+                                    onPress={() => handleGalleryPress(gallery, index)}
+                                />
+                            ))}
+                        </View>
+                    )}
+                </ScrollView>
+            )}
         </SafeAreaView>
     );
 };
@@ -314,7 +293,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 12,
         paddingVertical: 10,
-        borderBottomWidth: 1,
+    },
+    headerIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     backButton: {
         width: 36,
@@ -336,10 +321,12 @@ const styles = StyleSheet.create({
         fontSize: 11,
         marginTop: 1,
     },
-    searchButton: {
+    placeholderButton: {
         width: 36,
         height: 36,
-        borderRadius: 12,
+    },
+    loadingContainer: {
+        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -396,6 +383,15 @@ const styles = StyleSheet.create({
     sectionCount: {
         fontSize: 12,
     },
+    // Empty State
+    emptyState: {
+        alignItems: 'center',
+        paddingVertical: 40,
+    },
+    emptyText: {
+        marginTop: 12,
+        fontSize: 14,
+    },
     // Grid
     grid: {
         flexDirection: 'row',
@@ -406,7 +402,7 @@ const styles = StyleSheet.create({
     cardContainer: {
         width: CARD_WIDTH,
     },
-    subjectCard: {
+    galleryCard: {
         padding: 14,
         borderRadius: 14,
         borderWidth: 1,
@@ -416,6 +412,13 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         elevation: 3,
     },
+    thumbnailImage: {
+        width: 42,
+        height: 42,
+        borderRadius: 12,
+        marginBottom: 10,
+        backgroundColor: '#e5e5e5',
+    },
     iconGradient: {
         width: 42,
         height: 42,
@@ -424,12 +427,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 10,
     },
-    subjectName: {
+    galleryName: {
         fontSize: 14,
         fontWeight: '700',
         marginBottom: 2,
     },
-    instructorName: {
+    galleryDescription: {
         fontSize: 11,
         marginBottom: 10,
     },

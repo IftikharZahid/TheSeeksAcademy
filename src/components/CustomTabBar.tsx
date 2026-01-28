@@ -47,11 +47,20 @@ const TabIcons = {
     </Svg>
   ),
 
-  Courses: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+  VideoGallery: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      {/* Modern stacked layers / books */}
+      {/* Modern video camera */}
       <Path
-        d="M2 6C2 4.89543 2.89543 4 4 4H20C21.1046 4 22 4.89543 22 6V8C22 9.10457 21.1046 10 20 10H4C2.89543 10 2 9.10457 2 8V6Z"
+        d="M15 10L19.5528 7.72361C20.2177 7.39116 21 7.87465 21 8.61803V15.382C21 16.1253 20.2177 16.6088 19.5528 16.2764L15 14V10Z"
+        stroke={color}
+        strokeWidth={focused ? 2 : 1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill={focused ? color : 'none'}
+        fillOpacity={focused ? 0.15 : 0}
+      />
+      <Path
+        d="M3 8C3 6.89543 3.89543 6 5 6H13C14.1046 6 15 6.89543 15 8V16C15 17.1046 14.1046 18 13 18H5C3.89543 18 3 17.1046 3 16V8Z"
         stroke={color}
         strokeWidth={focused ? 2 : 1.5}
         strokeLinecap="round"
@@ -59,20 +68,7 @@ const TabIcons = {
         fill={focused ? color : 'none'}
         fillOpacity={focused ? 0.1 : 0}
       />
-      <Path
-        d="M4 10V18C4 19.1046 4.89543 20 6 20H18C19.1046 20 20 19.1046 20 18V10"
-        stroke={color}
-        strokeWidth={focused ? 2 : 1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <Path
-        d="M8 10V20M16 10V20"
-        stroke={color}
-        strokeWidth={focused ? 2 : 1.5}
-        strokeLinecap="round"
-      />
-      <Circle cx="12" cy="15" r="2" stroke={color} strokeWidth={focused ? 2 : 1.5} fill="none" />
+      <Circle cx="7" cy="10" r="1.5" fill={color} />
     </Svg>
   ),
 
@@ -140,7 +136,7 @@ interface TabData {
 
 const TAB_CONFIG: TabData[] = [
   { id: 'Home', label: 'Home', icon: 'Dashboard' },
-  { id: 'Courses', label: 'Courses', icon: 'Courses' },
+  { id: 'VideoGallery', label: 'Videos', icon: 'VideoGallery' },
   { id: 'Messages', label: 'Messages', icon: 'Messages', badgeCount: 3 },
   { id: 'NoticeBoard', label: 'Notices', icon: 'NoticeBoard' },
   { id: 'Profile', label: 'Profile', icon: 'Profile' },
@@ -214,7 +210,14 @@ export const EducationalTabBar: React.FC<BottomTabBarProps> = ({ state, descript
           });
 
           if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name);
+            if (route.name === 'Home') {
+              navigation.navigate('Home', { screen: 'HomeScreen' });
+            } else {
+              navigation.navigate(route.name);
+            }
+          } else if (isFocused && !event.defaultPrevented && route.name === 'Home') {
+            // Reset Home Stack to initial screen
+            navigation.navigate(route.name, { screen: 'HomeScreen' });
           }
         };
 

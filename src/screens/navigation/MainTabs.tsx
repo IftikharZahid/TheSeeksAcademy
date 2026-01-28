@@ -4,7 +4,7 @@ import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { HomeStack } from './HomeStack';
 import { ProfileStack } from './ProfileStack';
-import { CoursesScreen } from '../CoursesScreen';
+import { VideoGalleryScreen } from '../VideoGalleryScreen';
 import { MessagesScreen } from '../MessagesScreen';
 import { TopHeader } from '../../components/TopHeader';
 import { NoticesScreen } from '../NoticeScreen';
@@ -12,7 +12,7 @@ import { EducationalTabBar } from '../../components/CustomTabBar';
 
 type TabParamList = {
   Home: undefined;
-  Courses: undefined;
+  VideoGallery: undefined;
   Messages: undefined;
   NoticeBoard: undefined;
   Profile: undefined;
@@ -34,7 +34,7 @@ export const MainTabs: React.FC = () => {
         component={HomeStack}
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeScreen';
-          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'CoursesScreen', 'StaffInfoScreen', 'SettingsScreen', 'SimTrackerScreen', 'ChangePasswordScreen', 'AboutScreen', 'PrivacyPolicyScreen', 'HelpCenterScreen', 'ComplaintsScreen', 'AdminTeachersScreen', 'FeeDetailScreen', 'VideoLecturesScreen', 'VideoGalleryScreen', 'NoticesScreen', 'MessagesScreen', 'SearchScreen'];
+          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'CoursesScreen', 'StaffInfoScreen', 'SettingsScreen', 'SimTrackerScreen', 'ChangePasswordScreen', 'AboutScreen', 'PrivacyPolicyScreen', 'HelpCenterScreen', 'ComplaintsScreen', 'AdminTeachersScreen', 'FeeDetailScreen', 'VideoLecturesScreen', 'VideoGalleryScreen', 'NoticesScreen', 'MessagesScreen', 'SearchScreen', 'LikedVideosScreen'];
 
           const isHidden = hiddenRoutes.includes(routeName);
 
@@ -48,12 +48,12 @@ export const MainTabs: React.FC = () => {
         }}
       />
       <Tab.Screen
-        name="Courses"
-        component={CoursesScreen}
+        name="VideoGallery"
+        component={VideoGalleryScreen}
         options={{
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="book" size={size} color={color} />
+            <Ionicons name="videocam" size={size} color={color} />
           ),
         }}
       />

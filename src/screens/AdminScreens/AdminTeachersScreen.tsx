@@ -10,16 +10,16 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 
 const SUBJECTS = [
-  'TarjumaTul Quran', 
-  'Urdu', 
-  'Pak Study', 
-  'English', 
-  'Computer Science', 
-  'Mathematics', 
-  'Physics', 
-  'Sociology', 
-  'Psychology', 
-  'Economics', 
+  'TarjumaTul Quran',
+  'Urdu',
+  'Pak Study',
+  'English',
+  'Computer Science',
+  'Mathematics',
+  'Physics',
+  'Sociology',
+  'Psychology',
+  'Economics',
   'Ethics',
   'Chemistry',
   'Biology'
@@ -37,7 +37,7 @@ interface Teacher {
 export const AdminTeachersScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
-  
+
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -142,11 +142,11 @@ export const AdminTeachersScreen: React.FC = () => {
 
   const handlePickDocument = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({ 
+      const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
-        copyToCacheDirectory: true 
+        copyToCacheDirectory: true
       });
-      
+
       if (result.canceled) return;
 
       setLoading(true);
@@ -165,7 +165,7 @@ export const AdminTeachersScreen: React.FC = () => {
       }
 
       const fileContent = await FileSystem.readAsStringAsync(fileUri);
-      
+
       let data;
       try {
         data = JSON.parse(fileContent);
@@ -226,7 +226,7 @@ export const AdminTeachersScreen: React.FC = () => {
     setImage('');
   };
 
-  const filteredTeachers = teachers.filter(t => 
+  const filteredTeachers = teachers.filter(t =>
     (t.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (t.subject || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -235,11 +235,11 @@ export const AdminTeachersScreen: React.FC = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
+          <Ionicons name="chevron-back" size={20} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Manage Teachers</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Teachers</Text>
         <TouchableOpacity onPress={() => openModal()} style={styles.addButton}>
-          <Ionicons name="add" size={24} color={theme.primary} />
+          <Ionicons name="add" size={20} color={theme.primary} />
         </TouchableOpacity>
       </View>
 
@@ -254,21 +254,24 @@ export const AdminTeachersScreen: React.FC = () => {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
+        <ActivityIndicator size="small" color={theme.primary} style={{ marginTop: 16 }} />
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={[styles.listTitle, { color: theme.text }]}>Staff List ({teachers.length})</Text>
           {filteredTeachers.length === 0 ? (
             <Text style={[styles.noDataText, { color: theme.textSecondary }]}>No teachers found.</Text>
           ) : (
-            filteredTeachers.map((item) => (
+            filteredTeachers.map((item, index) => (
               <View key={item.id} style={[styles.card, { backgroundColor: theme.card }]}>
-                <View style={[styles.avatar, { backgroundColor: theme.primary + '20' }]}>
-                    {item.image ? (
-                        <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%', borderRadius: 30 }} />
-                    ) : (
-                        <Ionicons name="person" size={30} color={theme.primary} />
-                    )}
+                <View style={[styles.serialNo, { backgroundColor: theme.primary + '12' }]}>
+                  <Text style={[styles.serialNoText, { color: theme.primary }]}>{index + 1}</Text>
+                </View>
+                <View style={[styles.avatar, { backgroundColor: theme.primary + '15' }]}>
+                  {item.image ? (
+                    <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
+                  ) : (
+                    <Ionicons name="person" size={22} color={theme.primary} />
+                  )}
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={[styles.name, { color: theme.text }]}>{item.name}</Text>
@@ -277,10 +280,10 @@ export const AdminTeachersScreen: React.FC = () => {
                 </View>
                 <View style={styles.cardActions}>
                   <TouchableOpacity onPress={() => openModal(item)} style={styles.actionBtn}>
-                    <Ionicons name="pencil" size={20} color={theme.primary} />
+                    <Ionicons name="pencil" size={16} color={theme.primary} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDeleteTeacher(item.id)} style={styles.actionBtn}>
-                    <Ionicons name="trash" size={20} color={theme.error} />
+                    <Ionicons name="trash" size={16} color={theme.error} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -294,74 +297,74 @@ export const AdminTeachersScreen: React.FC = () => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[styles.modalTitle, { color: theme.text }]}>{editingTeacher ? 'Edit Teacher' : 'Add Teacher'}</Text>
-            
+
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={[styles.label, { color: theme.text }]}>Full Name</Text>
-              <TextInput 
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]} 
-                placeholder="e.g. Dr. Sarah Smith" 
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                placeholder="e.g. Dr. Sarah Smith"
                 placeholderTextColor={theme.textSecondary}
-                value={name} 
-                onChangeText={setName} 
+                value={name}
+                onChangeText={setName}
               />
-              
+
               <Text style={[styles.label, { color: theme.text }]}>Subject</Text>
               <TouchableOpacity
                 onPress={() => setShowSubjectDropdown(!showSubjectDropdown)}
                 style={[styles.input, { backgroundColor: theme.background, borderColor: theme.border, justifyContent: 'center' }]}
               >
-                  <Text style={{ color: subject ? theme.text : theme.textSecondary }}>
-                      {subject || 'Select Subject'}
-                  </Text>
+                <Text style={{ color: subject ? theme.text : theme.textSecondary }}>
+                  {subject || 'Select Subject'}
+                </Text>
               </TouchableOpacity>
-              
+
               {showSubjectDropdown && (
-                  <View style={[styles.dropdown, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                      <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
-                          {SUBJECTS.map((sub) => (
-                              <TouchableOpacity 
-                                key={sub} 
-                                onPress={() => {
-                                    setSubject(sub);
-                                    setShowSubjectDropdown(false);
-                                }}
-                                style={[
-                                    styles.dropdownItem, 
-                                    { borderBottomColor: theme.border, backgroundColor: subject === sub ? theme.primary + '20' : 'transparent' }
-                                ]}
-                              >
-                                  <Text style={{ color: theme.text }}>{sub}</Text>
-                              </TouchableOpacity>
-                          ))}
-                      </ScrollView>
-                  </View>
+                <View style={[styles.dropdown, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+                    {SUBJECTS.map((sub) => (
+                      <TouchableOpacity
+                        key={sub}
+                        onPress={() => {
+                          setSubject(sub);
+                          setShowSubjectDropdown(false);
+                        }}
+                        style={[
+                          styles.dropdownItem,
+                          { borderBottomColor: theme.border, backgroundColor: subject === sub ? theme.primary + '20' : 'transparent' }
+                        ]}
+                      >
+                        <Text style={{ color: theme.text }}>{sub}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
               )}
-              
+
               <Text style={[styles.label, { color: theme.text }]}>Qualification</Text>
-              <TextInput 
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]} 
-                placeholder="e.g. PhD in Mathematics" 
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                placeholder="e.g. PhD in Mathematics"
                 placeholderTextColor={theme.textSecondary}
-                value={qualification} 
-                onChangeText={setQualification} 
+                value={qualification}
+                onChangeText={setQualification}
               />
-              
+
               <Text style={[styles.label, { color: theme.text }]}>Experience</Text>
-              <TextInput 
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]} 
-                placeholder="e.g. 10 Years" 
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                placeholder="e.g. 10 Years"
                 placeholderTextColor={theme.textSecondary}
-                value={experience} 
-                onChangeText={setExperience} 
+                value={experience}
+                onChangeText={setExperience}
               />
 
               <Text style={[styles.label, { color: theme.text }]}>Image URL</Text>
-              <TextInput 
-                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]} 
-                placeholder="https://..." 
+              <TextInput
+                style={[styles.input, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+                placeholder="https://..."
                 placeholderTextColor={theme.textSecondary}
-                value={image} 
-                onChangeText={setImage} 
+                value={image}
+                onChangeText={setImage}
               />
             </ScrollView>
 
@@ -379,47 +382,47 @@ export const AdminTeachersScreen: React.FC = () => {
 
       {/* Choice Modal (Manual vs Upload) */}
       <Modal visible={choiceModalVisible} animationType="fade" transparent>
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
           onPress={() => setChoiceModalVisible(false)}
         >
-          <View style={[styles.modalContent, { backgroundColor: theme.card, alignItems: 'center', paddingHorizontal: 20, paddingVertical: 24 }]}>
-            <View style={[styles.modalIconContainer, { backgroundColor: theme.primary + '15' }]}>
-              <Ionicons name="people" size={32} color={theme.primary} />
+          <View style={[styles.modalContent, { backgroundColor: theme.card, alignItems: 'center', paddingHorizontal: 16, paddingVertical: 18 }]}>
+            <View style={[styles.modalIconContainer, { backgroundColor: theme.primary + '12' }]}>
+              <Ionicons name="people" size={24} color={theme.primary} />
             </View>
-            <Text style={[styles.modalTitle, { color: theme.text, marginTop: 12, marginBottom: 6 }]}>Add New Teacher</Text>
-            <Text style={{ color: theme.textSecondary, marginBottom: 20, textAlign: 'center', fontSize: 13, lineHeight: 18 }}>
+            <Text style={[styles.modalTitle, { color: theme.text, marginTop: 10, marginBottom: 4 }]}>Add Teacher</Text>
+            <Text style={{ color: theme.textSecondary, marginBottom: 14, textAlign: 'center', fontSize: 12, lineHeight: 16 }}>
               Choose how you want to add teachers.
             </Text>
-            
-            <TouchableOpacity 
-              onPress={handleManualEntry} 
+
+            <TouchableOpacity
+              onPress={handleManualEntry}
               style={[styles.modernChoiceBtn, styles.primaryChoiceBtn, { backgroundColor: theme.primary, shadowColor: theme.primary }]}
             >
               <View style={styles.choiceBtnIconContainer}>
-                <Ionicons name="create-outline" size={18} color="#fff" />
+                <Ionicons name="create-outline" size={16} color="#fff" />
               </View>
               <Text style={styles.modernChoiceBtnTitle}>Manual Entry</Text>
-              <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+              <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.6)" />
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              onPress={handlePickDocument} 
+            <TouchableOpacity
+              onPress={handlePickDocument}
               style={[styles.modernChoiceBtn, styles.secondaryChoiceBtn, { backgroundColor: theme.background, borderColor: theme.border }]}
             >
-              <View style={[styles.choiceBtnIconContainer, { backgroundColor: theme.primary + '15' }]}>
-                <Ionicons name="cloud-upload-outline" size={18} color={theme.primary} />
+              <View style={[styles.choiceBtnIconContainer, { backgroundColor: theme.primary + '12' }]}>
+                <Ionicons name="cloud-upload-outline" size={16} color={theme.primary} />
               </View>
-              <Text style={[styles.modernChoiceBtnTitle, { color: theme.text }]}>Upload JSON File</Text>
-              <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+              <Text style={[styles.modernChoiceBtnTitle, { color: theme.text }]}>Upload JSON</Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              onPress={() => setChoiceModalVisible(false)} 
-              style={{ marginTop: 12, padding: 8 }}
+            <TouchableOpacity
+              onPress={() => setChoiceModalVisible(false)}
+              style={{ marginTop: 8, padding: 6 }}
             >
-              <Text style={{ color: theme.textSecondary, fontSize: 14, fontWeight: '600' }}>Cancel</Text>
+              <Text style={{ color: theme.textSecondary, fontSize: 13, fontWeight: '500' }}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -434,88 +437,103 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
   },
-  headerTitle: { fontSize: 18, fontWeight: 'bold' },
-  backButton: { padding: 4 },
-  addButton: { padding: 4 },
-  searchContainer: { padding: 16, paddingBottom: 0 },
+  headerTitle: { fontSize: 16, fontWeight: '600' },
+  backButton: { padding: 2 },
+  addButton: { padding: 2 },
+  searchContainer: { padding: 12, paddingBottom: 0 },
   searchInput: {
-    padding: 12,
-    borderRadius: 8,
+    padding: 10,
+    borderRadius: 6,
     borderWidth: 1,
+    fontSize: 13,
   },
-  content: { padding: 16 },
-  listTitle: { fontSize: 16, fontWeight: '600', marginBottom: 16 },
-  noDataText: { textAlign: 'center', marginTop: 20, fontSize: 16 },
+  content: { padding: 12 },
+  listTitle: { fontSize: 13, fontWeight: '600', marginBottom: 10 },
+  noDataText: { textAlign: 'center', marginTop: 16, fontSize: 13 },
   card: {
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 12,
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  serialNo: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  serialNoText: {
+    fontSize: 10,
+    fontWeight: '600',
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginRight: 10,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
   cardInfo: { flex: 1 },
-  name: { fontSize: 16, fontWeight: 'bold', marginBottom: 2 },
-  subject: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
-  details: { fontSize: 12 },
-  cardActions: { flexDirection: 'column', gap: 12, paddingLeft: 8 },
-  actionBtn: { padding: 4 },
+  name: { fontSize: 13, fontWeight: '600', marginBottom: 1 },
+  subject: { fontSize: 12, fontWeight: '500', marginBottom: 1 },
+  details: { fontSize: 10 },
+  cardActions: { flexDirection: 'row', gap: 12, paddingLeft: 8, alignItems: 'center' },
+  actionBtn: { padding: 6, borderRadius: 6 },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
-    padding: 20,
+    padding: 16,
   },
   modalContent: {
-    borderRadius: 16,
-    padding: 20,
-    elevation: 5,
+    borderRadius: 12,
+    padding: 14,
+    elevation: 4,
     maxHeight: '80%',
   },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
-  label: { fontSize: 14, fontWeight: '600', marginBottom: 6 },
+  modalTitle: { fontSize: 16, fontWeight: '600', marginBottom: 14, textAlign: 'center' },
+  label: { fontSize: 12, fontWeight: '600', marginBottom: 4 },
   input: {
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: 6,
+    padding: 10,
+    marginBottom: 10,
+    fontSize: 13,
   },
-  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 10 },
+  modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8 },
   modalBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
   },
   dropdown: {
     borderWidth: 1,
-    borderRadius: 8,
-    marginTop: -10,
-    marginBottom: 16,
+    borderRadius: 6,
+    marginTop: -6,
+    marginBottom: 10,
     overflow: 'hidden',
   },
   dropdownItem: {
-    padding: 12,
-    borderBottomWidth: 1,
+    padding: 10,
+    borderBottomWidth: 0.5,
   },
   modalIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -523,39 +541,40 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
   },
   primaryChoiceBtn: {
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   secondaryChoiceBtn: {
-    borderWidth: 2,
+    borderWidth: 1.5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   choiceBtnIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   choiceBtnTextContainer: {
     flex: 1,
   },
   modernChoiceBtnTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#fff',
+    flex: 1,
   },
 });

@@ -18,6 +18,7 @@ import { db } from '../../api/firebaseConfig';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 
+
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 40) / 3;
 
@@ -181,6 +182,8 @@ export const AdminDashboard: React.FC = () => {
       }),
     ]).start();
 
+
+
     const unsubStudents = onSnapshot(collection(db, 'students'), (snapshot) => {
       setStudentCount(snapshot.size);
     });
@@ -189,7 +192,7 @@ export const AdminDashboard: React.FC = () => {
       setTeacherCount(snapshot.size);
     });
 
-    const unsubCourses = onSnapshot(collection(db, 'courses'), (snapshot) => {
+    const unsubCourses = onSnapshot(collection(db, 'videoGalleries'), (snapshot) => {
       setCourseCount(snapshot.size);
     });
 
@@ -201,7 +204,7 @@ export const AdminDashboard: React.FC = () => {
   }, []);
 
   const adminActions = [
-    { id: 1, title: 'Courses', icon: 'book', color: '#6366f1', action: () => navigation.navigate('AdminCourses') },
+    { id: 1, title: 'Video Gallery', icon: 'videocam', color: '#6366f1', action: () => navigation.navigate('AdminVideoGallery') },
     { id: 2, title: 'Students', icon: 'school', color: '#0ea5e9', action: () => navigation.navigate('AdminStudentRecords') },
     { id: 3, title: 'Faculty', icon: 'people', color: '#ec4899', action: () => navigation.navigate('AdminTeachers') },
     { id: 4, title: 'Exams', icon: 'trophy', color: '#f59e0b', action: () => navigation.navigate('AdminExams') },
@@ -285,8 +288,8 @@ export const AdminDashboard: React.FC = () => {
             />
             <StatCard
               value={courseCount}
-              label="Courses"
-              icon="book"
+              label="Galleries"
+              icon="videocam"
               gradientColors={['#0ea5e9', '#38bdf8']}
               delay={160}
             />

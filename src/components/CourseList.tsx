@@ -2,28 +2,56 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, FlatList } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
-import { useCourses } from '../context/CoursesContext';
 import { scale } from '../utils/responsive';
 import { LinearGradient } from 'expo-linear-gradient';
+import { db } from '../api/firebaseConfig';
+import { collection, onSnapshot, query, limit, orderBy } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
 
 const categoryColors = [
-    ['#f8bbd9', '#fce4ec'], // Pink gradient
-    ['#bbdefb', '#e3f2fd'], // Blue gradient
-    ['#c8e6c9', '#e8f5e9'], // Green gradient
-    ['#ffe0b2', '#fff3e0'], // Orange gradient
+    ['#6366f1', '#818cf8'], // Indigo
+    ['#ec4899', '#f472b6'], // Pink
+    ['#14b8a6', '#2dd4bf'], // Teal
+    ['#f59e0b', '#fbbf24'], // Amber
 ];
 
 export const CourseList: React.FC = () => {
     const navigation = useNavigation<any>();
-    const { theme } = useTheme();
-    const { courses } = useCourses();
+    const { theme, isDark } = useTheme();
+    const [galleries, setGalleries] = React.useState<any[]>([]);
+    const [loading, setLoading] = React.useState(true);
 
-    const handleCoursePress = (course: any) => {
-        navigation.navigate('CourseDetail', { course });
+    React.useEffect(() => {
+        const q = query(
+            collection(db, 'videoGalleries'),
+            // orderBy('updatedAt', 'desc'), // requires index, can skip for now or use default
+            limit(10)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const list = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setGalleries(list);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    const handleCoursePress = (gallery: any) => {
+        navigation.navigate('VideoLecturesScreen', {
+            galleryId: gallery.id,
+            galleryName: gallery.name,
+            galleryColor: categoryColors[0][0], // Pass a color or handle in screen
+            videos: gallery.videos || []
+        });
     };
 
     const renderCourseItem = ({ item, index }: { item: any; index: number }) => {
         const colors = categoryColors[index % categoryColors.length];
+        const videoCount = item.videos ? item.videos.length : 0;
 
         return (
             <TouchableOpacity
@@ -32,52 +60,61 @@ export const CourseList: React.FC = () => {
                     {
                         backgroundColor: theme.card,
                         borderColor: theme.border,
+                        shadowColor: theme.shadow,
                     }
                 ]}
                 onPress={() => handleCoursePress(item)}
                 activeOpacity={0.7}
             >
-                <LinearGradient
-                    colors={colors as any}
-                    style={styles.iconContainer}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                >
-                    {item.image ? (
-                        <Image source={{ uri: item.image }} style={styles.courseIcon} />
+                <View style={[styles.iconContainer, { backgroundColor: isDark ? '#1f2937' : '#f3f4f6' }]}>
+                    {item.thumbnail ? (
+                        <Image source={{ uri: item.thumbnail }} style={styles.courseIcon} resizeMode="cover" />
                     ) : (
-                        <Text style={styles.courseEmoji}>📚</Text>
+                        <LinearGradient
+                            colors={colors as [string, string]}
+                            style={styles.placeholderIcon}
+                        >
+                            <Ionicons name="videocam" size={20} color="#fff" />
+                        </LinearGradient>
                     )}
-                </LinearGradient>
+                </View>
 
                 <View style={styles.courseInfo}>
                     <Text style={[styles.courseTitle, { color: theme.text }]} numberOfLines={1}>
-                        {item.title || item.name}
+                        {item.name}
                     </Text>
-                    <Text style={[styles.courseSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
-                        {item.description || item.instructor || 'Explore this course'}
-                    </Text>
+                    <View style={styles.metaRow}>
+                        <Ionicons name="play-circle-outline" size={12} color={theme.textSecondary} />
+                        <Text style={[styles.courseSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+                            {videoCount} {videoCount === 1 ? 'Video' : 'Videos'}
+                        </Text>
+                    </View>
                 </View>
 
-                <View style={styles.actionIcon}>
-                    <Text style={{ fontSize: scale(18), color: theme.textTertiary }}>›</Text>
-                </View>
+                <TouchableOpacity
+                    style={[styles.playButton, { backgroundColor: isDark ? theme.backgroundSecondary : '#f3f4f6' }]}
+                    onPress={() => handleCoursePress(item)}
+                >
+                    <Ionicons name="play" size={16} color={theme.primary} />
+                </TouchableOpacity>
             </TouchableOpacity>
         );
     };
+
+    if (loading || galleries.length === 0) return null;
 
     return (
         <View style={styles.container}>
             <View style={styles.headerRow}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>Popular Courses</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Courses')}>
+                <TouchableOpacity onPress={() => navigation.navigate('VideoGallery')}>
                     <Text style={[styles.seeAllText, { color: theme.primary }]}>See All</Text>
                 </TouchableOpacity>
             </View>
             <FlatList
-                data={courses.slice(0, 5)}
+                data={galleries}
                 renderItem={renderCourseItem}
-                keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+                keyExtractor={(item) => item.id}
                 scrollEnabled={false}
                 contentContainerStyle={styles.listContent}
                 ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -113,28 +150,34 @@ const styles = StyleSheet.create({
     courseItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: scale(10),
-        borderRadius: scale(14),
+        padding: scale(12),
+        borderRadius: scale(16),
         backgroundColor: '#ffffff',
         borderWidth: 1,
         borderColor: 'rgba(0,0,0,0.03)',
-        marginBottom: scale(8),
+        marginBottom: scale(10),
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 6,
+        elevation: 1,
     },
     iconContainer: {
-        width: scale(42),
-        height: scale(42),
-        borderRadius: scale(10),
+        width: scale(48),
+        height: scale(48),
+        borderRadius: scale(12),
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden',
     },
-    courseIcon: {
-        width: scale(24),
-        height: scale(24),
-        borderRadius: scale(6),
+    placeholderIcon: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    courseEmoji: {
-        fontSize: scale(20),
+    courseIcon: {
+        width: '100%',
+        height: '100%',
     },
     courseInfo: {
         flex: 1,
@@ -143,16 +186,26 @@ const styles = StyleSheet.create({
     },
     courseTitle: {
         fontSize: scale(14),
-        fontWeight: '600',
-        marginBottom: scale(2),
+        fontWeight: '700',
+        marginBottom: scale(4),
         letterSpacing: -0.2,
+    },
+    metaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: scale(4),
     },
     courseSubtitle: {
         fontSize: scale(12),
-        opacity: 0.7,
+        fontWeight: '500',
     },
-    actionIcon: {
-        paddingHorizontal: scale(8),
+    playButton: {
+        width: scale(32),
+        height: scale(32),
+        borderRadius: scale(16),
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: scale(8),
     },
     separator: {
         height: 0,

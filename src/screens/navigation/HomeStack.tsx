@@ -23,6 +23,7 @@ import { SearchScreen } from '../SearchScreen';
 import { NoticesScreen } from '../NoticeScreen';
 import { AdminNoticeBoardScreen } from '../AdminScreens/AdminNoticeBoardScreen';
 import { MessagesScreen } from '../MessagesScreen';
+import { LikedVideosScreen } from '../LikedVideosScreen';
 
 export type HomeStackParamList = {
   HomeScreen: undefined;
@@ -51,9 +52,15 @@ export type HomeStackParamList = {
   AdminTeachersScreen: undefined;
   FeeDetailScreen: undefined;
   VideoLecturesScreen: {
-    subjectId?: string;
-    subjectName?: string;
-    subjectColor?: string;
+    galleryId?: string;
+    galleryName?: string;
+    galleryColor?: string;
+    videos?: Array<{
+      id: string;
+      title: string;
+      youtubeUrl: string;
+      duration?: string;
+    }>;
   };
   VideoGalleryScreen: undefined;
   SearchScreen: undefined;
@@ -61,6 +68,7 @@ export type HomeStackParamList = {
   NoticesScreen: undefined;
   AdminNoticeBoardScreen: undefined;
   MessagesScreen: undefined;
+  LikedVideosScreen: undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -90,6 +98,7 @@ export const HomeStack: React.FC = () => {
       <Stack.Screen name="NoticesScreen" component={NoticesScreen} />
       <Stack.Screen name="AdminNoticeBoardScreen" component={AdminNoticeBoardScreen} />
       <Stack.Screen name="MessagesScreen" component={MessagesScreen} />
+      <Stack.Screen name="LikedVideosScreen" component={LikedVideosScreen} />
     </Stack.Navigator>
   );
 };

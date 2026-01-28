@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Dimensions, ActivityIndicator, RefreshControl, Switch } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Dimensions, ActivityIndicator, RefreshControl, Switch, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import { ProfileStackParamList } from './navigation/ProfileStack';
 import { useTheme } from '../context/ThemeContext';
 import { auth, db } from '../api/firebaseConfig';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { scale } from '../utils/responsive';
 
@@ -160,6 +161,29 @@ export const ProfileScreen: React.FC = () => {
     setRefreshing(false);
   }, []);
 
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut(auth);
+              // Navigation will be handled by auth state listener
+            } catch (error) {
+              console.error('Error signing out:', error);
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleMenuPress = (key: string) => {
     switch (key) {
       case 'settings':
@@ -239,6 +263,18 @@ export const ProfileScreen: React.FC = () => {
           </View>
         ) : (
           <>
+            {/* Top Bar with Logout */}
+            <View style={styles.topBar}>
+              <Text style={[styles.screenTitle, { color: theme.text }]}>Profile</Text>
+              <TouchableOpacity
+                style={[styles.logoutBtn, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)' }]}
+                onPress={handleLogout}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+              </TouchableOpacity>
+            </View>
+
             {/* Profile Header */}
             <View style={styles.header}>
               <View style={[styles.avatarContainer, { backgroundColor: theme.card }]}>
@@ -314,9 +350,28 @@ const styles = StyleSheet.create({
     padding: scale(40),
     alignItems: 'center',
   },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: scale(16),
+    paddingTop: scale(12),
+    paddingBottom: scale(4),
+  },
+  screenTitle: {
+    fontSize: scale(22),
+    fontWeight: '700',
+  },
+  logoutBtn: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(12),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   header: {
     alignItems: 'center',
-    paddingTop: scale(24),
+    paddingTop: scale(12),
     paddingBottom: scale(16),
   },
   avatarContainer: {
