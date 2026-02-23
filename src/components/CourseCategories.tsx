@@ -95,7 +95,7 @@ export const CourseCategories: React.FC = () => {
                 navigation.navigate('NoticesScreen');
                 break;
             case 'complaints':
-                navigation.navigate('MessagesScreen');
+                navigation.navigate('ComplaintsScreen');
                 break;
             default:
                 console.log('Unknown action:', key);

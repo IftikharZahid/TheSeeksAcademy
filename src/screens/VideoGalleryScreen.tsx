@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -15,8 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { db } from '../api/firebaseConfig';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { useAppSelector } from '../store/hooks';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 36) / 2;
@@ -152,8 +151,18 @@ export const VideoGalleryScreen: React.FC = () => {
     const { theme, isDark } = useTheme();
     const headerAnim = useRef(new Animated.Value(0)).current;
 
-    const [galleries, setGalleries] = useState<Gallery[]>([]);
-    const [loading, setLoading] = useState(true);
+    // ── Use Redux store (single source of truth) ──
+    const reduxGalleries = useAppSelector(state => state.videos.galleries);
+    const loading = useAppSelector(state => state.videos.isLoading);
+
+    // Map Redux galleries to the local Gallery type
+    const galleries: Gallery[] = reduxGalleries.map(g => ({
+        id: g.id,
+        name: g.name || '',
+        description: g.description || '',
+        thumbnail: g.thumbnail || '',
+        videos: g.videos || [],
+    }));
 
     useEffect(() => {
         Animated.timing(headerAnim, {
@@ -161,28 +170,6 @@ export const VideoGalleryScreen: React.FC = () => {
             duration: 500,
             useNativeDriver: true,
         }).start();
-
-        // Fetch galleries from Firebase
-        const unsubscribe = onSnapshot(collection(db, 'videoGalleries'), (snapshot) => {
-            const galleriesList: Gallery[] = [];
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                galleriesList.push({
-                    id: doc.id,
-                    name: data.name || '',
-                    description: data.description || '',
-                    thumbnail: data.thumbnail || '',
-                    videos: data.videos || [],
-                } as Gallery);
-            });
-            setGalleries(galleriesList);
-            setLoading(false);
-        }, (error) => {
-            console.error("Error fetching galleries:", error);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
     }, []);
 
     const totalVideos = galleries.reduce((acc, g) => acc + (g.videos?.length || 0), 0);

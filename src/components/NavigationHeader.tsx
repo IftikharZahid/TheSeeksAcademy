@@ -12,6 +12,7 @@ interface NavigationHeaderProps {
     showBack?: boolean;
     showSearch?: boolean;
     onSearchPress?: () => void;
+    onBackPress?: () => void;
     rightAction?: {
         icon: string;
         onPress: () => void;
@@ -25,6 +26,7 @@ export const NavigationHeader: React.FC<NavigationHeaderProps> = ({
     showBack = true,
     showSearch = false,
     onSearchPress,
+    onBackPress,
     rightAction,
     gradient = false,
 }) => {
@@ -41,7 +43,9 @@ export const NavigationHeader: React.FC<NavigationHeaderProps> = ({
     }, []);
 
     const handleBack = () => {
-        if (navigation.canGoBack()) {
+        if (onBackPress) {
+            onBackPress();
+        } else if (navigation.canGoBack()) {
             navigation.goBack();
         }
     };
@@ -123,9 +127,13 @@ export const NavigationHeader: React.FC<NavigationHeaderProps> = ({
 const styles = StyleSheet.create({
     wrapper: {
         paddingTop: Platform.OS === 'ios' ? scale(8) : scale(12),
+        zIndex: 100,
+        position: 'relative',
     },
     gradientContainer: {
         paddingTop: Platform.OS === 'ios' ? scale(8) : scale(12),
+        zIndex: 100,
+        position: 'relative',
     },
     container: {
         flexDirection: 'row',
@@ -133,6 +141,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: scale(16),
         paddingVertical: scale(12),
+        zIndex: 100,
     },
     backButton: {
         width: scale(40),
@@ -144,7 +153,8 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 4,
-        elevation: 2,
+        elevation: 10,
+        zIndex: 100,
     },
     titleContainer: {
         flex: 1,
@@ -174,6 +184,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 4,
-        elevation: 2,
+        elevation: 10,
+        zIndex: 100,
     },
 });

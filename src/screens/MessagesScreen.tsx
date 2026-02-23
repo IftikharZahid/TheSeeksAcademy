@@ -1,11 +1,11 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, RefreshControl, Keyboard, Dimensions, ActivityIndicator, Alert, Modal, TouchableWithoutFeedback } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
-import { auth, db } from '../api/firebaseConfig';
-import { collection, query, where, getDocs, addDoc, orderBy, onSnapshot, serverTimestamp, Timestamp, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { db } from '../api/firebaseConfig';
+import { useAppSelector } from '../store/hooks';
+import { collection, query, addDoc, orderBy, onSnapshot, serverTimestamp, Timestamp, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -63,7 +63,6 @@ export const MessagesScreen: React.FC = () => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [profileData, setProfileData] = useState<any>(null);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,13 +75,9 @@ export const MessagesScreen: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const currentUser = auth.currentUser;
-  const userPhotoUrl = currentUser?.photoURL;
-
-  // Fetch user profile data
-  useEffect(() => {
-    fetchUserData();
-  }, []);
+  const user = useAppSelector((state) => state.auth.user);
+  const profile = useAppSelector((state) => state.auth.profile);
+  const userPhotoUrl = profile?.image || user?.photoURL;
 
   // Listen for real-time messages from Firebase
   useEffect(() => {
@@ -124,25 +119,6 @@ export const MessagesScreen: React.FC = () => {
     return () => { showSub.remove(); hideSub.remove(); };
   }, []);
 
-  const fetchUserData = async () => {
-    const user = auth.currentUser;
-    if (!user?.email) return;
-    const cacheKey = `user_profile_${user.email}`;
-    try {
-      const cachedProfile = await AsyncStorage.getItem(cacheKey);
-      if (cachedProfile) setProfileData(JSON.parse(cachedProfile));
-      const q = query(collection(db, "profile"), where("email", "==", user.email));
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        const data = querySnapshot.docs[0].data();
-        setProfileData(data);
-        await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
-      }
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-    }
-  };
-
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1500);
@@ -150,7 +126,7 @@ export const MessagesScreen: React.FC = () => {
 
   // Send or Update message
   const handleSend = async () => {
-    if (!message.trim() || !currentUser || isSending) return;
+    if (!message.trim() || !user || isSending) return;
 
     const messageText = message.trim();
     setMessage('');
@@ -166,9 +142,9 @@ export const MessagesScreen: React.FC = () => {
       } else {
         await addDoc(collection(db, 'group_messages'), {
           text: messageText,
-          senderId: currentUser.uid,
-          senderName: profileData?.fullname || currentUser.displayName || 'Anonymous',
-          senderPhoto: profileData?.image || currentUser.photoURL || null,
+          senderId: user?.uid,
+          senderName: profile?.fullname || user?.displayName || 'Anonymous',
+          senderPhoto: profile?.image || user?.photoURL || null,
           timestamp: serverTimestamp(),
         });
         scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -189,7 +165,7 @@ export const MessagesScreen: React.FC = () => {
 
   // Check if message is from current user
   const isOwnMessage = (senderId: string): boolean => {
-    return currentUser?.uid === senderId;
+    return user?.uid === senderId;
   };
 
   // Message options (Action Sheet)
@@ -569,7 +545,7 @@ export const MessagesScreen: React.FC = () => {
                   {/* Avatar for me */}
                   {isMine && (
                     <Image
-                      source={currentUser?.photoURL ? { uri: currentUser.photoURL } : require('../assets/default-profile.png')}
+                      source={user?.photoURL ? { uri: user.photoURL } : require('../assets/default-profile.png')}
                       style={[styles.msgAvatar, { marginRight: 0, marginLeft: 6 }]}
                     />
                   )}

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, StatusBar, KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, RefreshControl } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, StatusBar, KeyboardAvoidingView, Platform, ActivityIndicator, Pressable, RefreshControl, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
@@ -30,7 +30,7 @@ const SimTrackerScreen = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Array of refs to capture specific cards
   const cardRefs = useRef<Array<View | null>>([]);
 
@@ -39,14 +39,16 @@ const SimTrackerScreen = () => {
       setError('Please enter CNIC or phone number');
       return;
     }
-    
+
+    Keyboard.dismiss();
     setLoading(true);
     setError('');
     setRecords([]);
 
     try {
       const response = await fetch(
-        `https://legendxdata.site/Api/simdata.php?phone=${input}`
+        //  `https://legendxdata.site/Api/simdata.php?phone=${input}`
+        `https://simdataupdates.com/wp-admin/admin-ajax.php?action=fetch_sim_data&term=${input}`
       );
 
       const jsonData: ApiResponse = await response.json();
@@ -68,10 +70,10 @@ const SimTrackerScreen = () => {
 
   const onRefresh = async () => {
     if (!input) return; // Only refresh if there's a search input
-    
+
     setRefreshing(true);
     setError('');
-    
+
     try {
       const response = await fetch(
         `https://legendxdata.site/Api/simdata.php?phone=${input}`
@@ -120,7 +122,7 @@ const SimTrackerScreen = () => {
   const copyRecordText = async (record: RecordItem, index: number) => {
     try {
       const formattedRecord = `Record ${index + 1}:\nName: ${record.Name}\nPhone: ${record.Mobile}\nCNIC: ${record.CNIC}\nAddress: ${record.Address}\nCountry: ${record.Country}\nMade with ❤ by @GetCrack`;
-      
+
       await Clipboard.setStringAsync(formattedRecord);
       Alert.alert('Copied!', 'Record details copied to clipboard.');
     } catch (err) {
@@ -145,11 +147,7 @@ const SimTrackerScreen = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      <StatusBar 
-        barStyle="light-content" 
-        backgroundColor="#667eea" 
-        translucent={false}
-      />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
 
       {/* Premium Gradient Header - SettingsScreen Style */}
       <LinearGradient
@@ -158,29 +156,30 @@ const SimTrackerScreen = () => {
         end={{ x: 1, y: 1 }}
         style={styles.header}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backButtonText}>‹</Text>
+          <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
-        
+
         <View style={styles.headerCenter}>
-          <Text style={styles.headerIcon}>📱</Text>
+          <Ionicons name="phone-portrait-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
           <Text style={styles.headerTitle}>SIM Tracker</Text>
         </View>
-        
+
         <View style={styles.headerPlaceholder} />
       </LinearGradient>
 
       {/* Content */}
-      <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-          style={{ flex: 1 }}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
       >
-        <ScrollView 
-          style={styles.scrollView} 
+        <ScrollView
+          style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -190,47 +189,49 @@ const SimTrackerScreen = () => {
             />
           }
         >
-          
+
           {/* Ultra Compact Search Card */}
           <View style={[styles.searchCard, { backgroundColor: theme.card }]}>
-             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={[styles.inputContainer, { backgroundColor: isDark ? theme.background : '#f8fafc', borderColor: theme.border }]}>
-                  <TextInput
-                    style={[styles.input, { color: theme.text }]}
-                    placeholder="Enter CNIC or phone number"
-                    placeholderTextColor="#9ca3af"
-                    value={input}
-                    onChangeText={(text) => {
-                      setInput(text);
-                      setError('');
-                    }}
-                    keyboardType="phone-pad"
-                  />
-                </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={[styles.inputContainer, { backgroundColor: isDark ? theme.background : '#f8fafc', borderColor: theme.border }]}>
+                <TextInput
+                  style={[styles.input, { color: theme.text }]}
+                  placeholder="Enter CNIC or phone number"
+                  placeholderTextColor="#9ca3af"
+                  value={input}
+                  onChangeText={(text) => {
+                    setInput(text);
+                    setError('');
+                  }}
+                  keyboardType="phone-pad"
+                  returnKeyType="search"
+                  onSubmitEditing={fetchDetails}
+                />
+              </View>
 
-                <TouchableOpacity 
-                  onPress={fetchDetails}
-                  disabled={loading}
-                  activeOpacity={0.8}
-                  style={{ marginLeft: 8 }}
+              <TouchableOpacity
+                onPress={fetchDetails}
+                disabled={loading}
+                activeOpacity={0.8}
+                style={{ marginLeft: 8 }}
+              >
+                <LinearGradient
+                  colors={loading ? ['#9ca3af', '#6b7280'] : ['#667eea', '#764ba2']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[styles.button, loading && styles.buttonDisabled]}
                 >
-                  <LinearGradient
-                    colors={loading ? ['#9ca3af', '#6b7280'] : ['#667eea', '#764ba2']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[styles.button, loading && styles.buttonDisabled]}
-                  >
-                     <Ionicons name={loading ? "hourglass-outline" : "search"} size={20} color="#fff" />
-                  </LinearGradient>
-                </TouchableOpacity>
-             </View>
-             
-             {error ? (
-                <View style={[styles.errorContainer, { marginTop: 8 }]}>
-                  <Text style={styles.errorIcon}>⚠️</Text>
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
-              ) : null}
+                  <Ionicons name={loading ? "hourglass-outline" : "search"} size={20} color="#fff" />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+
+            {error ? (
+              <View style={[styles.errorContainer, { marginTop: 8 }]}>
+                <Ionicons name="alert-circle" size={14} color="#dc2626" style={{ marginRight: 6 }} />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
           </View>
 
           {/* Results Section */}
@@ -238,26 +239,26 @@ const SimTrackerScreen = () => {
             <View style={styles.resultsSection}>
               <View style={styles.resultsSectionHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.resultsIcon}>📋</Text>
-                    <Text style={[styles.resultsTitle, { color: theme.text }]}>
-                      Found {records.length} Record{records.length > 1 ? 's' : ''}
-                    </Text>
+                  <Ionicons name="document-text" size={22} color="#667eea" style={{ marginRight: 10 }} />
+                  <Text style={[styles.resultsTitle, { color: theme.text }]}>
+                    Found {records.length} Record{records.length > 1 ? 's' : ''}
+                  </Text>
                 </View>
 
                 {/* Copy All Button */}
                 <TouchableOpacity onPress={copyAllRecords} style={styles.copyAllButton}>
-                    <Ionicons name="copy-outline" size={16} color="#667eea" style={{ marginRight: 4 }} />
-                    <Text style={styles.copyAllText}>Copy All</Text>
+                  <Ionicons name="copy-outline" size={16} color="#667eea" style={{ marginRight: 4 }} />
+                  <Text style={styles.copyAllText}>Copy All</Text>
                 </TouchableOpacity>
               </View>
 
               {records.map((item, index) => (
-                <Pressable 
+                <Pressable
                   key={index}
                   onLongPress={() => copyRecordText(item, index)}
                   delayLongPress={500}
                 >
-                  <View 
+                  <View
                     collapsable={false}
                     ref={(el) => { cardRefs.current[index] = el; }}
                     style={[styles.resultCard, { backgroundColor: theme.card }]}
@@ -275,19 +276,19 @@ const SimTrackerScreen = () => {
                         </View>
                         <Text style={styles.cardHeaderTitle}>Record Details</Text>
                       </View>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         style={styles.copyButton}
                         onPress={() => captureAndCopy(index)}
                       >
-                        <Text style={styles.copyIcon}>📸</Text>
+                        <Ionicons name="camera-outline" size={18} color="#fff" />
                       </TouchableOpacity>
                     </LinearGradient>
-                    
+
                     {/* Card Body */}
                     <View style={styles.cardBody}>
                       <View style={styles.infoRow}>
                         <View style={[styles.infoIconContainer, { backgroundColor: '#dbeafe' }]}>
-                          <Text style={styles.infoIcon}>👤</Text>
+                          <Ionicons name="person" size={18} color="#3b82f6" />
                         </View>
                         <View style={styles.infoContent}>
                           <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Name</Text>
@@ -299,7 +300,7 @@ const SimTrackerScreen = () => {
 
                       <View style={styles.infoRow}>
                         <View style={[styles.infoIconContainer, { backgroundColor: '#dcfce7' }]}>
-                          <Text style={styles.infoIcon}>📱</Text>
+                          <Ionicons name="call" size={18} color="#10b981" />
                         </View>
                         <View style={styles.infoContent}>
                           <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Phone</Text>
@@ -311,7 +312,7 @@ const SimTrackerScreen = () => {
 
                       <View style={styles.infoRow}>
                         <View style={[styles.infoIconContainer, { backgroundColor: '#fef3c7' }]}>
-                          <Text style={styles.infoIcon}>🪪</Text>
+                          <Ionicons name="card" size={18} color="#f59e0b" />
                         </View>
                         <View style={styles.infoContent}>
                           <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>CNIC</Text>
@@ -323,7 +324,7 @@ const SimTrackerScreen = () => {
 
                       <View style={styles.infoRow}>
                         <View style={[styles.infoIconContainer, { backgroundColor: '#fce7f3' }]}>
-                          <Text style={styles.infoIcon}>📍</Text>
+                          <Ionicons name="location" size={18} color="#ec4899" />
                         </View>
                         <View style={styles.infoContent}>
                           <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Address</Text>
@@ -335,7 +336,7 @@ const SimTrackerScreen = () => {
 
                       <View style={styles.infoRow}>
                         <View style={[styles.infoIconContainer, { backgroundColor: '#e0e7ff' }]}>
-                          <Text style={styles.infoIcon}>🌍</Text>
+                          <Ionicons name="globe" size={18} color="#6366f1" />
                         </View>
                         <View style={styles.infoContent}>
                           <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Country</Text>
@@ -365,7 +366,7 @@ const SimTrackerScreen = () => {
           {/* Empty State */}
           {records.length === 0 && !loading && !error && (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🔎</Text>
+              <Ionicons name="search-outline" size={56} color="#667eea" style={{ marginBottom: 16 }} />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>No Records Yet</Text>
               <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
                 Enter a CNIC or phone number above to search for SIM records
@@ -401,19 +402,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  backButtonText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginTop: -6,
-  },
   headerCenter: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  headerIcon: {
-    fontSize: 24,
-    marginRight: 8,
   },
   headerTitle: {
     fontSize: 20,
@@ -433,7 +424,7 @@ const styles = StyleSheet.create({
   },
   searchCard: {
     borderRadius: 20,
-    padding: 12, // Compact padding
+    padding: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.1,
@@ -446,7 +437,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderRadius: 12,
     paddingHorizontal: 12,
-    height: 44, // Highly Compact
+    height: 44,
     justifyContent: 'center'
   },
   input: {
@@ -461,10 +452,6 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
   },
-  errorIcon: {
-    fontSize: 14,
-    marginRight: 6,
-  },
   errorText: {
     color: '#dc2626',
     fontSize: 12,
@@ -475,8 +462,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 12,
-    height: 44, // Matching Compact Height
-    width: 44, // Square Icon Button
+    height: 44,
+    width: 44,
     shadowColor: '#667eea',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -492,12 +479,8 @@ const styles = StyleSheet.create({
   resultsSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between', // Changed to space-between
+    justifyContent: 'space-between',
     marginBottom: 16,
-  },
-  resultsIcon: {
-    fontSize: 24,
-    marginRight: 10,
   },
   resultsTitle: {
     fontSize: 20,
@@ -566,9 +549,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  copyIcon: {
-    fontSize: 18,
-  },
   cardBody: {
     padding: 18,
   },
@@ -584,9 +564,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
-  },
-  infoIcon: {
-    fontSize: 20,
   },
   infoContent: {
     flex: 1,
@@ -636,10 +613,6 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingVertical: 60,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 20,

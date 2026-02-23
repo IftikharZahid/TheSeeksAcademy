@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, StatusBar } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { db, auth } from '../api/firebaseConfig';
-import { collection, query, orderBy, onSnapshot, getDoc, doc } from 'firebase/firestore';
+import { db } from '../api/firebaseConfig';
+import { getDoc, doc } from 'firebase/firestore';
+import { useAppSelector } from '../store/hooks';
 import { useTheme } from '../context/ThemeContext';
 import { scale } from '../utils/responsive';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,32 +13,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 export const LikedVideosScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const { theme, isDark } = useTheme();
-    const [likedVideos, setLikedVideos] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const user = auth.currentUser;
-        if (!user) {
-            setLoading(false);
-            return;
-        }
-
-        const q = query(
-            collection(db, 'users', user.uid, 'favorites'),
-            orderBy('likedAt', 'desc')
-        );
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const list = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setLikedVideos(list);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, []);
+    const likedVideos = useAppSelector((state) => state.videos.likedVideos);
+    const loading = useAppSelector((state) => state.videos.favoritesLoading);
 
     // Helper to parse duration string to seconds
     const parseDuration = (durationStr: string): number => {
@@ -201,12 +178,20 @@ export const LikedVideosScreen: React.FC = () => {
                 }
                 ListFooterComponent={
                     likedVideos.length > 0 && totalDuration ? (
-                        <View style={[styles.footerContainer, { borderTopColor: theme.border }]}>
-                            <Text style={[styles.footerLabel, { color: theme.textSecondary }]}>Total Watch Time</Text>
-                            <View style={[styles.footerBadge, { backgroundColor: isDark ? theme.backgroundSecondary : '#f3f4f6' }]}>
-                                <Ionicons name="time" size={16} color={theme.primary} />
-                                <Text style={[styles.footerValue, { color: theme.text }]}>{totalDuration}</Text>
+                        <View style={[styles.footerContainer, { borderTopColor: isDark ? theme.border : '#e5e7eb' }]}>
+                            <View style={styles.totalTimeRow}>
+                                <Text style={[styles.footerLabel, { color: theme.textSecondary }]}>Total Watch Time</Text>
+                                <View style={styles.timeValueContainer}>
+                                    <Ionicons name="time-outline" size={16} color={theme.primary} style={{ marginRight: 4 }} />
+                                    <Text style={[styles.footerValue, { color: theme.text }]}>{totalDuration}</Text>
+                                </View>
                             </View>
+                            <LinearGradient
+                                colors={[theme.primary, theme.primaryLight || '#8b5cf6']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.totalTimeBar}
+                            />
                         </View>
                     ) : null
                 }
@@ -376,25 +361,31 @@ const styles = StyleSheet.create({
         marginTop: scale(20),
         paddingTop: scale(20),
         borderTopWidth: 1,
+        marginBottom: scale(30),
+        paddingHorizontal: scale(4),
+    },
+    totalTimeRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: scale(20),
+        marginBottom: scale(12),
     },
     footerLabel: {
-        fontSize: scale(13),
-        marginBottom: scale(8),
-        fontWeight: '500',
+        fontSize: scale(14),
+        fontWeight: '600',
     },
-    footerBadge: {
+    timeValueContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: scale(16),
-        paddingVertical: scale(8),
-        borderRadius: scale(20),
-        gap: scale(6),
     },
     footerValue: {
         fontSize: scale(16),
         fontWeight: '700',
+    },
+    totalTimeBar: {
+        height: scale(4),
+        borderRadius: scale(2),
+        width: '100%',
+        opacity: 0.8,
     },
 });

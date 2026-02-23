@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, Image, FlatList } from 'react-native';
+import {  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, Image, FlatList , StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { db } from '../../api/firebaseConfig';
-import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, serverTimestamp, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { useAppSelector, useAppDispatch } from '../../store/hooks';
+import { updateGalleryVideos } from '../../store/slices/videosSlice';
 
 interface Video {
     id: string;
@@ -25,16 +27,28 @@ interface Gallery {
 
 export const AdminVideoGalleryScreen: React.FC = () => {
     const navigation = useNavigation();
-    const { theme } = useTheme();
+    const { theme, isDark } = useTheme();
+    const dispatch = useAppDispatch();
 
-    const [galleries, setGalleries] = useState<Gallery[]>([]);
-    const [loading, setLoading] = useState(true);
+    // Read galleries from Redux (shared listener in videosSlice)
+    const reduxGalleries = useAppSelector(state => state.videos.galleries);
+    const loading = useAppSelector(state => state.videos.isLoading);
+
+    // Map Redux galleries to the local Gallery type (which includes videos array)
+    const galleries: Gallery[] = reduxGalleries.map(g => ({
+        id: g.id,
+        name: g.name || '',
+        description: (g as any).description || '',
+        thumbnail: (g as any).thumbnail || '',
+        videos: (g as any).videos || [],
+    }));
+
     const [galleryModalVisible, setGalleryModalVisible] = useState(false);
     const [videoModalVisible, setVideoModalVisible] = useState(false);
     const [videosListVisible, setVideosListVisible] = useState(false);
     const [editingGallery, setEditingGallery] = useState<Gallery | null>(null);
     const [editingVideo, setEditingVideo] = useState<Video | null>(null);
-    const [selectedGallery, setSelectedGallery] = useState<Gallery | null>(null);
+    const [selectedGalleryId, setSelectedGalleryId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
 
     // Gallery Form State
@@ -48,36 +62,12 @@ export const AdminVideoGalleryScreen: React.FC = () => {
     const [videoDuration, setVideoDuration] = useState('');
     const [videoChapterNo, setVideoChapterNo] = useState('1');
 
-    useEffect(() => {
-        const unsubscribe = onSnapshot(collection(db, 'videoGalleries'), (snapshot) => {
-            const galleriesList: Gallery[] = [];
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                galleriesList.push({
-                    id: doc.id,
-                    name: data.name || '',
-                    description: data.description || '',
-                    thumbnail: data.thumbnail || '',
-                    videos: data.videos || []
-                } as Gallery);
-            });
-            setGalleries(galleriesList);
-            setLoading(false);
-        }, (error) => {
-            console.error("Error fetching galleries:", error);
-            setLoading(false);
-        });
+    // Derive selectedGallery from ID to ensure live updates without syncing state
+    const selectedGallery = selectedGalleryId
+        ? galleries.find(g => g.id === selectedGalleryId) || null
+        : null;
 
-        return () => unsubscribe();
-    }, []);
-
-    // Sync selectedGallery with real-time updates to show new videos immediately
-    useEffect(() => {
-        if (selectedGallery) {
-            const updated = galleries.find(g => g.id === selectedGallery.id);
-            if (updated) setSelectedGallery(updated);
-        }
-    }, [galleries]);
+    // useEffect removed - no longer needed for syncing
 
     // Gallery CRUD
     const handleSaveGallery = async () => {
@@ -136,6 +126,16 @@ export const AdminVideoGalleryScreen: React.FC = () => {
             return;
         }
 
+        // Check for duplicate URL
+        const isDuplicate = selectedGallery.videos.some(
+            v => v.youtubeUrl === videoUrl && v.id !== (editingVideo?.id || '')
+        );
+
+        if (isDuplicate) {
+            Alert.alert('Error', 'This video URL already exists in this gallery');
+            return;
+        }
+
         const videoData: Video = {
             id: editingVideo?.id || Date.now().toString(),
             title: videoTitle,
@@ -145,36 +145,21 @@ export const AdminVideoGalleryScreen: React.FC = () => {
         };
 
         try {
-            const galleryRef = doc(db, 'videoGalleries', selectedGallery.id);
-
+            // Optimistic update via Redux Thunk
+            let updatedVideos: Video[];
             if (editingVideo) {
-                // Update existing video - remove old, add new
-                const updatedVideos = selectedGallery.videos.map(v =>
-                    v.id === editingVideo.id ? videoData : v
-                );
-                await updateDoc(galleryRef, { videos: updatedVideos, updatedAt: serverTimestamp() });
-                Alert.alert('Success', 'Video updated successfully');
+                updatedVideos = selectedGallery.videos.map(v => v.id === editingVideo.id ? videoData : v);
             } else {
-                // Add new video
-                await updateDoc(galleryRef, {
-                    videos: arrayUnion(videoData),
-                    updatedAt: serverTimestamp()
-                });
-                Alert.alert('Success', 'Video added successfully');
+                updatedVideos = [...selectedGallery.videos, videoData];
             }
 
+            dispatch(updateGalleryVideos({ galleryId: selectedGallery.id, videos: updatedVideos }));
+
+            // Instant UI feedback
             setVideoModalVisible(false);
             resetVideoForm();
+            Alert.alert('Success', editingVideo ? 'Video updated successfully' : 'Video added successfully');
 
-            // Refresh selected gallery
-            const updatedGallery = galleries.find(g => g.id === selectedGallery.id);
-            if (updatedGallery) {
-                setSelectedGallery({
-                    ...updatedGallery, videos: editingVideo
-                        ? updatedGallery.videos.map(v => v.id === editingVideo.id ? videoData : v)
-                        : [...updatedGallery.videos, videoData]
-                });
-            }
         } catch (error) {
             Alert.alert('Error', 'Failed to save video');
             console.error(error);
@@ -192,11 +177,7 @@ export const AdminVideoGalleryScreen: React.FC = () => {
                 onPress: async () => {
                     try {
                         const updatedVideos = selectedGallery.videos.filter(v => v.id !== video.id);
-                        await updateDoc(doc(db, 'videoGalleries', selectedGallery.id), {
-                            videos: updatedVideos,
-                            updatedAt: serverTimestamp()
-                        });
-                        setSelectedGallery({ ...selectedGallery, videos: updatedVideos });
+                        dispatch(updateGalleryVideos({ galleryId: selectedGallery.id, videos: updatedVideos }));
                     } catch (error) {
                         Alert.alert('Error', 'Failed to delete video');
                     }
@@ -236,7 +217,7 @@ export const AdminVideoGalleryScreen: React.FC = () => {
     };
 
     const openVideosList = (gallery: Gallery) => {
-        setSelectedGallery(gallery);
+        setSelectedGalleryId(gallery.id);
         setVideosListVisible(true);
     };
 
@@ -260,16 +241,11 @@ export const AdminVideoGalleryScreen: React.FC = () => {
         (g.description || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Update selected gallery when galleries change
-    useEffect(() => {
-        if (selectedGallery) {
-            const updated = galleries.find(g => g.id === selectedGallery.id);
-            if (updated) setSelectedGallery(updated);
-        }
-    }, [galleries]);
+    // Update selected gallery when galleries change - REMOVED (Derived state handles this)
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
             <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={20} color={theme.text} />

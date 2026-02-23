@@ -177,51 +177,66 @@ export const TeachersScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      {/* Modern Animated Header */}
-      <NavigationHeader
-        title="Staff Members"
-        subtitle={`${staff.length} available`}
-        showBack={true}
-        showSearch={true}
-        onSearchPress={() => {/* TODO: Implement search */ }}
-      />
-
-      {/* Content with Page Transition */}
-      <PageTransition type="slide" duration={300}>
-        {/* Loading State */}
-        {loading && !refreshing && (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={theme.primary} />
-            <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading instructors...</Text>
-          </View>
-        )}
-
-        {/* Error State */}
-        {error && !loading && !refreshing && (
-          <View style={styles.centerContainer}>
-            <Text style={styles.errorText}>⚠️ {error}</Text>
-            <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary }]} onPress={fetchTeachers}>
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Teacher Cards Grid */}
-        {(!loading || refreshing) && !error && (
-          <ScrollView
-            style={styles.scrollView}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 100 }}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+      {/* Modern Animated Header - With high zIndex to stay on top */}
+      <View style={styles.headerWrapper}>
+        <NavigationHeader
+          title="Staff Members"
+          subtitle={`${staff.length} available`}
+          showBack={true}
+          showSearch={true}
+          onBackPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('HomeScreen');
             }
-          >
-            <View style={styles.cardsGrid}>
-              {staff.map((teacher, index) => renderTeacherCard(teacher, index))}
+          }}
+          onSearchPress={() => {/* TODO: Implement search */ }}
+          rightAction={{
+            icon: 'heart',
+            onPress: () => navigation.navigate('LikedTeachersScreen')
+          }}
+        />
+      </View>
+
+      {/* Content with Page Transition - Lower zIndex */}
+      <View style={styles.contentWrapper}>
+        <PageTransition type="slide" duration={300}>
+          {/* Loading State */}
+          {loading && !refreshing && (
+            <View style={styles.centerContainer}>
+              <ActivityIndicator size="large" color={theme.primary} />
+              <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading instructors...</Text>
             </View>
-          </ScrollView>
-        )}
-      </PageTransition>
+          )}
+
+          {/* Error State */}
+          {error && !loading && !refreshing && (
+            <View style={styles.centerContainer}>
+              <Text style={styles.errorText}>⚠️ {error}</Text>
+              <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary }]} onPress={fetchTeachers}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Teacher Cards Grid */}
+          {(!loading || refreshing) && !error && (
+            <ScrollView
+              style={styles.scrollView}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 100 }}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+              }
+            >
+              <View style={styles.cardsGrid}>
+                {staff.map((teacher, index) => renderTeacherCard(teacher, index))}
+              </View>
+            </ScrollView>
+          )}
+        </PageTransition>
+      </View>
     </SafeAreaView>
   );
 };
@@ -229,6 +244,14 @@ export const TeachersScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerWrapper: {
+    zIndex: 100,
+    elevation: 10,
+  },
+  contentWrapper: {
+    flex: 1,
+    zIndex: 1,
   },
   header: {
     flexDirection: 'row',

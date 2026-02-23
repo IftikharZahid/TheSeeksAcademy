@@ -40,9 +40,15 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const loadCredentials = async () => {
     try {
       const savedEmail = await AsyncStorage.getItem('user_email');
+      const savedPassword = await AsyncStorage.getItem('user_password');
+
       if (savedEmail) {
         setEmail(savedEmail);
         setRememberMe(true);
+      }
+
+      if (savedPassword) {
+        setPassword(savedPassword);
       }
     } catch (error) {
       console.error('Failed to load credentials:', error);
@@ -82,14 +88,16 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
         if (userDocSnap.exists()) {
           const userData = userDocSnap.data();
-          console.log('✅ User profile found:', userData.name);
+
+          const userName = userData.fullname || userData.name || userData.displayName || userData.fullName || userCredential.user.displayName || 'User';
+          console.log('✅ User profile found:', userName);
 
           // Store user data in storage for app-wide access
           await AsyncStorage.setItem('user_data', JSON.stringify({
             uid: userCredential.user.uid,
-            email: userData.email,
-            name: userData.name,
-            image: userData.image || '',
+            email: userData.email || userCredential.user.email,
+            name: userName,
+            image: userData.image || userData.photoURL || '',
           }));
           console.log('💾 User data saved to storage');
         } else {
@@ -107,20 +115,19 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         // Continue with login even if Firestore fetch fails
       }
 
-      // Step 3: Handle "Remember Me" functionality (email only, NOT password)
+      // Step 3: Handle "Remember Me" functionality (email AND password)
       if (rememberMe) {
         await AsyncStorage.setItem('user_email', email.trim());
-        console.log('💾 Email saved for next login');
+        await AsyncStorage.setItem('user_password', password);
+        console.log('💾 Credentials saved for next login');
       } else {
         await AsyncStorage.removeItem('user_email');
+        await AsyncStorage.removeItem('user_password');
       }
 
-      // Remove any old password storage for security
-      await AsyncStorage.removeItem('user_password');
-
-      console.log('🎉 Login successful! Navigating to Main...');
+      console.log('🎉 Login successful!');
       setIsLoading(false);
-      navigation.replace('Main');
+      // Navigation is handled automatically by onAuthStateChanged in AppNavigator
 
     } catch (error: any) {
       setIsLoading(false);
@@ -334,152 +341,170 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 40,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
   },
+
+  /* ── Illustration (compact) ── */
   illustrationContainer: {
-    marginTop: 40,
-    marginBottom: 20,
+    marginBottom: 10,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    width: width,
-    height: 240,
+    height: 160,
   },
   circleBackground: {
     position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    top: 10,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    top: 6,
   },
   phoneFrame: {
-    width: 120,
-    height: 220,
-    borderRadius: 18,
-    borderWidth: 3,
+    width: 85,
+    height: 150,
+    borderRadius: 14,
+    borderWidth: 2.5,
     alignItems: 'center',
-    paddingTop: 24,
-    elevation: 4,
+    paddingTop: 14,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
   logoImage: {
-    width: 60,
-    height: 60,
-    marginBottom: 16,
-    borderRadius: 30,
+    width: 40,
+    height: 40,
+    marginBottom: 10,
+    borderRadius: 20,
   },
   mockLineLong: {
-    width: '80%',
-    height: 6,
-    borderRadius: 3,
-    marginBottom: 6,
+    width: '70%',
+    height: 4,
+    borderRadius: 2,
+    marginBottom: 5,
   },
   mockLineShort: {
-    width: '50%',
-    height: 6,
-    borderRadius: 3,
-    marginBottom: 6,
+    width: '45%',
+    height: 4,
+    borderRadius: 2,
+    marginBottom: 5,
     alignSelf: 'flex-start',
-    marginLeft: 12,
+    marginLeft: 10,
   },
   mockLineMedium: {
-    width: '70%',
-    height: 6,
-    borderRadius: 3,
+    width: '58%',
+    height: 4,
+    borderRadius: 2,
     alignSelf: 'flex-start',
-    marginLeft: 12,
+    marginLeft: 10,
   },
+
+  /* ── Header ── */
   headerContainer: {
-    paddingHorizontal: 24,
-    marginBottom: 24,
+    marginBottom: 18,
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '400',
   },
-  formContainer: {
-    paddingHorizontal: 24,
-  },
+
+  /* ── Form ── */
+  formContainer: {},
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   inputContainer: {
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 44,
     flexDirection: 'row',
     alignItems: 'center',
   },
   inputIcon: {
     color: '#9ca3af',
-    marginRight: 10,
-    fontSize: 16,
+    marginRight: 8,
+    fontSize: 14,
   },
   textInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 14,
     padding: 0,
   },
   passwordToggle: {
-    marginLeft: 8,
+    paddingLeft: 8,
   },
   passwordToggleIcon: {
-    fontSize: 18,
+    fontSize: 15,
   },
+
+  /* ── Options ── */
   optionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginTop: 2,
+    marginBottom: 16,
   },
   rememberMeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 2,
-    marginRight: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    marginRight: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkmark: {
     color: '#ffffff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
   },
   rememberMeText: {
-    fontSize: 14,
+    fontSize: 13,
   },
   forgotPasswordText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
+
+  /* ── Button ── */
   loginButton: {
-    borderRadius: 30,
-    paddingVertical: 16,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-    marginBottom: 16,
+    height: 46,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+    marginBottom: 14,
   },
   loginButtonDisabled: {
     opacity: 0.7,
@@ -488,18 +513,21 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     textAlign: 'center',
     fontWeight: '700',
-    fontSize: 16,
+    fontSize: 15,
+    letterSpacing: 0.3,
   },
+
+  /* ── Footer ── */
   signupContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
   signupPrompt: {
-    fontSize: 14,
+    fontSize: 13,
   },
   signupLink: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
 });

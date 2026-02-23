@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Dimensions, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { scale } from '../utils/responsive';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { toggleLikeTeacherAsync } from '../store/slices/teachersSlice';
 
 const { width } = Dimensions.get('window');
 
@@ -28,7 +30,15 @@ export const StaffInfoScreen: React.FC = () => {
   const route = useRoute<StaffInfoRouteProp>();
   const { teacher } = route.params;
   const { theme, isDark } = useTheme();
-  const [isFavorite, setIsFavorite] = useState(false);
+
+  const dispatch = useAppDispatch();
+  const likedIds = useAppSelector((state) => state.teachers.likedIds);
+  const isFavorite = useMemo(() => likedIds.includes(teacher.id), [likedIds, teacher.id]);
+
+  // Instant optimistic toggle — Redux updates immediately, Firebase syncs in background
+  const handleToggleLike = () => {
+    dispatch(toggleLikeTeacherAsync({ teacher: teacher as any, isCurrentlyLiked: isFavorite }));
+  };
 
   // Modern Header Background Color
   const headerBg = isDark ? theme.backgroundSecondary : theme.primary; // Dark mode: nice dark gray, Light mode: primary color
@@ -37,26 +47,27 @@ export const StaffInfoScreen: React.FC = () => {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar barStyle="light-content" backgroundColor={headerBg} />
 
-      {/* Custom Header Area */}
-      <View style={[styles.headerBackground, { backgroundColor: headerBg }]}>
-        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-          <View style={styles.headerTopRow}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
-            >
-              <Ionicons name="arrow-back" size={scale(24)} color="#ffffff" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Teacher Profile</Text>
-            <TouchableOpacity
-              onPress={() => setIsFavorite(!isFavorite)}
-              style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
-            >
-              <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={scale(22)} color={isFavorite ? "#ff4081" : "#ffffff"} />
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </View>
+      {/* Layer 1: Purple Background (BACK) */}
+      <View style={[styles.headerBackground, { backgroundColor: headerBg }]} />
+
+      {/* Layer 3: Floating Buttons (FRONT - always on top) */}
+      <SafeAreaView edges={['top']} style={styles.floatingButtonsContainer}>
+        <View style={styles.headerTopRow}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+          >
+            <Ionicons name="arrow-back" size={scale(24)} color="#ffffff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Teacher Profile</Text>
+          <TouchableOpacity
+            onPress={handleToggleLike}
+            style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+          >
+            <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={scale(22)} color={isFavorite ? "#ff4081" : "#ffffff"} />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -66,10 +77,16 @@ export const StaffInfoScreen: React.FC = () => {
         {/* Profile Info Card (Overlapping) */}
         <View style={styles.profileContainer}>
           <View style={[styles.profileCard, { backgroundColor: theme.card, shadowColor: theme.shadow }]}>
+            {/* Profile Image with Professional Styling */}
             <View style={styles.imageWrapper}>
-              <Image source={{ uri: teacher.image }} style={styles.profileImage} />
-              <View style={styles.verifiedBadge}>
-                <Ionicons name="checkmark-circle" size={scale(20)} color="#4CAF50" />
+              <View style={[styles.imageRing, { borderColor: theme.primary }]}>
+                <Image
+                  source={{ uri: teacher.image }}
+                  style={styles.profileImage}
+                />
+              </View>
+              <View style={[styles.verifiedBadge, { backgroundColor: theme.card }]}>
+                <Ionicons name="checkmark-circle" size={scale(24)} color="#4CAF50" />
               </View>
             </View>
 
@@ -169,8 +186,13 @@ const styles = StyleSheet.create({
     top: 0,
     zIndex: 0,
   },
-  headerSafeArea: {
-    flex: 1,
+  floatingButtonsContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+    elevation: 100,
   },
   headerTopRow: {
     flexDirection: 'row',
@@ -178,7 +200,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: scale(20),
     paddingTop: scale(10),
-    zIndex: 20, // Ensure buttons are clickable
+    zIndex: 100,
   },
   headerTitle: {
     fontSize: scale(18),
@@ -194,13 +216,13 @@ const styles = StyleSheet.create({
   },
 
   scrollContent: {
-    paddingTop: scale(120), // Push content down to overlap header
+    paddingTop: scale(120),
     zIndex: 10,
     position: 'relative',
   },
   profileContainer: {
     paddingHorizontal: scale(20),
-    zIndex: 2,
+    zIndex: 10,
     marginBottom: scale(24),
   },
   profileCard: {
@@ -214,36 +236,51 @@ const styles = StyleSheet.create({
   },
   imageWrapper: {
     position: 'relative',
-    marginBottom: scale(10),
-    marginTop: scale(-50), // Overlap more onto the colored header
+    marginBottom: scale(16),
+    marginTop: scale(-60),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageRing: {
+    width: scale(120),
+    height: scale(120),
+    borderRadius: scale(60),
+    borderWidth: 4,
+    padding: scale(4),
+    backgroundColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 10,
-    zIndex: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   profileImage: {
-    width: scale(80),
-    height: scale(80),
-    borderRadius: scale(40),
-    borderWidth: 3,
-    backgroundColor: '#f3f4f6',
+    width: scale(104),
+    height: scale(104),
+    borderRadius: scale(52),
+    backgroundColor: '#e5e7eb',
   },
   profileImageFallback: {
-    width: scale(80),
-    height: scale(80),
-    borderRadius: scale(40),
-    borderWidth: 3,
+    width: scale(104),
+    height: scale(104),
+    borderRadius: scale(52),
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#e5e7eb',
   },
   verifiedBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderRadius: scale(10),
+    bottom: scale(4),
+    right: scale(4),
+    borderRadius: scale(14),
+    padding: scale(2),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
   },
   name: {
     fontSize: scale(22),

@@ -6,6 +6,8 @@ import {
     TouchableOpacity,
     ScrollView,
     Dimensions,
+    RefreshControl,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -14,7 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import YoutubePlayer from 'react-native-youtube-iframe';
 import { LinearGradient } from 'expo-linear-gradient';
 import { auth, db } from '../api/firebaseConfig';
+import { useNetInfo } from '@react-native-community/netinfo';
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { useAppSelector } from '../store/hooks';
 
 const { width } = Dimensions.get('window');
 
@@ -53,15 +57,34 @@ const extractYoutubeId = (url: string): string => {
 };
 
 // Convert Firebase videos to VideoItem format
+// Convert Firebase videos to VideoItem format with deduplication and validation
 const convertToVideoItems = (videos: Video[]): VideoItem[] => {
-    return videos.map((video, index) => ({
-        id: video.id,
-        number: index + 1,
-        title: video.title,
-        duration: video.duration || '',
-        youtubeId: extractYoutubeId(video.youtubeUrl),
-        chapterNo: parseInt(video.chapterNo || '1') || 1,
-    }));
+    const seenIds = new Set<string>();
+
+    return videos
+        .map((video) => {
+            const yId = extractYoutubeId(video.youtubeUrl);
+            if (!yId) return null; // Skip invalid URLs
+
+            // Deduplicate based on YouTube ID
+            if (seenIds.has(yId)) return null;
+            seenIds.add(yId);
+
+            return {
+                id: video.id,
+                title: video.title,
+                duration: video.duration || '',
+                youtubeId: yId,
+                chapterNo: parseInt(video.chapterNo || '1') || 1,
+                // Temp number, will re-index below
+                number: 0
+            };
+        })
+        .filter((item): item is Omit<VideoItem, 'number'> & { number: number } => item !== null)
+        .map((item, index) => ({
+            ...item,
+            number: index + 1
+        }));
 };
 
 type RouteParams = {
@@ -79,15 +102,70 @@ export const VideoLecturesScreen: React.FC = () => {
     const route = useRoute<RouteProp<RouteParams, 'VideoLecturesScreen'>>();
     const { theme, isDark } = useTheme();
     const playerRef = useRef<any>(null);
+    const netInfo = useNetInfo();
 
     // Get data from route params
     const galleryName = route.params?.galleryName || 'Video Lectures';
     const galleryColor = route.params?.galleryColor || '#6366f1';
-    const rawVideos = route.params?.videos || [];
+
+    // State for videos (initially from params, updated on refresh)
+    const [videos, setVideos] = useState<Video[]>(route.params?.videos || []);
+    const [refreshing, setRefreshing] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(false);
+
+    // Sync state with params when they change (e.g. navigating from another gallery)
+    React.useEffect(() => {
+        if (route.params?.videos && route.params.videos.length > 0) {
+            setVideos(route.params.videos);
+        }
+    }, [route.params?.videos]);
+
+    // ── Fallback: Fetch from Firestore if videos param is empty ──
+    React.useEffect(() => {
+        const hasVideos = route.params?.videos && route.params.videos.length > 0;
+        const galleryId = route.params?.galleryId;
+        if (!hasVideos && galleryId) {
+            setInitialLoading(true);
+            (async () => {
+                try {
+                    const galleryDoc = await getDoc(doc(db, 'videoGalleries', galleryId));
+                    if (galleryDoc.exists()) {
+                        const data = galleryDoc.data();
+                        if (data.videos && data.videos.length > 0) {
+                            setVideos(data.videos);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error fetching gallery videos:", error);
+                } finally {
+                    setInitialLoading(false);
+                }
+            })();
+        }
+    }, [route.params?.galleryId, route.params?.videos]);
 
     // Convert videos to proper format
-    const allVideos = useMemo(() => convertToVideoItems(rawVideos), [rawVideos]);
+    const allVideos = useMemo(() => convertToVideoItems(videos), [videos]);
     const totalVideos = allVideos.length;
+
+    // Refresh Logic
+    const onRefresh = useCallback(async () => {
+        if (!route.params?.galleryId) return;
+        setRefreshing(true);
+        try {
+            const galleryDoc = await getDoc(doc(db, 'videoGalleries', route.params.galleryId));
+            if (galleryDoc.exists()) {
+                const data = galleryDoc.data();
+                if (data.videos) {
+                    setVideos(data.videos);
+                }
+            }
+        } catch (error) {
+            console.error("Error refreshing videos:", error);
+        } finally {
+            setRefreshing(false);
+        }
+    }, [route.params?.galleryId]);
 
     // Group videos by chapter
     const chapters = useMemo(() => {
@@ -107,62 +185,96 @@ export const VideoLecturesScreen: React.FC = () => {
             }));
     }, [allVideos]);
 
-    const [isFavorite, setIsFavorite] = useState(false);
     const [currentVideo, setCurrentVideo] = useState<VideoItem | null>(allVideos[0] || null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [videoError, setVideoError] = useState<string | null>(null);
+    const [savedPosition, setSavedPosition] = useState(0);
+    const [videoProgress, setVideoProgress] = useState(0);
 
-    // Check if video is liked
-    const checkIfLiked = useCallback(async (videoId: string) => {
+    // Derive isFavorite from Redux liked videos (instant, no Firestore read needed)
+    const likedVideos = useAppSelector((state) => state.videos.likedVideos);
+    const [optimisticFavorite, setOptimisticFavorite] = useState<boolean | null>(null);
+
+    const isFavorite = optimisticFavorite !== null
+        ? optimisticFavorite
+        : currentVideo ? likedVideos.some((v: any) => v.id === currentVideo.id) : false;
+
+    // Reset optimistic override when Redux state catches up
+    React.useEffect(() => {
+        setOptimisticFavorite(null);
+    }, [likedVideos]);
+
+    // Check watch history for resume
+    const checkWatchHistory = useCallback(async (videoId: string) => {
         const user = auth.currentUser;
         if (!user) return;
         try {
-            const docRef = doc(db, 'users', user.uid, 'favorites', videoId);
+            const docRef = doc(db, 'users', user.uid, 'watch_history', videoId);
             const docSnap = await getDoc(docRef);
-            setIsFavorite(docSnap.exists());
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.lastPosition) {
+                    setSavedPosition(data.lastPosition);
+                    setVideoProgress(data.progress || 0);
+                }
+            } else {
+                setSavedPosition(0);
+                setVideoProgress(0);
+            }
         } catch (error) {
-            console.error("Error checking favorite:", error);
+            console.error("Error checking history:", error);
         }
     }, []);
 
-    // Toggle Check checking when video changes
+    // Check watch history when video changes
     React.useEffect(() => {
         if (currentVideo) {
-            checkIfLiked(currentVideo.id);
+            checkWatchHistory(currentVideo.id);
+            setVideoError(null);
+            setOptimisticFavorite(null); // Reset optimistic state for new video
         }
-    }, [currentVideo, checkIfLiked]);
+    }, [currentVideo, checkWatchHistory]);
 
-    const handleToggleLike = async () => {
+    // Optimistic like toggle — instant UI, background Firestore write
+    const handleToggleLike = useCallback(() => {
         const user = auth.currentUser;
         if (!user || !currentVideo) return;
 
+        const newFavorite = !isFavorite;
+        // Instant UI update
+        setOptimisticFavorite(newFavorite);
+
         const videoRef = doc(db, 'users', user.uid, 'favorites', currentVideo.id);
 
-        try {
-            if (isFavorite) {
-                await deleteDoc(videoRef);
-                setIsFavorite(false);
-            } else {
-                await setDoc(videoRef, {
-                    id: currentVideo.id,
-                    title: currentVideo.title,
-                    duration: currentVideo.duration,
-                    youtubeId: currentVideo.youtubeId,
-                    chapterNo: currentVideo.chapterNo,
-                    galleryId: route.params.galleryId || '',
-                    galleryName: route.params.galleryName || '',
-                    likedAt: serverTimestamp(),
-                    thumbnail: `https://img.youtube.com/vi/${currentVideo.youtubeId}/hqdefault.jpg`
-                });
-                setIsFavorite(true);
+        // Fire-and-forget Firestore write, revert on error
+        (async () => {
+            try {
+                if (!newFavorite) {
+                    await deleteDoc(videoRef);
+                } else {
+                    await setDoc(videoRef, {
+                        id: currentVideo.id,
+                        title: currentVideo.title,
+                        duration: currentVideo.duration,
+                        youtubeId: currentVideo.youtubeId,
+                        chapterNo: currentVideo.chapterNo,
+                        galleryId: route.params.galleryId || '',
+                        galleryName: route.params.galleryName || '',
+                        likedAt: serverTimestamp(),
+                        thumbnail: `https://img.youtube.com/vi/${currentVideo.youtubeId}/hqdefault.jpg`
+                    });
+                }
+            } catch (error) {
+                console.error("Error toggling favorite:", error);
+                // Revert on failure
+                setOptimisticFavorite(!newFavorite);
             }
-        } catch (error) {
-            console.error("Error toggling favorite:", error);
-        }
-    };
+        })();
+    }, [currentVideo, isFavorite, route.params.galleryId, route.params.galleryName]);
 
     // Progress Tracking
     React.useEffect(() => {
-        if (!isPlaying || !currentVideo || !isFavorite) return;
+        if (!isPlaying || !currentVideo) return;
 
         const interval = setInterval(async () => {
             if (playerRef.current) {
@@ -172,12 +284,18 @@ export const VideoLecturesScreen: React.FC = () => {
 
                     if (duration > 0) {
                         const progress = currentTime / duration;
+                        setVideoProgress(progress);
+
                         const user = auth.currentUser;
                         if (user) {
-                            const videoRef = doc(db, 'users', user.uid, 'favorites', currentVideo.id);
-                            await setDoc(videoRef, {
+                            // Save to watch_history locally and DB
+                            const historyRef = doc(db, 'users', user.uid, 'watch_history', currentVideo.id);
+                            await setDoc(historyRef, {
+                                id: currentVideo.id,
+                                youtubeId: currentVideo.youtubeId,
                                 progress: progress,
                                 lastPosition: currentTime,
+                                galleryId: route.params.galleryId || '',
                                 updatedAt: serverTimestamp()
                             }, { merge: true });
                         }
@@ -186,17 +304,22 @@ export const VideoLecturesScreen: React.FC = () => {
                     console.log("Error updating progress", e);
                 }
             }
-        }, 10000); // Update every 10 seconds
+        }, 5000); // Update every 5 seconds for better resume accuracy
 
         return () => clearInterval(interval);
-    }, [isPlaying, currentVideo, isFavorite]);
+    }, [isPlaying, currentVideo, route.params.galleryId]);
+
+    const onPlayerReady = useCallback(() => {
+        if (savedPosition > 0 && playerRef.current) {
+            playerRef.current.seekTo(savedPosition, true);
+        }
+    }, [savedPosition]);
 
     // Track expanded state for each chapter - default all expanded
     const [expandedChapters, setExpandedChapters] = useState<{ [key: number]: boolean }>(
         chapters.reduce((acc, chapter) => ({ ...acc, [chapter.chapterNo]: true }), {})
     );
 
-    // Update state when data changes (e.g. navigating between galleries)
     // Update state when data changes (e.g. navigating between galleries)
     React.useEffect(() => {
         if (allVideos.length > 0) {
@@ -222,14 +345,28 @@ export const VideoLecturesScreen: React.FC = () => {
     const onStateChange = useCallback((state: string) => {
         if (state === 'playing') {
             setIsPlaying(true);
+            setVideoError(null);
         } else if (state === 'paused' || state === 'ended') {
             setIsPlaying(false);
         }
     }, []);
 
+    const onPlayerError = useCallback((error: string) => {
+        setVideoError(error);
+        setIsPlaying(false);
+    }, []);
+
+    const handleRetry = () => {
+        setVideoError(null);
+        setIsPlaying(true);
+    };
+
     const handleVideoSelect = (video: VideoItem) => {
         setCurrentVideo(video);
+        setSavedPosition(0); // Reset position for new video until fetched
+        setVideoProgress(0);
         setIsPlaying(true);
+        setVideoError(null);
     };
 
     const gradientColors = isDark
@@ -286,78 +423,117 @@ export const VideoLecturesScreen: React.FC = () => {
                             style={styles.playerGradientBorder}
                         >
                             <View style={styles.playerWrapper}>
-                                <YoutubePlayer
-                                    ref={playerRef}
-                                    height={180}
-                                    width={width - 32}
-                                    play={isPlaying}
-                                    videoId={currentVideo.youtubeId}
-                                    onChangeState={onStateChange}
-                                    initialPlayerParams={{
-                                        modestbranding: true,
-                                        rel: false,
-                                        showClosedCaptions: false,
-                                        iv_load_policy: 3,
-                                        controls: true,
-                                        fs: true,
-                                    }}
-                                    webViewProps={{
-                                        androidLayerType: 'hardware',
-                                        allowsInlineMediaPlayback: true,
-                                        mediaPlaybackRequiresUserAction: false,
-                                        injectedJavaScript: `
-                                            (function() {
-                                                // Hide ad overlays and banners types
-                                                var style = document.createElement('style');
-                                                style.innerHTML = \`
-                                                    .ytp-ad-overlay-slot,
-                                                    .ytp-ad-text-overlay,
-                                                    .ytp-ad-image-overlay,
-                                                    .ytp-paid-content-overlay,
-                                                    .ytp-ad-message-container,
-                                                    .video-ads .ytp-ad-display-slot,
-                                                    .ytp-pause-overlay,
-                                                    .ytp-suggested-action,
-                                                    .iv-branding {
-                                                        display: none !important;
-                                                    }
-                                                \`;
-                                                document.head.appendChild(style);
-                                                
-                                                // Active Ad Skipping Logic
-                                                setInterval(function() {
-                                                    // 1. Click Skip Buttons
-                                                    var skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button');
-                                                    if (skipBtn) {
-                                                        skipBtn.click();
-                                                        return;
-                                                    }
-                                                    
-                                                    // 2. Click Overlay Close Buttons
-                                                    var closeBtn = document.querySelector('.ytp-ad-overlay-close-button');
-                                                    if (closeBtn) closeBtn.click();
-
-                                                    // 3. Fast Forward & Mute Ads
-                                                    var player = document.querySelector('.html5-video-player');
-                                                    var video = document.querySelector('video');
-                                                    
-                                                    if (player && player.classList.contains('ad-showing') && video) {
-                                                        video.playbackRate = 16.0; // Speed up 16x
-                                                        video.muted = true;      // Mute audio
-                                                        // Try to jump to end if allowed
-                                                        if (isFinite(video.duration) && video.currentTime < video.duration) {
-                                                           try { video.currentTime = video.duration; } catch(e){}
+                                {videoError || (netInfo.isConnected === false) ? (
+                                    <View style={[styles.errorContainer, { backgroundColor: isDark ? '#1a1a1a' : '#f8f9fa' }]}>
+                                        <Ionicons
+                                            name={netInfo.isConnected === false ? "cloud-offline-outline" : "alert-circle-outline"}
+                                            size={32}
+                                            color={theme.textSecondary}
+                                        />
+                                        <Text style={[styles.errorText, { color: theme.text }]}>
+                                            {netInfo.isConnected === false ? "You are offline" : "Video Unavailable"}
+                                        </Text>
+                                        <Text style={[styles.errorSubText, { color: theme.textSecondary }]}>
+                                            {netInfo.isConnected === false
+                                                ? "Please check your internet connection"
+                                                : "Something went wrong playing this video"}
+                                        </Text>
+                                        <TouchableOpacity
+                                            style={[styles.retryButton, { backgroundColor: galleryColor }]}
+                                            onPress={handleRetry}
+                                        >
+                                            <Ionicons name="refresh" size={16} color="#fff" />
+                                            <Text style={styles.retryText}>Retry</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : (
+                                    <YoutubePlayer
+                                        ref={playerRef}
+                                        height={180}
+                                        width={width - 32}
+                                        play={isPlaying}
+                                        videoId={currentVideo.youtubeId}
+                                        onChangeState={onStateChange}
+                                        onError={onPlayerError}
+                                        onReady={onPlayerReady}
+                                        initialPlayerParams={{
+                                            modestbranding: true,
+                                            rel: false,
+                                            showClosedCaptions: false,
+                                            iv_load_policy: 3,
+                                            controls: true,
+                                            fs: true,
+                                        }}
+                                        webViewProps={{
+                                            androidLayerType: 'hardware',
+                                            allowsInlineMediaPlayback: true,
+                                            mediaPlaybackRequiresUserAction: false,
+                                            injectedJavaScript: `
+                                                (function() {
+                                                    // Hide ad overlays and banners types
+                                                    var style = document.createElement('style');
+                                                    style.innerHTML = \`
+                                                        .ytp-ad-overlay-slot,
+                                                        .ytp-ad-text-overlay,
+                                                        .ytp-ad-image-overlay,
+                                                        .ytp-paid-content-overlay,
+                                                        .ytp-ad-message-container,
+                                                        .video-ads .ytp-ad-display-slot,
+                                                        .ytp-pause-overlay,
+                                                        .ytp-suggested-action,
+                                                        .iv-branding {
+                                                            display: none !important;
                                                         }
-                                                    }
-                                                }, 100);
-                                            })();
-                                            true;
-                                        `,
-                                    }}
-
-                                />
+                                                    \`;
+                                                    document.head.appendChild(style);
+                                                    
+                                                    // Active Ad Skipping Logic
+                                                    setInterval(function() {
+                                                        // 1. Click Skip Buttons
+                                                        var skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button');
+                                                        if (skipBtn) {
+                                                            skipBtn.click();
+                                                            return;
+                                                        }
+                                                        
+                                                        // 2. Click Overlay Close Buttons
+                                                        var closeBtn = document.querySelector('.ytp-ad-overlay-close-button');
+                                                        if (closeBtn) closeBtn.click();
+    
+                                                        // 3. Fast Forward & Mute Ads
+                                                        var player = document.querySelector('.html5-video-player');
+                                                        var video = document.querySelector('video');
+                                                        
+                                                        if (player && player.classList.contains('ad-showing') && video) {
+                                                            video.playbackRate = 16.0; // Speed up 16x
+                                                            video.muted = true;      // Mute audio
+                                                            // Try to jump to end if allowed
+                                                            if (isFinite(video.duration) && video.currentTime < video.duration) {
+                                                               try { video.currentTime = video.duration; } catch(e){}
+                                                            }
+                                                        }
+                                                    }, 100);
+                                                })();
+                                                true;
+                                            `,
+                                        }}
+                                    />
+                                )}
                             </View>
+
+                            {/* Visual Progress Bar */}
+                            {(videoProgress > 0) && (
+                                <View style={styles.progressBarContainer}>
+                                </View>
+                            )}
                         </LinearGradient>
+
+                        {/* Visual Progress Bar */}
+                        {(videoProgress > 0) && (
+                            <View style={[styles.progressBarContainer, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0,0,0,0.1)' }]}>
+                                <View style={[styles.progressBarFill, { width: `${videoProgress * 100}%`, backgroundColor: galleryColor }]} />
+                            </View>
+                        )}
                     </View>
                 ) : (
                     <View style={[styles.noVideoContainer, { backgroundColor: isDark ? theme.card : '#f3f4f6' }]}>
@@ -397,6 +573,9 @@ export const VideoLecturesScreen: React.FC = () => {
                 style={{ flex: 1 }}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={galleryColor} />
+                }
             >
 
 
@@ -496,11 +675,20 @@ export const VideoLecturesScreen: React.FC = () => {
                     </View>
                 ))}
 
-                {allVideos.length === 0 && (
+                {allVideos.length === 0 && !initialLoading && (
                     <View style={styles.emptyState}>
                         <Ionicons name="film-outline" size={40} color={theme.textSecondary} />
                         <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
                             No videos in this gallery yet
+                        </Text>
+                    </View>
+                )}
+
+                {initialLoading && (
+                    <View style={styles.emptyState}>
+                        <ActivityIndicator size="large" color={galleryColor} />
+                        <Text style={[styles.emptyText, { color: theme.textSecondary, marginTop: 12 }]}>
+                            Loading videos...
                         </Text>
                     </View>
                 )}
@@ -717,5 +905,45 @@ const styles = StyleSheet.create({
     emptyText: {
         marginTop: 10,
         fontSize: 14,
+    },
+    // Error UI Styles
+    errorContainer: {
+        height: 180,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    errorText: {
+        fontSize: 14,
+        fontWeight: '600',
+        marginTop: 8,
+    },
+    errorSubText: {
+        fontSize: 11,
+        marginTop: 4,
+        marginBottom: 12,
+    },
+    retryButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        gap: 6,
+    },
+    retryText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    // Progress Bar
+    progressBarContainer: {
+        height: 3,
+        width: '100%',
+        marginTop: 0, // Just below the video
+        overflow: 'hidden',
+    },
+    progressBarFill: {
+        height: '100%',
     },
 });

@@ -2,7 +2,9 @@ import React, { useState, useCallback } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, RefreshControl } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { scale } from '../utils/responsive';
 
 export const AssignmentsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -156,30 +158,33 @@ export const AssignmentsScreen: React.FC = () => {
   const filteredAssignments = assignments.filter((assignment) => {
     // Filter by status
     const matchesFilter = activeFilter === 'All' || assignment.status === activeFilter;
-    
+
     // Filter by search query (search in subject, title, or teacher)
-    const matchesSearch = 
+    const matchesSearch =
       assignment.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
       assignment.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       assignment.teacher.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     return matchesFilter && matchesSearch;
   });
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      {/* Simple Header */}
-      <View style={[styles.header, { backgroundColor: theme.background }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={[styles.backIcon, { color: theme.text }]}>←</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom', 'left', 'right']}>
+      {/* Floating Header */}
+      <View style={styles.floatingHeader}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={[styles.floatingBackButton, { backgroundColor: theme.card }]}
+        >
+          <Ionicons name="arrow-back" size={scale(22)} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Assignments</Text>
-        <View style={{ width: 40 }} />
+        <Text style={[styles.screenTitle, { color: theme.text }]}>Assignments</Text>
+        <View style={styles.placeholderButton} />
       </View>
 
-      <ScrollView 
-        style={[styles.scrollView, { backgroundColor: theme.background }]} 
-        showsVerticalScrollIndicator={false} 
+      <ScrollView
+        style={[styles.scrollView, { backgroundColor: theme.background }]}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
@@ -190,8 +195,8 @@ export const AssignmentsScreen: React.FC = () => {
         <TextInput
           placeholder="Search assignment..."
           placeholderTextColor={theme.textSecondary}
-          style={[styles.searchInput, { 
-            backgroundColor: isDark ? theme.card : '#fff', 
+          style={[styles.searchInput, {
+            backgroundColor: isDark ? theme.card : '#fff',
             borderColor: theme.border,
             color: theme.text
           }]}
@@ -199,56 +204,56 @@ export const AssignmentsScreen: React.FC = () => {
           onChangeText={setSearchQuery}
         />
 
-      {/* Filters */}
-      <View style={styles.filterRow}>
-        {["All", "Pending", "Submitted", "Late"].map((f) => (
-          <TouchableOpacity 
-            key={f} 
-            style={[
-              styles.filterBtn, 
-              { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border },
-              activeFilter === f && { backgroundColor: theme.primary, borderColor: theme.primary }
-            ]}
-            onPress={() => setActiveFilter(f)}
-          >
-            <Text style={[
-              styles.filterText, 
-              { color: theme.textSecondary },
-              activeFilter === f && styles.filterTextActive
-            ]}>{f}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+        {/* Filters */}
+        <View style={styles.filterRow}>
+          {["All", "Pending", "Submitted", "Late"].map((f) => (
+            <TouchableOpacity
+              key={f}
+              style={[
+                styles.filterBtn,
+                { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border },
+                activeFilter === f && { backgroundColor: theme.primary, borderColor: theme.primary }
+              ]}
+              onPress={() => setActiveFilter(f)}
+            >
+              <Text style={[
+                styles.filterText,
+                { color: theme.textSecondary },
+                activeFilter === f && styles.filterTextActive
+              ]}>{f}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-      {/* Assignments */}
-      <View style={{ marginTop: 10 }}>
-        {filteredAssignments.map((a) => (
-          <View key={a.id} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        {/* Assignments */}
+        <View style={{ marginTop: 10 }}>
+          {filteredAssignments.map((a) => (
+            <View key={a.id} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
 
-            {/* Subject Row */}
-            <View style={styles.subjectRow}>
-              <Text style={styles.subjectIcon}>{a.icon}</Text>
-              <View>
-                <Text style={[styles.subjectText, { color: theme.text }]}>{a.subject}</Text>
-                <Text style={[styles.teacherText, { color: theme.textSecondary }]}>{a.teacher}</Text>
+              {/* Subject Row */}
+              <View style={styles.subjectRow}>
+                <Text style={styles.subjectIcon}>{a.icon}</Text>
+                <View>
+                  <Text style={[styles.subjectText, { color: theme.text }]}>{a.subject}</Text>
+                  <Text style={[styles.teacherText, { color: theme.textSecondary }]}>{a.teacher}</Text>
+                </View>
               </View>
-            </View>
 
-            {/* Title */}
-            <Text style={[styles.assignmentTitle, { color: theme.text }]}>{a.title}</Text>
+              {/* Title */}
+              <Text style={[styles.assignmentTitle, { color: theme.text }]}>{a.title}</Text>
 
-            {/* Deadline + Status */}
-            <View style={styles.deadlineRow}>
-              <Text style={[styles.deadline, { color: theme.textSecondary }]}>Due: {a.deadline}</Text>
+              {/* Deadline + Status */}
+              <View style={styles.deadlineRow}>
+                <Text style={[styles.deadline, { color: theme.textSecondary }]}>Due: {a.deadline}</Text>
 
-              <View style={[styles.statusBadge, { backgroundColor: a.color }]}>
-                <Text style={styles.statusText}>{a.status}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: a.color }]}>
+                  <Text style={styles.statusText}>{a.status}</Text>
+                </View>
               </View>
-            </View>
 
-          </View>
-        ))}
-      </View>
+            </View>
+          ))}
+        </View>
 
       </ScrollView>
 
@@ -265,30 +270,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
+  floatingHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(12),
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
+  floatingBackButton: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(12),
     justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  backIcon: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  headerTitle: {
-    fontSize: 18,
+  screenTitle: {
+    fontSize: scale(18),
     fontWeight: '700',
+  },
+  placeholderButton: {
+    width: scale(40),
+    height: scale(40),
   },
   scrollView: {
     flex: 1,
-    padding: 16,
+    padding: scale(16),
   },
 
   searchInput: {

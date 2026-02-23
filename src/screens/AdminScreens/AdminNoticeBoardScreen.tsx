@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import {
+import React, { useState } from 'react';
+import { 
     View,
     Text,
     StyleSheet,
@@ -11,70 +11,36 @@ import {
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator
-} from 'react-native';
+, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { scale } from '../../utils/responsive';
 
-// Firebase
+// Firebase (only for CRUD writes)
 import { db } from '../../api/firebaseConfig';
 import {
-    collection,
     addDoc,
     updateDoc,
     deleteDoc,
     doc,
-    onSnapshot,
-    query,
-    orderBy,
+    collection,
     serverTimestamp,
-    Timestamp
 } from 'firebase/firestore';
+import { useAppSelector } from '../../store/hooks';
+import type { Notice } from '../../store/slices/notificationsSlice';
 
-export interface Notice {
-    id: string;
-    title: string;
-    message: string;
-    timeAgo?: string;
-    createdAt?: Timestamp;
-    type: 'image' | 'initials' | 'icon';
-    iconName?: string;
-    iconColor?: string;
-    iconBgColor?: string;
-}
-
-const formatTimeAgo = (timestamp?: Timestamp) => {
-    if (!timestamp) return 'Just now';
-
-    const now = new Date();
-    const date = timestamp.toDate();
-    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + "y ago";
-
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + "mo ago";
-
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + "d ago";
-
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + "h ago";
-
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + "m ago";
-
-    return "Just now";
-};
+// Notice interface imported from notificationsSlice
+// formatTimeAgo already computed in notificationsSlice listener
 
 export const AdminNoticeBoardScreen: React.FC = () => {
     const { theme, isDark } = useTheme();
     const navigation = useNavigation();
-    const [notices, setNotices] = useState<Notice[]>([]);
-    const [loading, setLoading] = useState(true);
+
+    // Read notices from Redux (shared listener in notificationsSlice)
+    const notices = useAppSelector(state => state.notifications.notices) as Notice[];
+    const loading = useAppSelector(state => state.notifications.loading);
 
     // Modal State
     const [modalVisible, setModalVisible] = useState(false);
@@ -84,27 +50,6 @@ export const AdminNoticeBoardScreen: React.FC = () => {
     const [title, setTitle] = useState('');
     const [message, setMessage] = useState('');
     const [saving, setSaving] = useState(false);
-
-    // Fetch Notices
-    useEffect(() => {
-        const q = query(collection(db, 'notices'), orderBy('createdAt', 'desc'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const fetchedNotices = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                timeAgo: formatTimeAgo(doc.data().createdAt)
-            })) as Notice[];
-
-            setNotices(fetchedNotices);
-            setLoading(false);
-        }, (error) => {
-            console.error("Error fetching notices:", error);
-            setLoading(false);
-            Alert.alert("Error", "Failed to fetch notices");
-        });
-
-        return () => unsubscribe();
-    }, []);
 
     const handleDelete = (id: string) => {
         Alert.alert(
@@ -207,6 +152,7 @@ export const AdminNoticeBoardScreen: React.FC = () => {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
             {/* Header */}
             <View style={[styles.header, { borderBottomColor: theme.border }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>

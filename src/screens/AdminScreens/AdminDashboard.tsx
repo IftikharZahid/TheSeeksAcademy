@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,15 +8,24 @@ import {
   Animated,
   Dimensions,
   StatusBar,
+  RefreshControl,
   Image,
+  InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
-import { db } from '../../api/firebaseConfig';
-import { collection, onSnapshot } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAppSelector, useAppDispatch } from '../../store/hooks';
+import {
+  initStudentsListener,
+  initExamsListener,
+  initComplaintsListener,
+  initTimetableListener,
+  initFeeListener,
+  fetchAdminFeeRecords,
+} from '../../store/slices/adminSlice';
 
 
 const { width } = Dimensions.get('window');
@@ -37,21 +46,24 @@ const StatCard: React.FC<StatCardProps> = ({ value, label, icon, gradientColors,
   const [displayValue, setDisplayValue] = useState(0);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        delay,
-        friction: 6,
-        tension: 50,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        delay,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    const interaction = InteractionManager.runAfterInteractions(() => {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          delay,
+          friction: 6,
+          tension: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          delay,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+    return () => interaction.cancel();
   }, []);
 
   useEffect(() => {
@@ -101,29 +113,33 @@ interface ActionCardProps {
   color: string;
   onPress: () => void;
   delay: number;
+  badge?: number;
 }
 
-const ActionCard: React.FC<ActionCardProps> = ({ title, icon, color, onPress, delay }) => {
+const ActionCard: React.FC<ActionCardProps> = ({ title, icon, color, onPress, delay, badge }) => {
   const { theme, isDark } = useTheme();
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        delay,
-        friction: 6,
-        tension: 50,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        delay,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    const interaction = InteractionManager.runAfterInteractions(() => {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          delay,
+          friction: 6,
+          tension: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          delay,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+    return () => interaction.cancel();
   }, []);
 
   return (
@@ -143,6 +159,11 @@ const ActionCard: React.FC<ActionCardProps> = ({ title, icon, color, onPress, de
         onPress={onPress}
         activeOpacity={0.7}
       >
+        {badge != null && badge > 0 && (
+          <View style={styles.actionBadge}>
+            <Text style={styles.actionBadgeText}>{badge > 99 ? '99+' : badge}</Text>
+          </View>
+        )}
         <LinearGradient
           colors={[color, `${color}dd`]}
           start={{ x: 0, y: 0 }}
@@ -160,48 +181,72 @@ const ActionCard: React.FC<ActionCardProps> = ({ title, icon, color, onPress, de
 export const AdminDashboard: React.FC = () => {
   const navigation = useNavigation<any>();
   const { theme, isDark } = useTheme();
+  const dispatch = useAppDispatch();
   const headerAnim = useRef(new Animated.Value(0)).current;
   const welcomeAnim = useRef(new Animated.Value(15)).current;
+  const [refreshing, setRefreshing] = useState(false);
+  const unsubsRef = useRef<(() => void)[]>([]);
 
-  const [studentCount, setStudentCount] = useState(0);
-  const [teacherCount, setTeacherCount] = useState(0);
-  const [courseCount, setCourseCount] = useState(0);
+  // Derive counts from Redux instead of separate Firebase listeners
+  const studentCount = useAppSelector(state => state.admin.students.length);
+  const teacherCount = useAppSelector(state => state.teachers.list.length);
+  const courseCount = useAppSelector(state => state.videos.galleries.length);
+  const pendingComplaintsCount = useAppSelector(
+    state => state.admin.complaints.filter(c => c.status === 'Pending').length
+  );
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(headerAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }),
-      Animated.spring(welcomeAnim, {
-        toValue: 0,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-
-
-    const unsubStudents = onSnapshot(collection(db, 'students'), (snapshot) => {
-      setStudentCount(snapshot.size);
+    // Defer all heavy work until after the navigation transition completes
+    const interaction = InteractionManager.runAfterInteractions(() => {
+      // Entry animations
+      Animated.parallel([
+        Animated.timing(headerAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.spring(welcomeAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]).start();
     });
 
-    const unsubTeachers = onSnapshot(collection(db, 'staff'), (snapshot) => {
-      setTeacherCount(snapshot.size);
-    });
-
-    const unsubCourses = onSnapshot(collection(db, 'videoGalleries'), (snapshot) => {
-      setCourseCount(snapshot.size);
-    });
+    // Initialize admin-specific listeners (not started in App.tsx to avoid
+    // loading admin data for regular students)
+    const unsubs = [
+      initStudentsListener(dispatch),
+      initExamsListener(dispatch),
+      initComplaintsListener(dispatch),
+      initTimetableListener(dispatch),
+      initFeeListener(dispatch),
+    ];
+    unsubsRef.current = unsubs;
 
     return () => {
-      unsubStudents();
-      unsubTeachers();
-      unsubCourses();
+      interaction.cancel();
+      unsubs.forEach(unsub => unsub());
     };
-  }, []);
+  }, [dispatch]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // Tear down current listeners
+    unsubsRef.current.forEach(unsub => unsub());
+    // Re-create all listeners
+    unsubsRef.current = [
+      initStudentsListener(dispatch),
+      initExamsListener(dispatch),
+      initComplaintsListener(dispatch),
+      initTimetableListener(dispatch),
+      initFeeListener(dispatch),
+    ];
+    // Also do a manual fee fetch to ensure immediate data
+    await dispatch(fetchAdminFeeRecords()).unwrap().catch(() => { });
+    setRefreshing(false);
+  }, [dispatch]);
 
   const adminActions = [
     { id: 1, title: 'Video Gallery', icon: 'videocam', color: '#6366f1', action: () => navigation.navigate('AdminVideoGallery') },
@@ -210,7 +255,7 @@ export const AdminDashboard: React.FC = () => {
     { id: 4, title: 'Exams', icon: 'trophy', color: '#f59e0b', action: () => navigation.navigate('AdminExams') },
     { id: 5, title: 'Timetable', icon: 'calendar', color: '#10b981', action: () => navigation.navigate('AdminTimetable') },
     { id: 6, title: 'Fees', icon: 'wallet', color: '#8b5cf6', action: () => navigation.navigate('AdminFeeScreen') },
-    { id: 7, title: 'Complaints', icon: 'chatbubble-ellipses', color: '#ef4444', action: () => navigation.navigate('AdminComplaints') },
+    { id: 7, title: 'Complaints', icon: 'chatbubble-ellipses', color: '#ef4444', action: () => navigation.navigate('AdminComplaints'), badge: pendingComplaintsCount },
     { id: 8, title: 'Notifications', icon: 'notifications', color: '#06b6d4', action: () => navigation.navigate('AdminNoticeBoardScreen') },
   ];
 
@@ -224,6 +269,9 @@ export const AdminDashboard: React.FC = () => {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+        }
       >
         {/* Compact Hero Header with Logo */}
         <Animated.View
@@ -308,6 +356,7 @@ export const AdminDashboard: React.FC = () => {
                 color={item.color}
                 onPress={item.action}
                 delay={200 + (index * 40)}
+                badge={item.badge}
               />
             ))}
           </View>
@@ -488,6 +537,32 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: -0.2,
+    textAlign: 'center',
+  },
+  actionBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#ef4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    zIndex: 10,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  actionBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
     textAlign: 'center',
   },
 });

@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, Image } from 'react-native';
+import React, { useState } from 'react';
+import {  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, Image , StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { db } from '../../api/firebaseConfig';
-import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+import { useAppSelector } from '../../store/hooks';
+import type { Teacher } from '../../store/slices/teachersSlice';
 
 const SUBJECTS = [
   'TarjumaTul Quran',
@@ -25,23 +27,18 @@ const SUBJECTS = [
   'Biology'
 ];
 
-interface Teacher {
-  id: string;
-  name: string;
-  subject: string;
-  qualification: string;
-  experience: string;
-  image: string;
-}
+// Teacher interface imported from teachersSlice
 
 export const AdminTeachersScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
 
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Read teachers from Redux (shared listener in teachersSlice)
+  const teachers = useAppSelector(state => state.teachers.list) as Teacher[];
+  const loading = useAppSelector(state => state.teachers.isLoading);
   const [modalVisible, setModalVisible] = useState(false);
   const [choiceModalVisible, setChoiceModalVisible] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -53,21 +50,7 @@ export const AdminTeachersScreen: React.FC = () => {
   const [image, setImage] = useState('');
   const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
 
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'staff'), (snapshot) => {
-      const teachersList: Teacher[] = [];
-      snapshot.forEach((doc) => {
-        teachersList.push({ id: doc.id, ...doc.data() } as Teacher);
-      });
-      setTeachers(teachersList);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching teachers:", error);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+  // No need for useEffect listener — teachersSlice listener runs globally in App.tsx
 
   const handleSaveTeacher = async () => {
     if (!name || !subject || !qualification || !experience) {
@@ -149,7 +132,7 @@ export const AdminTeachersScreen: React.FC = () => {
 
       if (result.canceled) return;
 
-      setLoading(true);
+      setUploading(true);
       setChoiceModalVisible(false);
 
       const asset = result.assets[0];
@@ -171,13 +154,13 @@ export const AdminTeachersScreen: React.FC = () => {
         data = JSON.parse(fileContent);
       } catch (parseError) {
         Alert.alert('JSON Error', 'The file content is not valid JSON.');
-        setLoading(false);
+        setUploading(false);
         return;
       }
 
       if (!Array.isArray(data)) {
         Alert.alert('Error', 'Invalid JSON format. The root must be an array of teacher records.');
-        setLoading(false);
+        setUploading(false);
         return;
       }
 
@@ -213,7 +196,7 @@ export const AdminTeachersScreen: React.FC = () => {
       console.error("File upload error:", error);
       Alert.alert('Error', `Failed to process the file: ${error.message}`);
     } finally {
-      setLoading(false);
+      setUploading(false);
     }
   };
 
@@ -233,6 +216,7 @@ export const AdminTeachersScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
       <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={20} color={theme.text} />

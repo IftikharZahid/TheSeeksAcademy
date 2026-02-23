@@ -67,15 +67,14 @@ export const SettingsScreen: React.FC = () => {
 
   const accountItems = [
     { icon: 'phone-portrait', color: '#6366f1', title: 'SIM Tracker', screen: 'SimTrackerScreen' },
-    { icon: 'bar-chart', color: '#0ea5e9', title: 'Attendance Log', screen: null },
-    { icon: 'document-text', color: '#10b981', title: 'Assignments', screen: null },
-    { icon: 'chatbubbles', color: '#f59e0b', title: 'Messages', screen: null },
-    { icon: 'notifications', color: '#ef4444', title: 'Notifications', screen: null },
+    { icon: 'bar-chart', color: '#0ea5e9', title: 'Attendance Log', screen: 'AttendanceScreen' },
+    { icon: 'document-text', color: '#10b981', title: 'Assignments', screen: 'AssignmentsScreen' },
+    { icon: 'chatbubbles', color: '#f59e0b', title: 'Messages', screen: 'MessagesScreen' },
+    { icon: 'notifications', color: '#ef4444', title: 'Notifications', screen: 'NoticesScreen' },
   ];
 
   const generalItems = [
     { icon: 'key', color: '#8b5cf6', title: 'Change Password', screen: 'ChangePasswordScreen' },
-    { icon: 'globe', color: '#14b8a6', title: 'Language', value: 'English' },
   ];
 
   const preferenceItems = [
@@ -133,9 +132,9 @@ export const SettingsScreen: React.FC = () => {
                   iconColor={item.color}
                   title={item.title}
                   onPress={item.screen ? () => navigation.navigate(item.screen as never) : undefined}
-                  rightElement={item.value ? (
+                  rightElement={(item as any).value ? (
                     <View style={styles.valueContainer}>
-                      <Text style={[styles.valueText, { color: theme.textSecondary }]}>{item.value}</Text>
+                      <Text style={[styles.valueText, { color: theme.textSecondary }]}>{(item as any).value}</Text>
                       <Ionicons name="chevron-forward" size={18} color={theme.textTertiary} />
                     </View>
                   ) : undefined}

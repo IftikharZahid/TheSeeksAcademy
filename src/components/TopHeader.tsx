@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
 import { useNotifications } from '../context/NotificationContext';
-import { auth, db } from '../api/firebaseConfig';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { useAppSelector } from '../store/hooks';
 import { Ionicons } from '@expo/vector-icons';
 import { scale } from '../utils/responsive';
 
@@ -14,51 +12,12 @@ export const TopHeader: React.FC = () => {
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
   const { unreadCount: notificationCount } = useNotifications();
-  const [profileData, setProfileData] = useState<any>(null);
-  const user = auth.currentUser;
-
-  useEffect(() => {
-    if (!user?.email) return;
-    // ... existing profile logic ...
-    const cacheKey = `user_profile_${user.email}`;
-
-    // Load from cache immediately
-    const loadCache = async () => {
-      try {
-        const cachedProfile = await AsyncStorage.getItem(cacheKey);
-        if (cachedProfile) {
-          setProfileData(JSON.parse(cachedProfile));
-        }
-      } catch (error) {
-        console.error("TopHeader: Error loading cache:", error);
-      }
-    };
-    loadCache();
-
-    // Real-time listener for profile data
-    const qProfile = query(collection(db, "profile"), where("email", "==", user.email));
-
-    const unsubscribe = onSnapshot(qProfile, (querySnapshot) => {
-      if (!querySnapshot.empty) {
-        const docData = querySnapshot.docs[0].data();
-        setProfileData(docData);
-        // Update cache
-        AsyncStorage.setItem(cacheKey, JSON.stringify(docData)).catch(err =>
-          console.error("TopHeader: Error saving to cache:", err)
-        );
-      } else {
-        setProfileData(null);
-      }
-    }, (error) => {
-      console.error("TopHeader: Error fetching user data:", error);
-    });
-
-    return () => unsubscribe();
-  }, [user]);
+  const user = useAppSelector((state) => state.auth.user);
+  const profile = useAppSelector((state) => state.auth.profile);
 
   // Fallback logic
-  const displayName = profileData?.fullname || user?.displayName || 'Student';
-  const displayImage = profileData?.image || user?.photoURL;
+  const displayName = profile?.fullname || user?.displayName || 'Student';
+  const displayImage = (profile?.image && profile.image.trim() !== '') ? profile.image : (user?.photoURL || null);
 
   return (
     <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: theme.background }]}>

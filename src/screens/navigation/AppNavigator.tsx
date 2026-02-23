@@ -1,7 +1,5 @@
 import React from "react";
 import { View, ActivityIndicator } from "react-native";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "../../api/firebaseConfig";
 import {
   NavigationContainer,
   DefaultTheme,
@@ -9,6 +7,7 @@ import {
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useTheme } from "../../context/ThemeContext";
+import { useAppSelector } from "../../store/hooks";
 
 import { LoginScreen } from "../LoginScreen";
 import { SignupScreen } from "../SignupScreen";
@@ -25,6 +24,8 @@ import { AdminExamsScreen } from "../AdminScreens/AdminExamsScreen";
 import { AdminFeeScreen } from "../AdminScreens/AdminFeeScreen";
 import { AdminNoticeBoardScreen } from "../AdminScreens/AdminNoticeBoardScreen";
 
+import { StudentProfile } from "../AdminScreens/StudentProfile";
+
 export type RootStackParamList = {
   Welcome: undefined;
   Login: undefined;
@@ -40,22 +41,16 @@ export type RootStackParamList = {
   AdminExams: undefined;
   AdminFeeScreen: undefined;
   AdminNoticeBoardScreen: undefined;
+  StudentProfile: { student: any };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const AppNavigator: React.FC = () => {
   const { theme, isDark } = useTheme();
-  const [initializing, setInitializing] = React.useState(true);
-  const [user, setUser] = React.useState<any>(null);
-
-  React.useEffect(() => {
-    const subscriber = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      if (initializing) setInitializing(false);
-    });
-    return subscriber; // unsubscribe on unmount
-  }, []);
+  // Auth state now comes from Redux (set by initAuthListener in App.tsx)
+  const user = useAppSelector((state) => state.auth.user);
+  const initializing = useAppSelector((state) => state.auth.initializing);
 
   const baseTheme = isDark ? DarkTheme : DefaultTheme;
 
@@ -91,7 +86,8 @@ export const AppNavigator: React.FC = () => {
             gestureEnabled: true,
             gestureDirection: 'horizontal',
             presentation: 'card',
-            animationDuration: 300,
+            animationDuration: 200,
+            freezeOnBlur: true,
           }}
         >
           {!user ? (
@@ -115,6 +111,7 @@ export const AppNavigator: React.FC = () => {
 
               <Stack.Screen name="AdminFeeScreen" component={AdminFeeScreen} />
               <Stack.Screen name="AdminNoticeBoardScreen" component={AdminNoticeBoardScreen} />
+              <Stack.Screen name="StudentProfile" component={StudentProfile} />
             </>
           )}
         </Stack.Navigator>

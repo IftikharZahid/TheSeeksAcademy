@@ -1,8 +1,13 @@
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Course, courses as localCourses } from '../data/courses';
-import { db } from '../api/firebaseConfig';
-import { collection, getDocs, setDoc, doc, onSnapshot } from 'firebase/firestore';
+/**
+ * CoursesContext — Compatibility wrapper around Redux coursesSlice.
+ * 
+ * Preserves the `useCourses()` hook API so existing screens don't need changes.
+ * The actual state lives in Redux now.
+ */
+import { useCallback } from 'react';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { toggleLike as reduxToggleLike } from '../store/slices/coursesSlice';
+import { Course } from '../data/courses';
 
 interface CoursesContextType {
   courses: Course[];
@@ -13,96 +18,30 @@ interface CoursesContextType {
   refreshCourses: () => Promise<void>;
 }
 
-const CoursesContext = createContext<CoursesContextType | undefined>(undefined);
+export { Course } from '../data/courses';
 
-export const CoursesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [likedCourses, setLikedCourses] = useState<Set<string>>(new Set());
-  const [isLoading, setIsLoading] = useState(true);
+export const useCourses = (): CoursesContextType => {
+  const dispatch = useAppDispatch();
+  const courses = useAppSelector((state) => state.courses.list);
+  const likedIds = useAppSelector((state) => state.courses.likedIds);
+  const isLoading = useAppSelector((state) => state.courses.isLoading);
 
-  useEffect(() => {
-    let unsubscribe: () => void;
+  const likedCourses = new Set<string>(likedIds);
 
-    const initializeCourses = async () => {
-      // Try to load from cache first
-      try {
-        const cachedCourses = await AsyncStorage.getItem('courses_cache');
-        if (cachedCourses) {
-          setCourses(JSON.parse(cachedCourses));
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("Error loading cached courses:", error);
-      }
+  const toggleLike = useCallback(
+    (id: string) => dispatch(reduxToggleLike(id)),
+    [dispatch]
+  );
 
-      // Set up real-time listener
-      unsubscribe = onSnapshot(collection(db, "courses"), async (querySnapshot) => {
-        try {
-          if (querySnapshot.empty) {
-            // Use local fallback data when Firebase is empty
-            console.log("Firebase courses collection is empty, using local data");
-            setCourses(localCourses);
-            await AsyncStorage.setItem('courses_cache', JSON.stringify(localCourses));
-          } else {
-            const fetchedCourses: Course[] = [];
-            querySnapshot.forEach((doc) => {
-              fetchedCourses.push({ id: doc.id, ...doc.data() } as Course);
-            });
-            setCourses(fetchedCourses);
-            await AsyncStorage.setItem('courses_cache', JSON.stringify(fetchedCourses));
-          }
-          setIsLoading(false);
-        } catch (error) {
-          console.error("Error processing courses snapshot: ", error);
-        }
-      }, (error) => {
-        console.error("Error listening to courses: ", error);
-        // On error, use local fallback data
-        console.log("Firebase error, using local data");
-        setCourses(localCourses);
-        setIsLoading(false);
-      });
-    };
+  const isLiked = useCallback(
+    (id: string) => likedIds.includes(id),
+    [likedIds]
+  );
 
-    initializeCourses();
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
+  const refreshCourses = useCallback(async () => {
+    // Data is kept fresh by the onSnapshot listener in App.tsx
+    await new Promise((r) => setTimeout(r, 300));
   }, []);
 
-  const refreshCourses = async () => {
-    // No-op or maybe re-sync logic if needed, but onSnapshot handles updates.
-    // We can keep it to satisfy interface or trigger a check.
-    // For now, we'll just wait a bit to simulate refresh
-    await new Promise(resolve => setTimeout(resolve, 500));
-  };
-
-  const toggleLike = (id: string) => {
-    setLikedCourses((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
-
-  const isLiked = (id: string) => likedCourses.has(id);
-
-  return (
-    <CoursesContext.Provider value={{ courses, likedCourses, toggleLike, isLiked, isLoading, refreshCourses }}>
-      {children}
-    </CoursesContext.Provider>
-  );
-};
-
-export const useCourses = () => {
-  const context = useContext(CoursesContext);
-  if (context === undefined) {
-    throw new Error('useCourses must be used within a CoursesProvider');
-  }
-  return context;
+  return { courses, likedCourses, toggleLike, isLiked, isLoading, refreshCourses };
 };

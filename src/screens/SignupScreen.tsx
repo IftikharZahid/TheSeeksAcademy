@@ -11,7 +11,6 @@ import {
   StatusBar,
   StyleSheet,
   Image,
-  Dimensions,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from './navigation/AppNavigator';
@@ -20,7 +19,7 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, db } from '../api/firebaseConfig';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
-const { width } = Dimensions.get('window');
+
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Signup'>;
 
@@ -48,13 +47,13 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
     setIsLoading(true);
     console.log('📝 Starting signup process for:', email.trim());
-    
+
     try {
       // Step 1: Create Firebase Authentication user
       console.log('🔐 Creating Firebase Auth user...');
       const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
       console.log('✅ Firebase Auth user created! UID:', userCredential.user.uid);
-      
+
       // Step 2: Update profile with name
       if (userCredential.user) {
         console.log('👤 Updating user profile with display name...');
@@ -62,7 +61,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
           displayName: name.trim()
         });
         console.log('✅ Display name updated:', name.trim());
-        
+
         // Step 3: Create profile document in Firestore
         try {
           console.log('💾 Creating user profile in Firestore...');
@@ -82,19 +81,19 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
       console.log('🎉 Signup successful!');
       setIsLoading(false);
-      
+
       Alert.alert(
-        'Success', 
-        'Account created successfully! You can now log in.', 
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+        'Success',
+        'Account created successfully!',
+        [{ text: 'OK' }]
       );
-      
+
     } catch (error: any) {
       setIsLoading(false);
       console.error('❌ Signup error:', error);
       console.error('Error code:', error.code);
       console.error('Error message:', error.message);
-      
+
       let errorMessage = 'Something went wrong';
       if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'Email already in use';
@@ -112,13 +111,13 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
         errorMessage = 'Network error. Please check your connection';
         console.error('🌐 Network connection failed');
       }
-      
+
       // Check for Firebase configuration issues
       if (error.message && error.message.includes('API key')) {
         errorMessage = 'Firebase configuration error. Please contact support.';
         console.error('🔥 FIREBASE CONFIG ERROR: Check firebaseConfig.ts credentials');
       }
-      
+
       Alert.alert('Signup Failed', errorMessage);
     }
   };
@@ -129,7 +128,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
       style={[styles.container, { backgroundColor: theme.background }]}
     >
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.background} />
-      
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -139,9 +138,9 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.illustrationContainer}>
           <View style={[styles.circleBackground, { backgroundColor: isDark ? theme.backgroundSecondary : '#f3f4f6' }]} />
           <View style={[styles.phoneFrame, { backgroundColor: theme.card, borderColor: theme.text }]}>
-            <Image 
-              source={require('../../assets/icon.png')} 
-              style={styles.logoImage} 
+            <Image
+              source={require('../../assets/icon.png')}
+              style={styles.logoImage}
               resizeMode="contain"
             />
             {/* Mock UI lines */}
@@ -159,7 +158,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* Form Container */}
         <View style={styles.formContainer}>
-          
+
           {/* Name Input */}
           <View style={styles.inputGroup}>
             <Text style={[styles.inputLabel, { color: theme.text }]}>Full Name</Text>
@@ -258,114 +257,131 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 40,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
   },
+
+  /* ── Illustration (compact) ── */
   illustrationContainer: {
-    marginTop: 40,
-    marginBottom: 20,
+    marginBottom: 10,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    width: width,
-    height: 240,
+    height: 160,
   },
   circleBackground: {
     position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    top: 10,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    top: 6,
   },
   phoneFrame: {
-    width: 120,
-    height: 220,
-    borderRadius: 18,
-    borderWidth: 3,
+    width: 85,
+    height: 150,
+    borderRadius: 14,
+    borderWidth: 2.5,
     alignItems: 'center',
-    paddingTop: 24,
-    elevation: 4,
+    paddingTop: 14,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
   logoImage: {
-    width: 60,
-    height: 60,
-    marginBottom: 16,
-    borderRadius: 30,
+    width: 40,
+    height: 40,
+    marginBottom: 10,
+    borderRadius: 20,
   },
   mockLineLong: {
-    width: '80%',
-    height: 6,
-    borderRadius: 3,
-    marginBottom: 6,
+    width: '70%',
+    height: 4,
+    borderRadius: 2,
+    marginBottom: 5,
   },
   mockLineShort: {
-    width: '50%',
-    height: 6,
-    borderRadius: 3,
-    marginBottom: 6,
+    width: '45%',
+    height: 4,
+    borderRadius: 2,
+    marginBottom: 5,
     alignSelf: 'flex-start',
-    marginLeft: 12,
+    marginLeft: 10,
   },
   mockLineMedium: {
-    width: '70%',
-    height: 6,
-    borderRadius: 3,
+    width: '58%',
+    height: 4,
+    borderRadius: 2,
     alignSelf: 'flex-start',
-    marginLeft: 12,
+    marginLeft: 10,
   },
+
+  /* ── Header ── */
   headerContainer: {
-    paddingHorizontal: 24,
-    marginBottom: 24,
+    marginBottom: 18,
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: 13,
+    fontWeight: '400',
   },
-  formContainer: {
-    paddingHorizontal: 24,
-  },
+
+  /* ── Form ── */
+  formContainer: {},
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   inputLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   inputContainer: {
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 44,
     flexDirection: 'row',
     alignItems: 'center',
   },
   inputIcon: {
     color: '#9ca3af',
-    marginRight: 10,
-    fontSize: 16,
+    marginRight: 8,
+    fontSize: 14,
   },
   textInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 14,
     padding: 0,
   },
+
+  /* ── Button ── */
   signupButton: {
-    borderRadius: 30,
-    paddingVertical: 16,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-    marginBottom: 24,
+    height: 46,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+    marginBottom: 14,
   },
   signupButtonDisabled: {
     opacity: 0.7,
@@ -374,18 +390,21 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     textAlign: 'center',
     fontWeight: '700',
-    fontSize: 16,
+    fontSize: 15,
+    letterSpacing: 0.3,
   },
+
+  /* ── Footer ── */
   loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
   loginPrompt: {
-    fontSize: 14,
+    fontSize: 13,
   },
   loginLink: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
 });

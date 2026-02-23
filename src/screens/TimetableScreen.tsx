@@ -24,7 +24,13 @@ const pillWidth = (width - 48) / 3 - 8;
 export const TimetableScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
-  const [activeDay, setActiveDay] = useState('Wednesday');
+  const getTodayName = () => {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const today = dayNames[new Date().getDay()];
+    // If Sunday (not in timetable), default to Monday
+    return days.includes(today) ? today : 'Monday';
+  };
+  const [activeDay, setActiveDay] = useState(getTodayName());
   const [refreshing, setRefreshing] = useState(false);
   const [scheduleData, setScheduleData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

@@ -4,8 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { scale } from '../utils/responsive';
 import { LinearGradient } from 'expo-linear-gradient';
-import { db } from '../api/firebaseConfig';
-import { collection, onSnapshot, query, limit, orderBy } from 'firebase/firestore';
+import { useAppSelector } from '../store/hooks';
 import { Ionicons } from '@expo/vector-icons';
 
 const categoryColors = [
@@ -18,27 +17,11 @@ const categoryColors = [
 export const CourseList: React.FC = () => {
     const navigation = useNavigation<any>();
     const { theme, isDark } = useTheme();
-    const [galleries, setGalleries] = React.useState<any[]>([]);
-    const [loading, setLoading] = React.useState(true);
 
-    React.useEffect(() => {
-        const q = query(
-            collection(db, 'videoGalleries'),
-            // orderBy('updatedAt', 'desc'), // requires index, can skip for now or use default
-            limit(10)
-        );
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const list = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setGalleries(list);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, []);
+    // Fetch popular courses directly from Redux, taking the first 10
+    const globalGalleries = useAppSelector((state) => state.videos.galleries);
+    const galleries = Array.isArray(globalGalleries) ? globalGalleries.slice(0, 10) : [];
+    const loading = useAppSelector((state) => state.videos.isLoading);
 
     const handleCoursePress = (gallery: any) => {
         navigation.navigate('VideoLecturesScreen', {

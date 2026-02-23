@@ -36,7 +36,7 @@ interface ExamEntry {
   description: string;
 }
 
-const CATEGORIES = ['All', 'Weekly', 'Monthly', 'Quarterly', 'Final'];
+// Dynamic tabs derived from exam entries (T1, T2, T3, etc.)
 
 const getGradeAndRemarks = (percentage: number): { grade: string; remarks: string } => {
   if (percentage >= 90) return { grade: 'A+', remarks: 'Excellent' };
@@ -55,6 +55,22 @@ export const ResultsScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState('All');
   const [refreshing, setRefreshing] = useState(false);
   const [entries, setEntries] = useState<ExamEntry[]>([]);
+
+  // Derive dynamic T-tabs from actual exam data (sorted numerically: T1, T2, T3...)
+  const dynamicTabs = useMemo(() => {
+    const titles = new Set<string>();
+    entries.forEach(e => {
+      if (e.title && /^T\d+$/i.test(e.title)) {
+        titles.add(e.title.toUpperCase());
+      }
+    });
+    const sorted = Array.from(titles).sort((a, b) => {
+      const numA = parseInt(a.replace('T', ''), 10);
+      const numB = parseInt(b.replace('T', ''), 10);
+      return numA - numB;
+    });
+    return ['All', ...sorted];
+  }, [entries]);
   const [loading, setLoading] = useState(true);
   const [userRollNo, setUserRollNo] = useState<string | null>(null);
   const [studentName, setStudentName] = useState<string | null>(null);
@@ -125,10 +141,10 @@ export const ResultsScreen: React.FC = () => {
 
   // Process data for the result sheet - aggregate by subject
   const processedData = useMemo(() => {
-    let filtered = activeTab === 'All' ? entries : entries.filter(e => e.category === activeTab);
+    let filtered = activeTab === 'All' ? entries : entries.filter(e => (e.title || '').toUpperCase() === activeTab.toUpperCase());
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(e => e.title.toLowerCase().includes(q) || e.category.toLowerCase().includes(q));
+      filtered = filtered.filter(e => e.title.toLowerCase().includes(q) || (e.category || '').toLowerCase().includes(q));
     }
 
     // Aggregate marks by subject (sum if same subject appears multiple times)
@@ -165,7 +181,7 @@ export const ResultsScreen: React.FC = () => {
     subjectsData.sort((a, b) => a.name.localeCompare(b.name));
 
     const overallPercentage = grandTotal > 0 ? (grandObtained / grandTotal) * 100 : 0;
-    const testType = activeTab === 'All' ? 'Grand Test' : `${activeTab} Test`;
+    const testType = activeTab === 'All' ? 'Grand Total' : `${activeTab} Test`;
 
     return { subjects: subjectsData, grandTotal, grandObtained, overallPercentage, testType, examCount: filtered.length };
   }, [entries, activeTab, searchQuery]);
@@ -222,9 +238,9 @@ export const ResultsScreen: React.FC = () => {
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-          {CATEGORIES.map(cat => (
-            <TouchableOpacity key={cat} onPress={() => setActiveTab(cat)} style={[styles.filterChip, activeTab === cat ? { backgroundColor: '#334155' } : { backgroundColor: isDark ? '#334155' : '#fff', borderWidth: 1, borderColor: isDark ? '#475569' : '#e2e8f0' }]}>
-              <Text style={[styles.filterText, { color: activeTab === cat ? '#fff' : isDark ? '#cbd5e1' : '#64748b' }]}>{cat}</Text>
+          {dynamicTabs.map(tab => (
+            <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)} style={[styles.filterChip, activeTab === tab ? { backgroundColor: '#334155' } : { backgroundColor: isDark ? '#334155' : '#fff', borderWidth: 1, borderColor: isDark ? '#475569' : '#e2e8f0' }]}>
+              <Text style={[styles.filterText, { color: activeTab === tab ? '#fff' : isDark ? '#cbd5e1' : '#64748b' }]}>{tab}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>

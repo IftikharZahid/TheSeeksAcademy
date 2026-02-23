@@ -8,8 +8,8 @@ import { useTheme } from '../context/ThemeContext';
 import { scale } from '../utils/responsive';
 import { auth, db } from '../api/firebaseConfig';
 import { collection, query, orderBy, onSnapshot, getDoc, doc } from 'firebase/firestore';
+import { useAppSelector } from '../store/hooks';
 
-// Components
 // Components
 import { CourseCategories } from '../components/CourseCategories';
 import { TopperSlider } from '../components/TopperSlider';
@@ -37,31 +37,8 @@ export const HomeScreen: React.FC = () => {
     setRefreshing(false);
   }, [refreshCourses]);
 
-  const [likedVideos, setLikedVideos] = useState<any[]>([]);
-
-  // Fetch liked videos
-  useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) {
-      setLikedVideos([]);
-      return;
-    }
-
-    const q = query(
-      collection(db, 'users', user.uid, 'favorites'),
-      orderBy('likedAt', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const videos = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setLikedVideos(videos);
-    });
-
-    return () => unsubscribe();
-  }, []);
+  const likedVideos = useAppSelector((state) => state.videos.likedVideos);
+  const profile = useAppSelector((state) => state.auth.profile);
 
   const handleVideoPress = async (video: any) => {
     // We need to fetch the full gallery to pass to VideoLecturesScreen
@@ -122,11 +99,6 @@ export const HomeScreen: React.FC = () => {
         }
       >
         <View style={styles.content}>
-
-
-
-
-          {/* Topper Students Slider */}
           <TopperSlider />
 
           {/* Course Categories */}
@@ -196,42 +168,6 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: scale(16),
     paddingTop: 0,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: scale(16),
-    marginTop: scale(8),
-  },
-  profileHeaderImage: {
-    width: scale(40),
-    height: scale(40),
-    borderRadius: scale(20),
-    backgroundColor: '#f0f0f0',
-  },
-  notificationButton: {
-    width: scale(40),
-    height: scale(40),
-    borderRadius: scale(20),
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  badge: {
-    position: 'absolute',
-    top: scale(8),
-    right: scale(10),
-    width: scale(8),
-    height: scale(8),
-    borderRadius: scale(4),
-    backgroundColor: '#F44336',
-    borderWidth: 1.5,
-    borderColor: '#ffffff',
   },
   topCoursesSection: {
     marginTop: scale(12),

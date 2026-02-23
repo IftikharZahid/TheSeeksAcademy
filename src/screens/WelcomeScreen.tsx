@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
   StatusBar,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -16,7 +17,8 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "./navigation/AppNavigator";
 import { useTheme } from "../context/ThemeContext";
 
-const { width } = Dimensions.get("window");
+const { height } = Dimensions.get("window");
+const isSmall = height < 700;
 
 type WelcomeScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
@@ -28,10 +30,10 @@ export const WelcomeScreen: React.FC = () => {
   const navigation = useNavigation<WelcomeScreenNavigationProp>();
 
   const features = [
-    { id: 1, text: "Expert Coaching.", icon: "🎓" },
-    { id: 2, text: "Innovative Learning.", icon: "📹" },
-    { id: 3, text: "Comprehensive Training.", icon: "📋" },
-    { id: 4, text: "Competitive Environment.", icon: "🏫" },
+    { id: 1, text: "Expert Coaching", icon: "🎓" },
+    { id: 2, text: "Video Lectures", icon: "📹" },
+    { id: 3, text: "Smart Training", icon: "📋" },
+    { id: 4, text: "Compete & Grow", icon: "🏫" },
   ];
 
   return (
@@ -44,101 +46,82 @@ export const WelcomeScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-          {/* Illustration Section */}
-          <View style={styles.illustrationContainer}>
-            <View
-              style={[
-                styles.circleBackground,
-                {
-                  backgroundColor: isDark ? 'rgba(139, 92, 246, 0.1)' : 'rgba(139, 92, 246, 0.08)',
-                },
-              ]}
+        {/* ── Illustration ── */}
+        <View style={styles.illustrationContainer}>
+          <View style={[styles.circleBackground, {
+            backgroundColor: isDark ? 'rgba(139,92,246,0.1)' : 'rgba(139,92,246,0.08)',
+          }]} />
+          <View style={[styles.phoneFrame, {
+            backgroundColor: theme.card,
+            borderColor: isDark ? theme.border : '#e5e7eb',
+          }]}>
+            <Image
+              source={require("../../assets/icon.png")}
+              style={styles.logoImage}
+              resizeMode="contain"
             />
+            <View style={[styles.mockLineLong, { backgroundColor: theme.border }]} />
+            <View style={[styles.mockLineShort, { backgroundColor: theme.border }]} />
+            <View style={[styles.mockLineMedium, { backgroundColor: theme.border }]} />
+          </View>
+        </View>
+
+        {/* ── Text Content ── */}
+        <View style={styles.textSection}>
+          <Text style={[styles.title, { color: theme.text }]}>
+            The Seeks Academy
+          </Text>
+          <Text style={[styles.location, { color: theme.primary }]}>
+            Fort Abbas
+          </Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+            Join a community of learners achieving their goals through expert coaching and personalized paths.
+          </Text>
+        </View>
+
+        {/* ── Feature Chips ── */}
+        <View style={styles.chipGrid}>
+          {features.map((f) => (
             <View
-              style={[
-                styles.phoneFrame,
-                { backgroundColor: theme.card, borderColor: isDark ? theme.border : '#e5e7eb' },
-              ]}
+              key={f.id}
+              style={[styles.chip, {
+                backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#f5f3ff',
+                borderColor: isDark ? 'rgba(139,92,246,0.2)' : 'rgba(139,92,246,0.12)',
+              }]}
             >
-              <Image
-                source={require("../../assets/icon.png")}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-              {/* Mock UI lines */}
-              <View
-                style={[styles.mockLineLong, { backgroundColor: theme.border }]}
-              />
-              <View
-                style={[styles.mockLineShort, { backgroundColor: theme.border }]}
-              />
-              <View
-                style={[styles.mockLineMedium, { backgroundColor: theme.border }]}
-              />
+              <Text style={styles.chipIcon}>{f.icon}</Text>
+              <Text style={[styles.chipText, { color: theme.text }]}>{f.text}</Text>
             </View>
-          </View>
+          ))}
+        </View>
 
-          {/* Text Content */}
-          <View style={styles.textContainer}>
-            <Text style={[styles.headline, { color: theme.text }]}>
-              The Seeks Academy
+        {/* ── Action Buttons ── */}
+        <View style={styles.actions}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={[styles.primaryBtn, { backgroundColor: theme.primary }]}
+            onPress={() =>
+              Alert.alert(
+                "Registration Required",
+                "Contact admin to be Registered",
+                [{ text: "OK" }]
+              )
+            }
+          >
+            <Text style={styles.primaryBtnText}>Get Started</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={[styles.secondaryBtn, { borderColor: theme.primary }]}
+            onPress={() => navigation.navigate("Login")}
+          >
+            <Text style={[styles.secondaryBtnText, { color: theme.primary }]}>
+              Log In
             </Text>
-            <Text style={[styles.subHeading, { color: theme.text }]}>
-              Fort Abbas
-            </Text>
-            <Text style={[styles.subheadline, { color: theme.textSecondary }]}>
-              Join a community of learners achieving their goals through expert
-              coaching and personalized paths.
-            </Text>
-
-            {/* Feature List */}
-            <View style={styles.featureList}>
-              {features.map((feature) => (
-                <View key={feature.id} style={styles.featureItem}>
-                  <View style={styles.iconContainer}>
-                    <Text style={styles.featureIcon}>{feature.icon}</Text>
-                  </View>
-                  <Text
-                    style={[styles.featureText, { color: theme.textSecondary }]}
-                  >
-                    {feature.text}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[
-                styles.getStartedButton,
-                { backgroundColor: theme.primary, shadowColor: theme.primary },
-              ]}
-              onPress={() => 
-                Alert.alert(
-                  "Registration Required",
-                  "Contact admin to be Registered",
-                  [{ text: "OK" }]
-                )
-              }
-            >
-              <Text style={styles.getStartedText}>Get Started</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.loginButton,
-                { backgroundColor: 'transparent', borderColor: theme.primary },
-              ]}
-              onPress={() => navigation.navigate("Login")}
-            >
-              <Text style={[styles.loginText, { color: theme.primary }]}>
-                Log In
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -149,150 +132,157 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingBottom: 20,
+    justifyContent: "center",
+    paddingHorizontal: 28,
+    paddingVertical: isSmall ? 16 : 24,
   },
+
+  /* ── Illustration ── */
   illustrationContainer: {
-    marginTop: 10,
-    marginBottom: 10,
+    marginBottom: 12,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
-    width: width,
-    height: 240,
+    height: isSmall ? 150 : 170,
   },
   circleBackground: {
     position: "absolute",
-    width: 210,
-    height: 210,
-    borderRadius: 115,
-    backgroundColor: "#f3f4f6", // Light gray/purple tint
-    top: 20,
+    width: isSmall ? 140 : 160,
+    height: isSmall ? 140 : 160,
+    borderRadius: isSmall ? 70 : 80,
+    top: isSmall ? 5 : 8,
   },
   phoneFrame: {
-    width: 110,
-    height: 220,
-    borderRadius: 20,
-    borderWidth: 4,
+    width: isSmall ? 80 : 90,
+    height: isSmall ? 145 : 160,
+    borderRadius: 14,
+    borderWidth: 2.5,
     alignItems: "center",
-    paddingTop: 15,
-    elevation: 5,
+    paddingTop: 16,
+    elevation: 3,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
   logoImage: {
-    width: 60,
-    height: 60,
-    marginBottom: 20,
-    borderRadius: 60,
+    width: isSmall ? 36 : 44,
+    height: isSmall ? 36 : 44,
+    marginBottom: 12,
+    borderRadius: 22,
   },
   mockLineLong: {
     width: "70%",
-    height: 3,
-    backgroundColor: "#e5e7eb",
-    borderRadius: 4,
-    marginBottom: 12,
+    height: 4,
+    borderRadius: 2,
+    marginBottom: 5,
   },
   mockLineShort: {
-    width: "50%",
-    height: 5,
-    backgroundColor: "#e5e7eb",
-    borderRadius: 4,
-    marginBottom: 12,
-    alignSelf: "flex-start",
-    marginLeft: 14,
+    width: "45%",
+    height: 4,
+    borderRadius: 2,
+    marginBottom: 5,
+    alignSelf: "flex-start" as const,
+    marginLeft: 10,
   },
   mockLineMedium: {
-    width: "60%",
-    height: 5,
-    backgroundColor: "#e5e7eb",
-    borderRadius: 4,
-    alignSelf: "flex-start",
-    marginLeft: 14,
+    width: "58%",
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "flex-start" as const,
+    marginLeft: 10,
   },
-  textContainer: {
-    width: "100%",
+
+  /* ── Text ── */
+  textSection: {
+    alignItems: "center",
+    marginBottom: isSmall ? 20 : 28,
+  },
+  title: {
+    fontSize: isSmall ? 22 : 26,
+    fontWeight: "800",
+    textAlign: "center",
+    marginBottom: 2,
+    letterSpacing: 0.2,
+  },
+  location: {
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
     marginBottom: 10,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
   },
-  headline: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#1f2937",
+  subtitle: {
+    fontSize: 13,
     textAlign: "center",
-    marginBottom: 8,
-    lineHeight: 30,
+    lineHeight: 20,
+    paddingHorizontal: 8,
   },
-  subHeading: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#1f2937",
-    textAlign: "center",
-    marginBottom: 6,
-    lineHeight: 25,
+
+  /* ── Chips ── */
+  chipGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: isSmall ? 28 : 36,
   },
-  subheadline: {
-    fontSize: 15,
-    color: "#6b7280",
-    textAlign: "center",
-    marginBottom: 15,
-    lineHeight: 28,
-  },
-  featureList: {
-    width: "90%",
-    paddingHorizontal: 10,
-  },
-  featureItem: {
+  chip: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
-  },
-  iconContainer: {
-    width: 22,
-    alignItems: "center",
-    marginRight: 12,
-  },
-  featureIcon: {
-    fontSize: 16,
-  },
-  featureText: {
-    fontSize: 16,
-    color: "#4b5563",
-    fontWeight: "500",
-  },
-  buttonContainer: {
-    width: "100%",
-    gap: 20,
-  },
-  getStartedButton: {
-    backgroundColor: "#8b5cf6", // Purple
-    paddingVertical: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
-    alignItems: "center",
-    width: "100%",
-    shadowColor: "#8b5cf6",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    borderWidth: 1,
   },
-  getStartedText: {
+  chipIcon: {
+    fontSize: 14,
+    marginRight: 6,
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  /* ── Buttons ── */
+  actions: {
+    gap: 10,
+  },
+  primaryBtn: {
+    height: isSmall ? 46 : 50,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#8b5cf6",
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  primaryBtnText: {
     color: "#ffffff",
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
+    letterSpacing: 0.3,
   },
-  loginButton: {
-    paddingVertical: 16,
-    borderRadius: 20,
+  secondaryBtn: {
+    height: isSmall ? 46 : 50,
+    borderRadius: 12,
     alignItems: "center",
-    width: "100%",
-    borderWidth: 2,
+    justifyContent: "center",
+    borderWidth: 1.5,
+    backgroundColor: "transparent",
   },
-  loginText: {
-    color: "#8b5cf6", // Purple text
-    fontSize: 16,
+  secondaryBtnText: {
+    fontSize: 15,
     fontWeight: "700",
+    letterSpacing: 0.3,
   },
 });

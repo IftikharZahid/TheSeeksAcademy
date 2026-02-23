@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, Image } from 'react-native';
+import {  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, Image , StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
@@ -7,6 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { db } from '../../api/firebaseConfig';
 import { collection, doc, setDoc, onSnapshot, getDoc } from 'firebase/firestore';
 import DateTimePicker from '@react-native-community/datetimepicker';
+
+import { useAppSelector } from '../../store/hooks';
+import type { Teacher } from '../../store/slices/teachersSlice';
 
 interface ClassSession {
   id: string;
@@ -18,12 +21,7 @@ interface ClassSession {
   lectureNumber?: string;
 }
 
-interface Teacher {
-  id: string;
-  name: string;
-  subject: string;
-  image?: string;
-}
+// Teacher interface imported from teachersSlice
 
 const SUBJECTS = [
   'TarjumaTul Quran',
@@ -49,8 +47,12 @@ export const AdminTimetableScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
 
   const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null);
-  const [allClasses, setAllClasses] = useState<Record<string, ClassSession[]>>({});
-  const [loading, setLoading] = useState(true);
+
+  // Redux Selectors
+  const allClasses = useAppSelector(state => state.admin.timetable);
+  const loading = useAppSelector(state => state.admin.timetableLoading);
+  const teachers = useAppSelector(state => state.teachers.list);
+
   const [modalVisible, setModalVisible] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassSession | null>(null);
 
@@ -71,59 +73,10 @@ export const AdminTimetableScreen: React.FC = () => {
   const [startTime, setStartTime] = useState(new Date());
   const [endTime, setEndTime] = useState(new Date());
 
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  // No local listeners/fetching needed. Handled by AdminDashboard and Redux.
+  // const [teachers, setTeachers] = useState<Teacher[]>([]); replaced by selector
 
-  useEffect(() => {
-    fetchAllTimetables();
-
-    // Fetch teachers
-    const unsubscribe = onSnapshot(collection(db, 'staff'), (snapshot) => {
-      const teacherList: Teacher[] = [];
-      snapshot.forEach((doc) => {
-        teacherList.push({ id: doc.id, ...doc.data() } as Teacher);
-      });
-      setTeachers(teacherList);
-      // Set default selected teacher if none
-      setTeachers(teacherList);
-      // Removed default selection to show Grid first
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const fetchAllTimetables = async () => {
-    setLoading(true);
-    try {
-      const timetableData: Record<string, ClassSession[]> = {};
-
-      // We need to listen to all days. For simplicity in this 'All View', let's fetch once or set up listeners for all.
-      // Setting up listeners for 7 documents is fine.
-      const daysToFetch = days.filter(d => d !== 'All'); // All actual days
-
-      // Using onSnapshot for real-time updates on all days is complex to manage in a loop with hooks.
-      // Easiest approach: Create a single listener via a collection query if possible?
-      // Structure is doc per day. collection is 'timetable'.
-      // let's listen to the collection.
-
-      const unsubscribe = onSnapshot(collection(db, 'timetable'), (snapshot) => {
-        const newData: Record<string, ClassSession[]> = {};
-        snapshot.forEach(doc => {
-          newData[doc.id] = doc.data().classes || [];
-        });
-        setAllClasses(newData);
-        setLoading(false);
-      }, (error) => {
-        console.error("Fetch error", error);
-        setLoading(false);
-      });
-
-      return () => unsubscribe();
-
-    } catch (error) {
-      console.error("Error fetching timetable:", error);
-      setLoading(false);
-    }
-  };
+  // fetchAllTimetables removed as it's handled by Redux listener in Dashboard
 
   const parseTime = (timeStr: string) => {
     const [hours, minutes] = timeStr.split(':').map(Number);
@@ -330,6 +283,7 @@ export const AdminTimetableScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
       <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={theme.text} />

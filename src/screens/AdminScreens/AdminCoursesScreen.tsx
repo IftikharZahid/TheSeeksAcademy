@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, Image } from 'react-native';
+import React, { useState } from 'react';
+import {  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, Image , StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { db } from '../../api/firebaseConfig';
-import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { useAppSelector } from '../../store/hooks';
 
 interface Course {
   id: string;
@@ -18,8 +19,9 @@ export const AdminCoursesScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
 
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Read courses from Redux (shared listener in coursesSlice)
+  const courses = useAppSelector(state => state.courses.list) as Course[];
+  const loading = useAppSelector(state => state.courses.isLoading);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,21 +31,7 @@ export const AdminCoursesScreen: React.FC = () => {
   const [teacher, setTeacher] = useState('');
   const [image, setImage] = useState('');
 
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'courses'), (snapshot) => {
-      const coursesList: Course[] = [];
-      snapshot.forEach((doc) => {
-        coursesList.push({ id: doc.id, ...doc.data() } as Course);
-      });
-      setCourses(coursesList);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching courses:", error);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+  // No need for useEffect listener — coursesSlice listener runs globally in App.tsx
 
   const handleSaveCourse = async () => {
     if (!name || !teacher) {
@@ -119,6 +107,7 @@ export const AdminCoursesScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
       <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="chevron-back" size={20} color={theme.text} />
