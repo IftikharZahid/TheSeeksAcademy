@@ -65,14 +65,6 @@ export const SettingsScreen: React.FC = () => {
     }
   };
 
-  const accountItems = [
-    { icon: 'phone-portrait', color: '#6366f1', title: 'SIM Tracker', screen: 'SimTrackerScreen' },
-    { icon: 'bar-chart', color: '#0ea5e9', title: 'Attendance Log', screen: 'AttendanceScreen' },
-    { icon: 'document-text', color: '#10b981', title: 'Assignments', screen: 'AssignmentsScreen' },
-    { icon: 'chatbubbles', color: '#f59e0b', title: 'Messages', screen: 'MessagesScreen' },
-    { icon: 'notifications', color: '#ef4444', title: 'Notifications', screen: 'NoticesScreen' },
-  ];
-
   const generalItems = [
     { icon: 'key', color: '#8b5cf6', title: 'Change Password', screen: 'ChangePasswordScreen' },
   ];
@@ -102,25 +94,7 @@ export const SettingsScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Account Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>ACCOUNT</Text>
-          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            {accountItems.map((item, index) => (
-              <React.Fragment key={item.title}>
-                {index > 0 && <View style={[styles.divider, { backgroundColor: theme.border }]} />}
-                <SettingItem
-                  icon={item.icon}
-                  iconColor={item.color}
-                  title={item.title}
-                  onPress={item.screen ? () => navigation.navigate(item.screen as never) : undefined}
-                />
-              </React.Fragment>
-            ))}
-          </View>
-        </View>
 
-        {/* General Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>GENERAL</Text>
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>

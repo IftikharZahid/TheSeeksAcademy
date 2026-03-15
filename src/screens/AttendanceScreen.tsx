@@ -1,84 +1,132 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Animated,
-  TouchableOpacity,
-  Modal,
-  Dimensions,
-  Easing,
-  RefreshControl,
-} from "react-native";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, ScrollView, Animated, TouchableOpacity, Modal, Dimensions, Easing, RefreshControl, FlatList } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import Svg, { Circle, Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { useTheme } from '../context/ThemeContext';
-import { NavigationHeader } from '../components/NavigationHeader';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { initAttendanceListener } from '../store/slices/attendanceSlice';
 
 const { width } = Dimensions.get("window");
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export const AttendanceScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
+  const dispatch = useAppDispatch();
   const [refreshing, setRefreshing] = useState(false);
+
+  // Real-time attendance via onSnapshot listener
+  const user           = useAppSelector(s => s.auth.user);
+  const attendanceData = useAppSelector(s => s.attendance.data);
+
+  // Subscribe once per uid — auto-updates when admin changes records
+  useEffect(() => {
+    if (!user?.uid) return;
+    const unsub = initAttendanceListener(dispatch, user.uid);
+    return () => unsub();
+  }, [user?.uid]);
+
+  // dailyRecords from Firestore (falls back to empty map)
+  const attendanceMap: Record<string, 'present' | 'absent' | 'late'> =
+    (attendanceData?.dailyRecords as any) || {};
 
   /* -----------------------------
         MONTH DATA
   ------------------------------ */
-  const months = [
-    "January 2025",
-    "February 2025",
-    "March 2025",
-    "April 2025",
-    "May 2025",
-    "June 2025",
-    "July 2025",
-    "August 2025",
-    "September 2025",
-    "October 2025",
-    "November 2025",
-    "December 2025",
-  ];
-  const [monthIndex, setMonthIndex] = useState(10); // Default: November
-  const selectedMonth = months[monthIndex];
-  const [dropdownVisible, setDropdownVisible] = useState(false);
-  const [animating, setAnimating] = useState(false);
-
-  /* -----------------------------
-        SAMPLE ATTENDANCE DATA (MAP)
-        key format: 'YYYY-MM-DD' -> status
-  ------------------------------ */
-  // Replace these with your backend data
-  const attendanceMap: Record<string, "present" | "absent" | "late"> = {
-    "2025-11-18": "present",
-    "2025-11-19": "late",
-    "2025-11-20": "absent",
-    "2025-11-21": "present",
-    "2025-11-22": "present",
-    "2025-11-23": "present",
-    "2025-11-24": "absent",
-    "2025-11-25": "present",
-    "2025-11-26": "present",
+  const generateMonths = () => {
+    const months = [];
+    const date = new Date();
+    // Default system month is the current month
+    for (let i = 0; i < 12; i++) {
+        const d = new Date(date.getFullYear(), date.getMonth() + i, 1);
+        const monthName = d.toLocaleString('default', { month: 'long' });
+        months.push(`${monthName} ${d.getFullYear()}`);
+    }
+    return months;
   };
+  const months = generateMonths();
+  const [monthIndex, setMonthIndex] = useState(new Date().getMonth()); // Default to current system month, used for calendar generation logic below. Note that this is NOT the index into the `months` array.
+  const [selectedMonthIndex, setSelectedMonthIndex] = useState(0); // This is the index into the `months` array.
+  const selectedMonth = months[selectedMonthIndex];
+  const [animating, setAnimating] = useState(false);
+  const monthListRef = useRef<FlatList<string>>(null);
+
+
 
   /* -----------------------------
         SUMMARY / DAILY LOGS
   ------------------------------ */
-  const summary = {
-    present: 22,
-    absent: 4,
-    late: 2,
-    percentage: 85,
+  const yearFromLabel = (label: string) => {
+    const parts = label.split(" ");
+    return parseInt(parts[1], 10) || new Date().getFullYear();
   };
 
-  const dailyLogs = [
-    { date: "21 Nov, Tue", status: "present", timeIn: "08:00 AM", timeOut: "02:00 PM" },
-    { date: "20 Nov, Mon", status: "absent" },
-    { date: "19 Nov, Sun", status: "late", timeIn: "08:30 AM", timeOut: "02:00 PM" },
-  ];
+  const calculateMonthSummary = () => {
+    let present = 0;
+    let absent = 0;
+    let late = 0;
+
+    const currentYearStr = yearFromLabel(selectedMonth).toString();
+    const currentMonthStr = (monthIndex + 1).toString().padStart(2, "0");
+    const prefix = `${currentYearStr}-${currentMonthStr}-`;
+
+    Object.entries(attendanceMap).forEach(([dateStr, status]) => {
+      if (dateStr.startsWith(prefix)) {
+        // Skip Sundays — they are holidays, not counted
+        const parts = dateStr.split('-');
+        const y = parseInt(parts[0], 10), m = parseInt(parts[1], 10), d = parseInt(parts[2], 10);
+        if (new Date(y, m - 1, d).getDay() === 0) return;
+        if (status === "present") present++;
+        else if (status === "absent") absent++;
+        else if (status === "late") late++;
+      }
+    });
+
+    const total = present + absent + late;
+    const percentage = total > 0 ? Math.round((present / total) * 100) : 0;
+
+    return { present, absent, late, percentage };
+  };
+
+  const summary = calculateMonthSummary();
+
+  // Derive live recent records from attendanceMap for the selected month
+  const recentLogs = useMemo(() => {
+    const currentYearStr = yearFromLabel(selectedMonth).toString();
+    const currentMonthStr = (monthIndex + 1).toString().padStart(2, '0');
+    const prefix = `${currentYearStr}-${currentMonthStr}-`;
+
+    const DAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const MON_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    return Object.entries(attendanceMap)
+      .filter(([dateStr]) => {
+        if (!dateStr.startsWith(prefix)) return false;
+        // Exclude Sundays — they are holidays
+        const p = dateStr.split('-');
+        const y = parseInt(p[0], 10), m = parseInt(p[1], 10), d = parseInt(p[2], 10);
+        return new Date(y, m - 1, d).getDay() !== 0;
+      })
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([dateStr, status]) => {
+        // Manual parse → always local time, no NaN, no UTC-shift (safe on Hermes)
+        const parts = dateStr.split('-');
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        const d = parseInt(parts[2], 10);
+        if (!y || !m || !d || m < 1 || m > 12 || d < 1 || d > 31) return null;
+        const dateObj = new Date(y, m - 1, d);
+        const dayNum  = d.toString().padStart(2, '0');
+        const dayName = DAY_SHORT[dateObj.getDay()];
+        const monthName = MON_SHORT[m - 1];
+        return {
+          dateStr,
+          label: `${dayNum} ${monthName}, ${dayName}`,
+          status: status as 'present' | 'absent' | 'late',
+        };
+      })
+      .filter((x): x is { dateStr: string; label: string; status: 'present' | 'absent' | 'late' } => x !== null);
+  }, [attendanceMap, selectedMonth, monthIndex]);
 
   /* -----------------------------
         UTILITIES
@@ -97,22 +145,15 @@ export const AttendanceScreen: React.FC = () => {
     }
   };
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Mock refresh delay
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1500);
+    // Data is already live via onSnapshot — just give visual feedback
+    setTimeout(() => setRefreshing(false), 600);
   }, []);
 
   /* -----------------------------
         CALENDAR GENERATION
   ------------------------------ */
-  const yearFromLabel = (label: string) => {
-    const parts = label.split(" ");
-    return parseInt(parts[1], 10) || new Date().getFullYear();
-  };
-
   const generateMonthCalendar = (year: number, mIndex: number) => {
     const firstDay = new Date(year, mIndex, 1);
     const lastDay = new Date(year, mIndex + 1, 0);
@@ -161,50 +202,28 @@ export const AttendanceScreen: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedDayInfo, setSelectedDayInfo] = useState<any>(null);
 
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
   const openDayModal = (year: number, month: number, day: number) => {
     const mm = (month + 1).toString().padStart(2, "0");
     const dd = day.toString().padStart(2, "0");
     const key = `${year}-${mm}-${dd}`;
     const status = attendanceMap[key] ?? "unknown";
-    const match = dailyLogs.find((d) => {
-      // rough match by day number
-      return d.date.includes(`${day}`) || d.date.includes(`${dd}`);
-    });
+    // Build a local date to get the correct weekday name
+    const dateObj = new Date(year, month, day);
+    const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
 
     setSelectedDayInfo({
       year,
       month,
       day,
       status,
-      timeIn: match?.timeIn,
-      timeOut: match?.timeOut,
-      label: `${day} ${months[month].split(" ")[0]} ${year}`,
+      label: `${weekday}, ${day} ${MONTH_NAMES[month]} ${year}`,
     });
 
     setModalVisible(true);
   };
 
-  /* -----------------------------
-        PROGRESS RING ANIMATION
-  ------------------------------ */
-  const progress = useRef(new Animated.Value(0)).current;
-  const RADIUS = 50;
-  const STROKE_WIDTH = 10;
-  const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-
-  useEffect(() => {
-    Animated.timing(progress, {
-      toValue: summary.percentage,
-      duration: 1200,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-  }, []);
-
-  const strokeDashoffset = progress.interpolate({
-    inputRange: [0, 100],
-    outputRange: [CIRCUMFERENCE, 0],
-  });
 
   /* -----------------------------
         MONTH SWITCH ANIMATION (SLIDE + FADE)
@@ -212,14 +231,15 @@ export const AttendanceScreen: React.FC = () => {
   const animTranslate = useRef(new Animated.Value(0)).current;
   const animOpacity = useRef(new Animated.Value(1)).current;
 
-  const changeMonth = (newIndex: number) => {
-    if (animating || newIndex === monthIndex) return;
+  const changeMonth = (newDropdownIndex: number) => {
+    if (animating || newDropdownIndex === selectedMonthIndex) return;
     setAnimating(true);
-    const direction = newIndex > monthIndex ? -1 : 1; // left for next, right for prev
+    const direction = newDropdownIndex > selectedMonthIndex ? -1 : 1; // left for next, right for prev
+    
     animTranslate.setValue(direction * width * 0.25); // start offset
     animOpacity.setValue(0);
     // run parallel slide in + fade in
-    setTimeout(() => setDropdownVisible(false), 100); // close dropdown if open
+
     Animated.parallel([
       Animated.timing(animTranslate, {
         toValue: 0,
@@ -234,7 +254,14 @@ export const AttendanceScreen: React.FC = () => {
         useNativeDriver: true,
       }),
     ]).start(() => {
-      setMonthIndex(newIndex);
+      setSelectedMonthIndex(newDropdownIndex);
+
+      // Now correctly extract the month index from the label.
+      const selectedLabel = months[newDropdownIndex];
+      const monthName = selectedLabel.split(" ")[0];
+      const parsedMonthIndex = new Date(`${monthName} 1, 2026`).getMonth();
+      setMonthIndex(parsedMonthIndex);
+
       setAnimating(false);
     });
   };
@@ -244,22 +271,13 @@ export const AttendanceScreen: React.FC = () => {
   ------------------------------ */
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={["top", "left", "right"]}>
-      {/* MODERN HEADER */}
-      <NavigationHeader
-        title="Attendance"
-        showBack={true}
-        rightAction={{
-          icon: 'calendar',
-          onPress: () => {/* Optional calendar view toggle */ }
-        }}
-      />
-
-      <View style={{ position: 'absolute', top: 16, right: 16, zIndex: 10 }}>
-        {/* Compact Present Score (Top Right - Overlay) */}
-        <View style={styles.compactScore}>
-          <Text style={[styles.compactPercentage, { color: theme.primary }]}>{summary.percentage}%</Text>
-          <Text style={[styles.compactLabel, { color: theme.textSecondary }]}>Present</Text>
-        </View>
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: theme.border, borderBottomWidth: 1 }]}>
+        <TouchableOpacity style={{ padding: 4 }} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={22} color={theme.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Attendance</Text>
+        <View style={{ width: 30 }} />
       </View>
 
       <ScrollView
@@ -268,33 +286,39 @@ export const AttendanceScreen: React.FC = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
       >
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Track your monthly attendance</Text>
-
-        {/* COMPACT MONTH DROPDOWN */}
-        <View style={styles.dropdownContainer}>
-          <TouchableOpacity
-            onPress={() => setDropdownVisible((s) => !s)}
-            style={[styles.compactDropdownButton, { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border }]}
-            disabled={animating}
-          >
-            <Text style={[styles.compactDropdownText, { color: theme.text }]}>{selectedMonth}</Text>
-            <Text style={[styles.dropdownArrow, { color: theme.textSecondary }]}>{dropdownVisible ? "▲" : "▼"}</Text>
-          </TouchableOpacity>
-
-          {dropdownVisible && (
-            <View style={[styles.dropdownList, { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border }]}>
-              {months.map((m, i) => (
-                <TouchableOpacity
-                  key={m}
-                  style={styles.dropdownItem}
-                  onPress={() => changeMonth(i)}
+        {/* HORIZONTAL MONTH SELECTOR */}
+        <FlatList
+          ref={monthListRef}
+          data={months}
+          horizontal
+          keyExtractor={(item) => item}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.horizontalMonthList}
+          renderItem={({ item, index }) => {
+            const isSelected = index === selectedMonthIndex;
+            return (
+              <TouchableOpacity
+                onPress={() => changeMonth(index)}
+                disabled={animating}
+                style={[
+                  styles.monthChip,
+                  isSelected
+                    ? { backgroundColor: theme.primary, borderColor: theme.primary }
+                    : { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.monthChipText,
+                    { color: isSelected ? '#fff' : theme.text },
+                  ]}
                 >
-                  <Text style={[styles.dropdownItemText, { color: theme.text }]}>{m}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+                  {item}
+                </Text>
+              </TouchableOpacity>
+            );
+          }}
+        />
 
 
         {/* CALENDAR CARD */}
@@ -375,7 +399,9 @@ export const AttendanceScreen: React.FC = () => {
                           </Text>
                         </View>
 
-                        {/* Optional: Label for Sunday/Off if needed, or just visual */}
+                        {isSunday && showDay && (
+                          <Text style={{ fontSize: 7, color: '#EF4444', fontWeight: '800', marginTop: 1 }}>OFF</Text>
+                        )}
                       </View>
                     </TouchableOpacity>
                   );
@@ -404,20 +430,27 @@ export const AttendanceScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* DAILY LOGS */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Daily Records</Text>
-        {dailyLogs.map((log, i) => (
-          <View key={i} style={[styles.logCard, { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border }]}>
-            <View style={styles.logHeader}>
-              <Text style={[styles.logDate, { color: theme.text }]}>{log.date}</Text>
-              <View style={[styles.statusBadge, { backgroundColor: getColor(log.status) }]}>
-                <Text style={styles.badgeText}>{log.status.toUpperCase()}</Text>
-              </View>
-            </View>
-            {log.timeIn && <Text style={[styles.logText, { color: theme.textSecondary }]}>Time In: {log.timeIn}</Text>}
-            {log.timeOut && <Text style={[styles.logText, { color: theme.textSecondary }]}>Time Out: {log.timeOut}</Text>}
+        {/* DAILY LOGS — live from Firestore via attendanceMap */}
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Records</Text>
+        {recentLogs.length === 0 ? (
+          <View style={[styles.logCard, { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border, alignItems: 'center', paddingVertical: 18 }]}>
+            <Text style={[styles.logText, { color: theme.textSecondary }]}>No records for this month yet.</Text>
           </View>
-        ))}
+        ) : (
+          recentLogs.map((log) => {
+            if (!log) return null;
+            return (
+              <View key={log.dateStr} style={[styles.logCard, { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border }]}>
+                <View style={styles.logHeader}>
+                  <Text style={[styles.logDate, { color: theme.text }]}>{log.label}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: getColor(log.status) }]}>
+                    <Text style={styles.badgeText}>{log.status.toUpperCase()}</Text>
+                  </View>
+                </View>
+              </View>
+            );
+          })
+        )}
       </ScrollView>
 
       {/* DAY DETAIL MODAL */}
@@ -431,9 +464,6 @@ export const AttendanceScreen: React.FC = () => {
                 {selectedDayInfo?.status?.toUpperCase() || "UNKNOWN"}
               </Text>
             </View>
-
-            {selectedDayInfo?.timeIn && <Text style={[styles.modalText, { color: theme.textSecondary }]}>Time In: {selectedDayInfo.timeIn}</Text>}
-            {selectedDayInfo?.timeOut && <Text style={[styles.modalText, { color: theme.textSecondary }]}>Time Out: {selectedDayInfo.timeOut}</Text>}
 
             {!selectedDayInfo?.timeIn && selectedDayInfo?.status === "unknown" && (
               <Text style={[styles.modalText, { color: theme.textSecondary }]}>No attendance information available.</Text>
@@ -459,47 +489,47 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  backIcon: { fontSize: 24, fontWeight: "700" },
-  headerTitle: { fontSize: 20, fontWeight: "700", flex: 1, marginLeft: 12 },
+  headerTitle: { fontSize: 18, fontWeight: "700", flex: 1, marginLeft: 12 },
 
   compactScore: {
     alignItems: "flex-end",
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.2)',
   },
   compactPercentage: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "800",
   },
   compactLabel: {
-    fontSize: 10,
-    marginTop: -2,
+    fontSize: 9,
+    fontWeight: "600",
+    textTransform: "uppercase",
   },
-  subtitle: { textAlign: "center", marginBottom: 12, fontSize: 13 },
+  subtitle: { textAlign: "center", marginBottom: 8, fontSize: 12 },
 
-  dropdownContainer: { marginHorizontal: 16, marginBottom: 12 },
-  compactDropdownButton: {
-    padding: 10,
-    borderRadius: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    borderWidth: 1,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+  horizontalMonthList: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
   },
-  compactDropdownText: { fontSize: 14, fontWeight: "600" },
-  dropdownArrow: { fontSize: 16 },
-  dropdownList: {
-    marginTop: 6,
-    borderRadius: 10,
-    elevation: 4,
+  monthChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
     borderWidth: 1,
+    marginRight: 8,
   },
-  dropdownItem: { padding: 12 },
-  dropdownItemText: { fontSize: 14 },
+  monthChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
 
   progressContainer: { alignItems: "center", marginVertical: 12 },
   circleWrapper: { width: 130, height: 130, justifyContent: "center", alignItems: "center" },
@@ -517,16 +547,16 @@ const styles = StyleSheet.create({
 
   /* CALENDAR CARD */
   calendarCard: {
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 10,
+    padding: 12,
     marginHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 10,
     borderWidth: 1,
-    elevation: 2,
+    elevation: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
   },
 
   /* CALENDAR */
@@ -543,66 +573,49 @@ const styles = StyleSheet.create({
   },
   calendarCell: {
     width: width / 7 - 12,
-    height: 52,
+    height: 40,
     justifyContent: "center",
     alignItems: "center",
   },
   calendarDate: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: "600",
   },
-
-  /* today highlight - REPLACED by generic dayCircle logic but keeping for ref if needed, 
-     actually we can remove todayOuter/todayInner and use dayCircle */
   dayCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
-  },
-  sundayBackground: {
-    // backgroundColor: '#FEF2F2', // Light red background for Sundays - Handled inline for dark mode support
   },
 
   /* SUMMARY */
   summaryCard: {
-    borderRadius: 12,
-    padding: 14,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    marginTop: 8,
-    borderWidth: 1,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-  },
-  summaryTitle: { fontSize: 15, fontWeight: "700", marginBottom: 10 },
-  summaryRow: { flexDirection: "row", justifyContent: "space-between" },
-  summaryBox: { alignItems: "center", flex: 1 },
-  summaryNumber: { fontSize: 20, fontWeight: "700", color: "#10B981" },
-  summaryLabel: { fontSize: 11, marginTop: 2 },
-
-  /* DAILY LOGS */
-  logCard: {
-    padding: 12,
     borderRadius: 10,
+    padding: 10,
     marginHorizontal: 16,
     marginBottom: 10,
     borderWidth: 1,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
   },
-  logHeader: { flexDirection: "row", justifyContent: "space-between" },
-  logDate: { fontSize: 14, fontWeight: "700" },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 5 },
-  badgeText: { color: "#fff", fontWeight: "700", fontSize: 11 },
-  logText: { marginTop: 4, fontSize: 13 },
+  summaryTitle: { fontSize: 13, fontWeight: "700", marginBottom: 8, textTransform: "uppercase" },
+  summaryRow: { flexDirection: "row", justifyContent: "space-between" },
+  summaryBox: { alignItems: "center", flex: 1 },
+  summaryNumber: { fontSize: 18, fontWeight: "800", color: "#10B981" },
+  summaryLabel: { fontSize: 10, marginTop: 2, fontWeight: "600", textTransform: "uppercase" },
+
+  /* DAILY LOGS */
+  logCard: {
+    padding: 10,
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 6,
+    borderWidth: 1,
+  },
+  logHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: 'center', marginBottom: 2 },
+  logDate: { fontSize: 12, fontWeight: "700" },
+  statusBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  badgeText: { color: "#fff", fontWeight: "800", fontSize: 9, letterSpacing: 0.5 },
+  logText: { fontSize: 11 },
 
   /* MODAL */
   modalOverlay: {

@@ -1,5 +1,5 @@
 import React from "react";
-import { View, ActivityIndicator } from "react-native";
+import { View } from "react-native";
 import {
   NavigationContainer,
   DefaultTheme,
@@ -8,6 +8,7 @@ import {
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useTheme } from "../../context/ThemeContext";
 import { useAppSelector } from "../../store/hooks";
+import { LoadingScreen } from "../LoadingScreen";
 
 import { LoginScreen } from "../LoginScreen";
 import { SignupScreen } from "../SignupScreen";
@@ -23,7 +24,7 @@ import { AdminStudentRecordsScreen } from "../AdminScreens/AdminStudentRecordsSc
 import { AdminExamsScreen } from "../AdminScreens/AdminExamsScreen";
 import { AdminFeeScreen } from "../AdminScreens/AdminFeeScreen";
 import { AdminNoticeBoardScreen } from "../AdminScreens/AdminNoticeBoardScreen";
-
+import { AdminAttendanceScreen } from "../AdminScreens/AdminAttendanceScreen";
 import { StudentProfile } from "../AdminScreens/StudentProfile";
 
 export type RootStackParamList = {
@@ -41,6 +42,7 @@ export type RootStackParamList = {
   AdminExams: undefined;
   AdminFeeScreen: undefined;
   AdminNoticeBoardScreen: undefined;
+  AdminAttendanceScreen: undefined;
   StudentProfile: { student: any };
 };
 
@@ -48,12 +50,17 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const AppNavigator: React.FC = () => {
   const { theme, isDark } = useTheme();
-  // Auth state now comes from Redux (set by initAuthListener in App.tsx)
   const user = useAppSelector((state) => state.auth.user);
   const initializing = useAppSelector((state) => state.auth.initializing);
 
-  const baseTheme = isDark ? DarkTheme : DefaultTheme;
+  // Safety timeout: stop waiting after 4 s even if Firebase hasn't responded
+  const [timedOut, setTimedOut] = React.useState(false);
+  React.useEffect(() => {
+    const t = setTimeout(() => setTimedOut(true), 4000);
+    return () => clearTimeout(t);
+  }, []);
 
+  const baseTheme = isDark ? DarkTheme : DefaultTheme;
   const navigationTheme = {
     ...baseTheme,
     colors: {
@@ -67,12 +74,9 @@ export const AppNavigator: React.FC = () => {
     },
   };
 
-  if (initializing) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
-    );
+  // Show branded loading screen while Firebase auth resolves
+  if (initializing && !timedOut) {
+    return <LoadingScreen />;
   }
 
   return (
@@ -82,10 +86,10 @@ export const AppNavigator: React.FC = () => {
           initialRouteName={user ? "Main" : "Welcome"}
           screenOptions={{
             headerShown: false,
-            animation: 'slide_from_right',
+            animation: "slide_from_right",
             gestureEnabled: true,
-            gestureDirection: 'horizontal',
-            presentation: 'card',
+            gestureDirection: "horizontal",
+            presentation: "card",
             animationDuration: 200,
             freezeOnBlur: true,
           }}
@@ -100,7 +104,6 @@ export const AppNavigator: React.FC = () => {
             <>
               <Stack.Screen name="Main" component={MainTabs} />
               <Stack.Screen name="Admin" component={AdminDashboard} />
-
               <Stack.Screen name="Home" component={HomeScreen} />
               <Stack.Screen name="AdminComplaints" component={AdminComplaintsScreen} />
               <Stack.Screen name="AdminTimetable" component={AdminTimetableScreen} />
@@ -108,9 +111,9 @@ export const AppNavigator: React.FC = () => {
               <Stack.Screen name="AdminVideoGallery" component={AdminVideoGalleryScreen} />
               <Stack.Screen name="AdminStudentRecords" component={AdminStudentRecordsScreen} />
               <Stack.Screen name="AdminExams" component={AdminExamsScreen} />
-
               <Stack.Screen name="AdminFeeScreen" component={AdminFeeScreen} />
               <Stack.Screen name="AdminNoticeBoardScreen" component={AdminNoticeBoardScreen} />
+              <Stack.Screen name="AdminAttendanceScreen" component={AdminAttendanceScreen} />
               <Stack.Screen name="StudentProfile" component={StudentProfile} />
             </>
           )}

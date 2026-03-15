@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator, RefreshControl, Alert, Switch } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -54,7 +54,7 @@ const supportItems = [
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
-  const { theme, isDark } = useTheme();
+  const { theme, isDark, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
@@ -63,6 +63,10 @@ export const ProfileScreen: React.FC = () => {
   const profileError = useAppSelector((state) => state.auth.error);
   const [refreshing, setRefreshing] = useState(false);
   const [imageError, setImageError] = useState(false);
+
+  const ADMIN_EMAILS = ['theseeksacademyfta@gmail.com', 'iftikharzahid@outlook.com'];
+  const currentUserEmail = auth.currentUser?.email?.toLowerCase() || '';
+  const isAdmin = ADMIN_EMAILS.includes(currentUserEmail);
 
   const onRefresh = useCallback(async () => {
     if (!user) return;
@@ -179,16 +183,9 @@ export const ProfileScreen: React.FC = () => {
           </View>
         ) : (
           <>
-            {/* Top Bar with Settings */}
+            {/* Top Bar */}
             <View style={styles.topBar}>
               <Text style={[styles.screenTitle, { color: theme.text }]}>Profile</Text>
-              <TouchableOpacity
-                style={[styles.settingsBtn, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }]}
-                onPress={() => (navigation as any).navigate('Home', { screen: 'SettingsScreen' })}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="settings-outline" size={22} color={theme.text} />
-              </TouchableOpacity>
             </View>
 
             {/* Profile Header */}
@@ -368,24 +365,75 @@ export const ProfileScreen: React.FC = () => {
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
 
+            {/* GENERAL Section */}
+            <View style={styles.menuContainer}>
+              <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>General</Text>
+              <View style={[styles.settingsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                {/* Change Password */}
+                <TouchableOpacity
+                  style={styles.settingRow}
+                  onPress={() => (navigation as any).navigate('Home', { screen: 'ChangePasswordScreen' })}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.settingIconBox, { backgroundColor: '#8b5cf615' }]}>
+                    <Ionicons name="key" size={18} color="#8b5cf6" />
+                  </View>
+                  <Text style={[styles.settingLabel, { color: theme.text }]}>Change Password</Text>
+                  <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+                </TouchableOpacity>
+
+                <View style={[styles.settingDivider, { backgroundColor: theme.border }]} />
+
+                {/* Dark Mode Toggle */}
+                <View style={styles.settingRow}>
+                  <View style={[styles.settingIconBox, { backgroundColor: '#f59e0b15' }]}>
+                    <Ionicons name={isDark ? 'moon' : 'sunny'} size={18} color="#f59e0b" />
+                  </View>
+                  <Text style={[styles.settingLabel, { color: theme.text }]}>Dark Mode</Text>
+                  <Switch
+                    value={isDark}
+                    onValueChange={toggleTheme}
+                    trackColor={{ false: theme.border, true: theme.primaryLight }}
+                    thumbColor={isDark ? theme.primary : '#fff'}
+                    style={{ transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }] }}
+                  />
+                </View>
+              </View>
+            </View>
+
             {/* Support Section */}
             <View style={styles.menuContainer}>
               <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Support</Text>
               {supportItems.map(renderMenuItem)}
             </View>
 
+            {/* Admin Section */}
+            {isAdmin && (
+              <View style={styles.menuContainer}>
+                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Admin</Text>
+                <View style={[styles.settingsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <TouchableOpacity
+                    style={styles.settingRow}
+                    onPress={() => (navigation as any).navigate('Admin' as never)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.adminGradientBox]}>
+                      <Ionicons name="settings" size={18} color="#fff" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.settingLabel, { color: theme.text }]}>Admin Dashboard</Text>
+                      <Text style={[{ fontSize: scale(11), color: theme.textSecondary }]}>Manage academy</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
 
-            {/* Professional Logout Button */}
-            <TouchableOpacity
-              style={[styles.professionalLogoutBtn, {
-                backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)',
-                marginBottom: scale(24)
-              }]}
-              onPress={handleLogout}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="log-out-outline" size={22} color="#ef4444" />
-              <Text style={styles.professionalLogoutText}>Sign Out</Text>
+            {/* Logout Button */}
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
+              <Ionicons name="log-out-outline" size={20} color="#fff" />
+              <Text style={styles.logoutText}>Log Out</Text>
             </TouchableOpacity>
           </>
         )}
@@ -466,12 +514,43 @@ const styles = StyleSheet.create({
     fontSize: scale(22),
     fontWeight: '700',
   },
-  settingsBtn: {
-    width: scale(40),
-    height: scale(40),
-    borderRadius: scale(12),
+  settingsCard: {
+    borderRadius: scale(14),
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginBottom: scale(4),
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(11),
+  },
+  settingIconBox: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(8),
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: scale(12),
+  },
+  settingLabel: {
+    flex: 1,
+    fontSize: scale(14),
+    fontWeight: '500',
+  },
+  settingDivider: {
+    height: 1,
+    marginLeft: scale(56),
+  },
+  adminGradientBox: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(8),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: scale(12),
+    backgroundColor: '#6366f1',
   },
   header: {
     alignItems: 'center',
@@ -549,23 +628,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.3,
   },
-  professionalLogoutBtn: {
-    marginHorizontal: scale(16),
-    marginTop: scale(30),
-    marginBottom: scale(16),
-    height: scale(54),
-    borderRadius: scale(16),
+  logoutButton: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    gap: scale(10),
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
+    justifyContent: 'center',
+    marginHorizontal: scale(12),
+    marginTop: scale(24),
+    marginBottom: scale(24),
+    paddingVertical: scale(12),
+    backgroundColor: '#ef4444',
+    borderRadius: scale(12),
+    gap: scale(8),
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  professionalLogoutText: {
-    color: '#ef4444',
-    fontSize: scale(16),
+  logoutText: {
+    fontSize: scale(15),
     fontWeight: '700',
+    color: '#fff',
   },
   menuContainer: {
     paddingHorizontal: scale(16),

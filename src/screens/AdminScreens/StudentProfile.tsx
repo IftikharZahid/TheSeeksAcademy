@@ -1,5 +1,5 @@
 import React from 'react';
-import {  View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions, SafeAreaView , StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions, SafeAreaView, StatusBar } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -50,7 +50,7 @@ export const StudentProfile: React.FC = () => {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
+            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color="#fff" />
@@ -149,10 +149,16 @@ const styles = StyleSheet.create({
         backgroundColor: '#e0e7ff',
         justifyContent: 'center',
         alignItems: 'center',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 5,
     },
     profileImage: {
         width: '100%',
         height: '100%',
+        resizeMode: 'cover',
     },
     name: {
         fontSize: scale(22),

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, FlatList, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, Image, Pressable, Dimensions, Platform, StatusBar, Keyboard, Animated } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, FlatList, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, Image, Pressable, Dimensions, Platform, StatusBar, Keyboard, Animated, RefreshControl } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -8,6 +8,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { db, firebaseConfig } from '../../api/firebaseConfig';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { initializeAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+// @ts-ignore
+import { getReactNativePersistence } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, setDoc, deleteDoc, serverTimestamp, query, where, getDocs, updateDoc, getDoc, collection } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -37,6 +40,7 @@ export const AdminStudentRecordsScreen: React.FC = () => {
   const [viewingStudent, setViewingStudent] = useState<AdminStudent | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [visibleCount, setVisibleCount] = useState(10);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Form State
   const [name, setName] = useState('');
@@ -54,11 +58,26 @@ export const AdminStudentRecordsScreen: React.FC = () => {
   const [genderPickerVisible, setGenderPickerVisible] = useState(false);
   const [filterClass, setFilterClass] = useState('All');
 
+  // Bulk account creation state
+  const [creatingAccounts, setCreatingAccounts] = useState(false);
+  const [acctProgress, setAcctProgress] = useState(0);
+  const [acctTotal, setAcctTotal] = useState(0);
+
   const classOptions = ['9th', '10th', '1st Year', '2nd Year'];
   const genderOptions = ['Male', 'Female'];
   const filterOptions = ['All', ...classOptions];
 
   // No need for useEffect listener — adminSlice listener runs from AdminDashboard
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // Since students are managed by Redux listener,
+    // a refresh here would typically re-fetch or trigger the listener.
+    // For now, we just simulate a delay or rely on the listener to update.
+    // If you had a direct fetch function, you'd call it here.
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+    setRefreshing(false);
+  }, []);
 
   const generatePassword = (): string => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -119,7 +138,9 @@ export const AdminStudentRecordsScreen: React.FC = () => {
     try {
       // Use a secondary Firebase app so admin is NOT signed out
       secondaryApp = initializeApp(firebaseConfig, `studentCreation_${Date.now()}`);
-      const secondaryAuth = initializeAuth(secondaryApp);
+      const secondaryAuth = initializeAuth(secondaryApp, {
+        persistence: getReactNativePersistence(AsyncStorage)
+      });
 
       // Create the Firebase Auth user
       const userCredential = await createUserWithEmailAndPassword(
@@ -500,6 +521,169 @@ Made with ❤ by The Seeks Academy`;
     setPhone('');
   };
 
+  const cancelAccountCreation = useRef(false);
+
+  // Bulk-create login accounts for existing students who don't have one
+  const handleCreateAccountsForExisting = () => {
+    // Collect students with email
+    const studentsWithEmail = students.filter(s => (s.email || '').trim().length > 0);
+    const studentsMissingPassword = studentsWithEmail.filter(s => !(s.password || '').trim());
+    const studentsWithPassword = studentsWithEmail.length - studentsMissingPassword.length;
+
+    if (studentsWithEmail.length === 0) {
+      Alert.alert('No Emails', 'No student emails found in existing records.');
+      return;
+    }
+
+    if (studentsMissingPassword.length === 0) {
+      Alert.alert('All Accounts Setup', `All ${studentsWithEmail.length} students with emails already have login credentials set up.`);
+      return;
+    }
+
+    Alert.alert(
+      'Create Accounts',
+      `Found ${studentsWithEmail.length} total students with emails.\n\n` +
+      `Already setup: ${studentsWithPassword}\n` +
+      `Need accounts: ${studentsMissingPassword.length}\n\n` +
+      `Generate new login credentials for the ${studentsMissingPassword.length} missing accounts?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Create', style: 'default', onPress: async () => {
+            setCreatingAccounts(true);
+            setAcctTotal(studentsWithEmail.length);
+            setAcctProgress(0);
+            cancelAccountCreation.current = false;
+
+            let created = 0;
+            let skipped = 0;
+            let failed = 0;
+            let processed = 0;
+            let credentialsText = "Student Credentials Report:\n\n";
+            let newlyCreatedText = "--- New Accounts Created ---\n";
+            let existingAccountsText = "\n--- Already Existing Accounts ---\n";
+            let failedAccountsText = "\n--- Failed to Create ---\n";
+
+            for (const s of studentsMissingPassword) {
+              if (cancelAccountCreation.current) {
+                break;
+              }
+
+              const email = (s.email || '').trim().toLowerCase();
+              let secondaryApp;
+              try {
+                // Check if profile already exists
+                const existing = await getDocs(
+                  query(collection(db, 'studentsprofile'), where('email', '==', email))
+                );
+                if (!existing.empty) {
+                  skipped++;
+                  existingAccountsText += `Name: ${s.name}\nEmail: ${email}\nPassword: ${s.password || 'Unknown (Check DB)'}\n\n`;
+                } else {
+                  const pwd = generatePassword();
+                  secondaryApp = initializeApp(firebaseConfig, `bulkAcct_${Date.now()}_${processed}`);
+                  const secondaryAuth = initializeAuth(secondaryApp, {
+                    persistence: getReactNativePersistence(AsyncStorage)
+                  });
+                  const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, pwd);
+                  const uid = userCredential.user.uid;
+
+                  await setDoc(doc(db, 'studentsprofile', uid), {
+                    fullname: s.name || '',
+                    fathername: s.fatherName || '',
+                    email: email,
+                    phone: s.phone || '',
+                    rollno: s.studentId || '',
+                    class: s.grade || '',
+                    section: s.section || '',
+                    session: s.session || '',
+                    image: s.profileImage || '',
+                    gender: s.gender || '',
+                    role: 'student',
+                    password: pwd,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                  });
+
+                  // Also update the student doc with the generated password
+                  await setDoc(doc(db, 'students', s.id), { password: pwd, uid: uid }, { merge: true });
+
+                  newlyCreatedText += `Name: ${s.name}\nEmail: ${email}\nPassword: ${pwd}\n\n`;
+                  created++;
+                }
+              } catch (err: any) {
+                if (err?.code === 'auth/email-already-in-use') {
+                  skipped++;
+                  existingAccountsText += `Name: ${s.name}\nEmail: ${email}\nReason: Already exists in Authentication (Password unknown)\n\n`;
+                } else {
+                  console.warn('Bulk account error for', email, err?.message);
+                  failed++;
+                  failedAccountsText += `Name: ${s.name}\nEmail: ${email}\nReason: ${err?.message || 'Unknown Error'}\n\n`;
+                }
+              } finally {
+                if (secondaryApp) {
+                  try { await deleteApp(secondaryApp); } catch (_) { }
+                }
+              }
+              processed++;
+              setAcctProgress(processed);
+            }
+
+            setCreatingAccounts(false);
+            setAcctProgress(0);
+            setAcctTotal(0);
+
+            if (created > 0) credentialsText += newlyCreatedText;
+            if (skipped > 0) credentialsText += existingAccountsText;
+            if (failed > 0) credentialsText += failedAccountsText;
+
+            const buttons: any[] = [{ text: 'OK', style: 'default' }];
+            if (created > 0 || skipped > 0 || failed > 0) {
+              buttons.push({
+                text: 'Copy Report',
+                onPress: async () => {
+                  try {
+                    await Clipboard.setStringAsync(credentialsText);
+                    Alert.alert('Copied!', 'Credentials report copied to clipboard');
+                  } catch (err) {
+                    Alert.alert('Error', 'Failed to copy credentials');
+                  }
+                }
+              });
+            }
+
+            Alert.alert(
+              cancelAccountCreation.current ? 'Creation Cancelled' : 'Accounts Created',
+              `Processed: ${processed}/${studentsMissingPassword.length}\nCreated: ${created}\nAlready existed: ${skipped}\nFailed: ${failed}`,
+              buttons
+            );
+          }
+        },
+      ]
+    );
+  };
+
+  const handleCopyExistingCredentials = async () => {
+    const studentsWithCredentials = students.filter(s => s.email && s.password);
+
+    if (studentsWithCredentials.length === 0) {
+      Alert.alert('No Credentials', 'No existing student credentials found.');
+      return;
+    }
+
+    let credentialsText = "All Existing Student Credentials:\n\n";
+    studentsWithCredentials.forEach(s => {
+      credentialsText += `Name: ${s.name}\nEmail: ${s.email}\nPassword: ${s.password}\n\n`;
+    });
+
+    try {
+      await Clipboard.setStringAsync(credentialsText);
+      Alert.alert('Copied!', `Copied credentials for ${studentsWithCredentials.length} students to clipboard.`);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to copy credentials.');
+    }
+  };
+
   const filteredStudents = students.filter(s => {
     const matchesSearch = (s.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.studentId || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -515,14 +699,23 @@ Made with ❤ by The Seeks Academy`;
           <Ionicons name="chevron-back" size={20} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Students</Text>
-        <TouchableOpacity onPress={() => openModal()} style={styles.addButton}>
-          <Ionicons name="add" size={20} color={theme.primary} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <TouchableOpacity onPress={handleCopyExistingCredentials} style={styles.addButton}>
+            <Ionicons name="copy-outline" size={20} color={theme.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleCreateAccountsForExisting} style={styles.addButton} disabled={creatingAccounts}>
+            <Ionicons name="key" size={20} color={creatingAccounts ? theme.textSecondary : '#f59e0b'} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => openModal()} style={styles.addButton}>
+            <Ionicons name="add" size={20} color={theme.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <View style={styles.searchContainer}>
+      <View style={[styles.searchContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <Ionicons name="search" size={14} color={theme.textSecondary} style={{ marginRight: 6 }} />
         <TextInput
-          style={[styles.searchInput, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+          style={[styles.searchInput, { color: theme.text }]}
           placeholder="Search students..."
           placeholderTextColor={theme.textSecondary}
           value={searchTerm}
@@ -530,6 +723,11 @@ Made with ❤ by The Seeks Academy`;
           returnKeyType="search"
           onSubmitEditing={() => Keyboard.dismiss()}
         />
+        {searchTerm.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchTerm('')}>
+            <Ionicons name="close-circle" size={15} color={theme.textSecondary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Class Filter Chips */}
@@ -557,6 +755,42 @@ Made with ❤ by The Seeks Academy`;
           ))}
         </ScrollView>
       </View>
+
+      {/* Account Creation Progress */}
+      {creatingAccounts && acctTotal > 0 && (
+        <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <ActivityIndicator size="small" color="#f59e0b" />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: theme.text }}>Creating Accounts...</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#f59e0b' }}>
+                {acctProgress}/{acctTotal} ({acctTotal > 0 ? Math.round((acctProgress / acctTotal) * 100) : 0}%)
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  cancelAccountCreation.current = true;
+                }}
+                style={{
+                  backgroundColor: theme.error + '20',
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: 4,
+                }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '700', color: theme.error }}>Stop</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={{ height: 6, borderRadius: 3, backgroundColor: theme.border + '40', overflow: 'hidden' }}>
+            <View style={{ height: '100%', borderRadius: 3, backgroundColor: '#f59e0b', width: `${acctTotal > 0 ? Math.min((acctProgress / acctTotal) * 100, 100) : 0}%` }} />
+          </View>
+          <Text style={{ fontSize: 10, color: theme.textSecondary, marginTop: 4, textAlign: 'center' }}>
+            Creating login credentials for students...
+          </Text>
+        </View>
+      )}
 
       {loading ? (
         <View style={styles.skeletonContainer}>
@@ -586,73 +820,120 @@ Made with ❤ by The Seeks Academy`;
           ))}
         </View>
       ) : (
-        <FlatList
-          data={filteredStudents.slice(0, visibleCount)}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.content}
-          ListHeaderComponent={
-            <Text style={[styles.listTitle, { color: theme.text }]}>Students List ({filteredStudents.length})</Text>
-          }
-          ListEmptyComponent={
-            <Text style={[styles.noDataText, { color: theme.textSecondary }]}>No students found.</Text>
-          }
-          ListFooterComponent={
-            visibleCount < filteredStudents.length ? (
-              <TouchableOpacity
-                onPress={() => setVisibleCount(prev => prev + 10)}
-                style={{ alignItems: 'center', paddingVertical: 14, marginBottom: 10 }}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: theme.primary }}>
-                  Load more ({filteredStudents.length - visibleCount} remaining)
-                </Text>
-              </TouchableOpacity>
-            ) : null
-          }
-          onEndReached={() => {
-            if (visibleCount < filteredStudents.length) {
-              setVisibleCount(prev => prev + 10);
+        <>
+          {/* Compact Table Header */}
+          <View style={[styles.tableHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+            <Text style={[styles.tableHeaderCell, { width: 26, color: theme.textSecondary }]}>#</Text>
+            <Text style={[styles.tableHeaderCell, { flex: 2.2, color: theme.textSecondary }]}>STUDENT</Text>
+            <Text style={[styles.tableHeaderCell, { flex: 1, textAlign: 'center', color: theme.textSecondary }]}>CLASS</Text>
+            <Text style={[styles.tableHeaderCell, { flex: 1.4, textAlign: 'center', color: theme.textSecondary }]}>STUDENT ID</Text>
+            <Text style={[styles.tableHeaderCell, { width: 56, textAlign: 'right', color: theme.textSecondary }]}>ACTIONS</Text>
+          </View>
+          <FlatList
+            data={filteredStudents.slice(0, visibleCount)}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.tableContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[theme.primary]}
+                tintColor={theme.primary}
+              />
             }
-          }}
-          onEndReachedThreshold={0.3}
-          renderItem={({ item, index }) => (
-            <View style={[styles.card, { backgroundColor: theme.card }]}>
-              <View style={[styles.serialNo, { backgroundColor: theme.primary + '12' }]}>
-                <Text style={[styles.serialNoText, { color: theme.primary }]}>{index + 1}</Text>
-              </View>
-              <Pressable
-                style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
-                onPress={() => {
-                  setViewingStudent(item);
-                  setViewModalVisible(true);
-                }}
-                onLongPress={() => copyStudentRecord(item)}
-                delayLongPress={500}
-              >
-                <View style={[styles.avatar, { backgroundColor: theme.primary + '15', overflow: 'hidden' }]}>
-                  {item.profileImage ? (
-                    <Image source={{ uri: item.profileImage }} style={{ width: '100%', height: '100%', borderRadius: 22 }} />
-                  ) : (
-                    <Ionicons name="person" size={20} color={theme.primary} />
-                  )}
-                </View>
-                <View style={styles.cardInfo}>
-                  <Text style={[styles.name, { color: theme.text }]}>{item.name}</Text>
-                  <Text style={[styles.details, { color: theme.textSecondary }]}>Father: {item.fatherName || 'N/A'}</Text>
-                  <Text style={[styles.details, { color: theme.textSecondary }]}>ID: {item.studentId}</Text>
-                  <Text style={[styles.details, { color: theme.textSecondary }]}>{item.email}</Text>
-                </View>
-              </Pressable>
-              <View style={styles.cardActions}>
-                <TouchableOpacity onPress={() => openModal(item)} style={styles.actionBtn}>
-                  <Ionicons name="pencil" size={16} color={theme.primary} />
+            ListEmptyComponent={
+              <Text style={[styles.noDataText, { color: theme.textSecondary }]}>No students found.</Text>
+            }
+            ListFooterComponent={
+              visibleCount < filteredStudents.length ? (
+                <TouchableOpacity
+                  onPress={() => setVisibleCount(prev => prev + 20)}
+                  style={{ alignItems: 'center', paddingVertical: 10, marginBottom: 6 }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: theme.primary }}>
+                    Load {Math.min(20, filteredStudents.length - visibleCount)} more  ({filteredStudents.length - visibleCount} remaining)
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDeleteStudent(item.id)} style={styles.actionBtn}>
-                  <Ionicons name="trash" size={16} color={theme.error} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        />
+              ) : null
+            }
+            onEndReached={() => {
+              if (visibleCount < filteredStudents.length) {
+                setVisibleCount(prev => prev + 20);
+              }
+            }}
+            onEndReachedThreshold={0.4}
+            renderItem={({ item, index }) => {
+              const isEven = index % 2 === 0;
+              const initials = (item.name || '?').charAt(0).toUpperCase();
+              return (
+                <Pressable
+                  onPress={() => openModal(item)}
+                  onLongPress={() => copyStudentRecord(item)}
+                  delayLongPress={500}
+                  style={[
+                    styles.tableRow,
+                    {
+                      backgroundColor: isEven ? theme.card : theme.background,
+                      borderBottomColor: theme.border,
+                    },
+                  ]}
+                >
+                  {/* Serial */}
+                  <Text style={{ width: 26, fontSize: 10, color: theme.textSecondary, fontWeight: '600' }}>
+                    {index + 1}
+                  </Text>
+                  {/* Avatar + Name/Father */}
+                  <View style={{ flex: 2.2, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                    <View style={[styles.tableAvatar, { backgroundColor: theme.primary + '18' }]}>
+                      {item.profileImage ? (
+                        <Image source={{ uri: item.profileImage }} style={{ width: 26, height: 26, borderRadius: 13 }} />
+                      ) : (
+                        <Text style={{ fontSize: 10, fontWeight: '800', color: theme.primary }}>{initials}</Text>
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: theme.text }} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <Text style={{ fontSize: 10, color: theme.textSecondary }} numberOfLines={1}>
+                        {item.fatherName || '—'}
+                      </Text>
+                    </View>
+                  </View>
+                  {/* Class */}
+                  <Text style={{ flex: 1, fontSize: 11, color: theme.textSecondary, textAlign: 'center' }} numberOfLines={1}>
+                    {item.grade || '—'}
+                  </Text>
+                  {/* Student ID */}
+                  <Text style={{ flex: 1.4, fontSize: 10, color: theme.textSecondary, textAlign: 'center', fontFamily: 'monospace' }} numberOfLines={1}>
+                    {item.studentId || '—'}
+                  </Text>
+                  {/* Actions */}
+                  <View style={{ width: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+                    <TouchableOpacity
+                      onPress={() => openModal(item)}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Ionicons name="pencil" size={14} color={theme.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteStudent(item.id)}
+                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    >
+                      <Ionicons name="trash" size={14} color={theme.error} />
+                    </TouchableOpacity>
+                  </View>
+                </Pressable>
+              );
+            }}
+          />
+          {/* Count footer */}
+          <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderTopWidth: 1, borderTopColor: theme.border }}>
+            <Text style={{ fontSize: 10, color: theme.textSecondary, textAlign: 'center' }}>
+              Showing {Math.min(visibleCount, filteredStudents.length)} of {filteredStudents.length} students
+            </Text>
+          </View>
+        </>
       )}
 
       {/* Edit/Add Modal - Full Screen Modern Form */}
@@ -684,75 +965,112 @@ Made with ❤ by The Seeks Academy`;
 
           <ScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={[styles.formScrollContent, { flexGrow: 1 }]}
+            contentContainerStyle={styles.formScrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Profile Preview */}
-            <View style={styles.formProfileSection}>
-              <View style={[styles.formAvatar, { backgroundColor: theme.primary + '15', borderColor: theme.primary + '30' }]}>
-                {profileImage ? (
-                  <Image source={{ uri: profileImage }} style={styles.formAvatarImage} />
-                ) : (
-                  <Ionicons name="person" size={36} color={theme.primary} />
-                )}
+            {/* ─── Student Info ─── */}
+            <View style={[styles.cFormSection, { backgroundColor: theme.background, borderColor: theme.border }]}>
+              <View style={styles.cFormSectionHeader}>
+                <Ionicons name="person-outline" size={13} color={theme.primary} />
+                <Text style={[styles.cFormSectionTitle, { color: theme.primary }]}>Student Info</Text>
               </View>
-              <Text style={[styles.formAvatarHint, { color: theme.textSecondary }]}>Student Photo</Text>
-            </View>
 
-            {/* Student Info Section */}
-            <Text style={[styles.formSectionTitle, { color: theme.text }]}>Student Information</Text>
-
-            <View style={[styles.formCard, { backgroundColor: theme.card }]}>
-              {/* Full Name */}
-              <View style={styles.formInputRow}>
-                <View style={[styles.formInputIcon, { backgroundColor: '#e0e7ff' }]}>
-                  <Ionicons name="person" size={16} color="#667eea" />
-                </View>
-                <View style={styles.formInputContainer}>
-                  <Text style={[styles.formInputLabel, { color: theme.textSecondary }]}>Full Name *</Text>
+              {/* Row 1: Full Name | Father Name */}
+              <View style={styles.cFormRow}>
+                <View style={styles.cFormCol}>
+                  <Text style={[styles.cFormLabel, { color: theme.textSecondary }]}>Full Name *</Text>
                   <TextInput
-                    style={[styles.formInput, { color: theme.text, borderColor: theme.border }]}
-                    placeholder="e.g. Ahmed Ali"
-                    placeholderTextColor={theme.textSecondary + '80'}
+                    style={[styles.cFormInput, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+                    placeholder="Ahmed Ali"
+                    placeholderTextColor={theme.textSecondary}
                     value={name}
                     onChangeText={setName}
                   />
                 </View>
-              </View>
-
-              <View style={[styles.formDivider, { backgroundColor: theme.border + '50' }]} />
-
-              {/* Father Name */}
-              <View style={styles.formInputRow}>
-                <View style={[styles.formInputIcon, { backgroundColor: '#fef3c7' }]}>
-                  <Ionicons name="people" size={16} color="#f59e0b" />
-                </View>
-                <View style={styles.formInputContainer}>
-                  <Text style={[styles.formInputLabel, { color: theme.textSecondary }]}>Father Name *</Text>
+                <View style={styles.cFormCol}>
+                  <Text style={[styles.cFormLabel, { color: theme.textSecondary }]}>Father Name *</Text>
                   <TextInput
-                    style={[styles.formInput, { color: theme.text, borderColor: theme.border }]}
-                    placeholder="e.g. Ali Khan"
-                    placeholderTextColor={theme.textSecondary + '80'}
+                    style={[styles.cFormInput, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+                    placeholder="Ali Khan"
+                    placeholderTextColor={theme.textSecondary}
                     value={fatherName}
                     onChangeText={setFatherName}
                   />
                 </View>
               </View>
 
-              <View style={[styles.formDivider, { backgroundColor: theme.border + '50' }]} />
-
-              {/* Profile Image URL */}
-              <View style={styles.formInputRow}>
-                <View style={[styles.formInputIcon, { backgroundColor: '#dcfce7' }]}>
-                  <Ionicons name="image" size={16} color="#10b981" />
+              {/* Row 2: Class | Gender */}
+              <View style={styles.cFormRow}>
+                <View style={styles.cFormCol}>
+                  <Text style={[styles.cFormLabel, { color: theme.textSecondary }]}>Class</Text>
+                  <TouchableOpacity
+                    onPress={() => setClassPickerVisible(true)}
+                    style={[styles.cFormInput, { backgroundColor: theme.card, borderColor: theme.border, flexDirection: 'row', alignItems: 'center' }]}
+                  >
+                    <Text style={{ flex: 1, fontSize: 13, color: grade ? theme.text : theme.textSecondary }} numberOfLines={1}>
+                      {grade || 'Select'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={14} color={theme.textSecondary} />
+                  </TouchableOpacity>
                 </View>
-                <View style={styles.formInputContainer}>
-                  <Text style={[styles.formInputLabel, { color: theme.textSecondary }]}>Profile Image URL</Text>
+                <View style={styles.cFormCol}>
+                  <Text style={[styles.cFormLabel, { color: theme.textSecondary }]}>Gender</Text>
+                  <TouchableOpacity
+                    onPress={() => setGenderPickerVisible(true)}
+                    style={[styles.cFormInput, { backgroundColor: theme.card, borderColor: theme.border, flexDirection: 'row', alignItems: 'center' }]}
+                  >
+                    <Text style={{ flex: 1, fontSize: 13, color: gender ? theme.text : theme.textSecondary }} numberOfLines={1}>
+                      {gender || 'Select'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={14} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Row 3: Section | Session */}
+              <View style={styles.cFormRow}>
+                <View style={styles.cFormCol}>
+                  <Text style={[styles.cFormLabel, { color: theme.textSecondary }]}>Section</Text>
                   <TextInput
-                    style={[styles.formInput, { color: theme.text, borderColor: theme.border }]}
-                    placeholder="https://example.com/photo.jpg"
-                    placeholderTextColor={theme.textSecondary + '80'}
+                    style={[styles.cFormInput, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+                    placeholder="A"
+                    placeholderTextColor={theme.textSecondary}
+                    value={section}
+                    onChangeText={setSection}
+                  />
+                </View>
+                <View style={styles.cFormCol}>
+                  <Text style={[styles.cFormLabel, { color: theme.textSecondary }]}>Session</Text>
+                  <TextInput
+                    style={[styles.cFormInput, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+                    placeholder="2025-2026"
+                    placeholderTextColor={theme.textSecondary}
+                    value={session}
+                    onChangeText={setSession}
+                  />
+                </View>
+              </View>
+
+              {/* Row 4: Phone | Photo URL */}
+              <View style={styles.cFormRow}>
+                <View style={styles.cFormCol}>
+                  <Text style={[styles.cFormLabel, { color: theme.textSecondary }]}>Phone</Text>
+                  <TextInput
+                    style={[styles.cFormInput, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+                    placeholder="03001234567"
+                    placeholderTextColor={theme.textSecondary}
+                    value={phone}
+                    onChangeText={setPhone}
+                    keyboardType="phone-pad"
+                  />
+                </View>
+                <View style={styles.cFormCol}>
+                  <Text style={[styles.cFormLabel, { color: theme.textSecondary }]}>Photo URL</Text>
+                  <TextInput
+                    style={[styles.cFormInput, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
+                    placeholder="https://..."
+                    placeholderTextColor={theme.textSecondary}
                     value={profileImage}
                     onChangeText={setProfileImage}
                     autoCapitalize="none"
@@ -760,167 +1078,58 @@ Made with ❤ by The Seeks Academy`;
                   />
                 </View>
               </View>
-
-              <View style={[styles.formDivider, { backgroundColor: theme.border + '50' }]} />
-
-              {/* Grade/Class Picker */}
-              <View style={styles.formInputRow}>
-                <View style={[styles.formInputIcon, { backgroundColor: '#fce7f3' }]}>
-                  <Ionicons name="school" size={16} color="#ec4899" />
-                </View>
-                <View style={styles.formInputContainer}>
-                  <Text style={[styles.formInputLabel, { color: theme.textSecondary }]}>Grade / Class</Text>
-                  <TouchableOpacity
-                    onPress={() => setClassPickerVisible(true)}
-                    style={[styles.formPickerBtn, { borderColor: theme.border }]}
-                  >
-                    <Text style={{ color: grade ? theme.text : theme.textSecondary + '80', fontSize: 14, flex: 1 }}>
-                      {grade || 'Select class'}
-                    </Text>
-                    <Ionicons name="chevron-down" size={18} color={theme.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={[styles.formDivider, { backgroundColor: theme.border + '50' }]} />
-
-              {/* Gender Picker */}
-              <View style={styles.formInputRow}>
-                <View style={[styles.formInputIcon, { backgroundColor: '#e0f2fe' }]}>
-                  <Ionicons name="male-female" size={16} color="#0284c7" />
-                </View>
-                <View style={styles.formInputContainer}>
-                  <Text style={[styles.formInputLabel, { color: theme.textSecondary }]}>Gender</Text>
-                  <TouchableOpacity
-                    onPress={() => setGenderPickerVisible(true)}
-                    style={[styles.formPickerBtn, { borderColor: theme.border }]}
-                  >
-                    <Text style={{ color: gender ? theme.text : theme.textSecondary + '80', fontSize: 14, flex: 1 }}>
-                      {gender || 'Select gender'}
-                    </Text>
-                    <Ionicons name="chevron-down" size={18} color={theme.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
             </View>
 
-            {/* Additional Details Section */}
-            <Text style={[styles.formSectionTitle, { color: theme.text, marginTop: 20 }]}>Additional Details</Text>
 
-            <View style={[styles.formCard, { backgroundColor: theme.card }]}>
-              {/* Section */}
-              <View style={styles.formInputRow}>
-                <View style={[styles.formInputIcon, { backgroundColor: '#fef3c7' }]}>
-                  <Ionicons name="albums" size={16} color="#f59e0b" />
-                </View>
-                <View style={styles.formInputContainer}>
-                  <Text style={[styles.formInputLabel, { color: theme.textSecondary }]}>Section</Text>
-                  <TextInput
-                    style={[styles.formInput, { color: theme.text, borderColor: theme.border }]}
-                    placeholder="e.g. A"
-                    placeholderTextColor={theme.textSecondary + '80'}
-                    value={section}
-                    onChangeText={setSection}
-                  />
-                </View>
-              </View>
-
-              <View style={[styles.formDivider, { backgroundColor: theme.border + '50' }]} />
-
-              {/* Session */}
-              <View style={styles.formInputRow}>
-                <View style={[styles.formInputIcon, { backgroundColor: '#ede9fe' }]}>
-                  <Ionicons name="calendar" size={16} color="#8b5cf6" />
-                </View>
-                <View style={styles.formInputContainer}>
-                  <Text style={[styles.formInputLabel, { color: theme.textSecondary }]}>Session</Text>
-                  <TextInput
-                    style={[styles.formInput, { color: theme.text, borderColor: theme.border }]}
-                    placeholder="e.g. 2025-2026"
-                    placeholderTextColor={theme.textSecondary + '80'}
-                    value={session}
-                    onChangeText={setSession}
-                  />
-                </View>
-              </View>
-
-              <View style={[styles.formDivider, { backgroundColor: theme.border + '50' }]} />
-
-              {/* Phone */}
-              <View style={styles.formInputRow}>
-                <View style={[styles.formInputIcon, { backgroundColor: '#dbeafe' }]}>
-                  <Ionicons name="call" size={16} color="#3b82f6" />
-                </View>
-                <View style={styles.formInputContainer}>
-                  <Text style={[styles.formInputLabel, { color: theme.textSecondary }]}>Phone Number</Text>
-                  <TextInput
-                    style={[styles.formInput, { color: theme.text, borderColor: theme.border }]}
-                    placeholder="e.g. 03001234567"
-                    placeholderTextColor={theme.textSecondary + '80'}
-                    value={phone}
-                    onChangeText={setPhone}
-                    keyboardType="phone-pad"
-                  />
-                </View>
-              </View>
-            </View>
-
-            {/* Auto-generated Fields (Editing Only) */}
             {editingStudent && (
-              <>
-                <Text style={[styles.formSectionTitle, { color: theme.text, marginTop: 20 }]}>System Information</Text>
-
-                <View style={[styles.formCard, { backgroundColor: theme.card }]}>
-                  <View style={styles.formInputRow}>
-                    <View style={[styles.formInputIcon, { backgroundColor: '#dbeafe' }]}>
-                      <Ionicons name="id-card" size={16} color="#3b82f6" />
-                    </View>
-                    <View style={styles.formInputContainer}>
-                      <Text style={[styles.formInputLabel, { color: theme.textSecondary }]}>Student ID</Text>
-                      <View style={[styles.formReadOnlyField, { backgroundColor: theme.background }]}>
-                        <Text style={[styles.formReadOnlyText, { color: theme.textSecondary }]}>{studentId}</Text>
-                        <Ionicons name="lock-closed" size={14} color={theme.textSecondary + '60'} />
-                      </View>
+              <View style={[styles.cFormSection, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                <View style={styles.cFormSectionHeader}>
+                  <Ionicons name="shield-checkmark-outline" size={13} color={theme.primary} />
+                  <Text style={[styles.cFormSectionTitle, { color: theme.primary }]}>System Info</Text>
+                  <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', backgroundColor: theme.primary + '12', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 }}>
+                    <Ionicons name="lock-closed" size={9} color={theme.primary} style={{ marginRight: 3 }} />
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: theme.primary, textTransform: 'uppercase' }}>Read Only</Text>
+                  </View>
+                </View>
+                <View style={styles.cFormRow}>
+                  <View style={styles.cFormCol}>
+                    <Text style={[styles.cFormLabel, { color: theme.textSecondary }]}>Student ID</Text>
+                    <View style={[styles.cFormInput, { backgroundColor: theme.border + '20', borderColor: theme.border, flexDirection: 'row', alignItems: 'center' }]}>
+                      <Text style={{ flex: 1, fontSize: 12, color: theme.textSecondary, fontFamily: 'monospace' }} numberOfLines={1}>{studentId}</Text>
+                      <Ionicons name="lock-closed" size={11} color={theme.textSecondary + '60'} />
                     </View>
                   </View>
-
-                  <View style={[styles.formDivider, { backgroundColor: theme.border + '50' }]} />
-
-                  <View style={styles.formInputRow}>
-                    <View style={[styles.formInputIcon, { backgroundColor: '#dcfce7' }]}>
-                      <Ionicons name="mail" size={16} color="#10b981" />
-                    </View>
-                    <View style={styles.formInputContainer}>
-                      <Text style={[styles.formInputLabel, { color: theme.textSecondary }]}>Email</Text>
-                      <View style={[styles.formReadOnlyField, { backgroundColor: theme.background }]}>
-                        <Text style={[styles.formReadOnlyText, { color: theme.textSecondary }]} numberOfLines={1}>{email}</Text>
-                        <Ionicons name="lock-closed" size={14} color={theme.textSecondary + '60'} />
-                      </View>
+                  <View style={styles.cFormCol}>
+                    <Text style={[styles.cFormLabel, { color: theme.textSecondary }]}>Email</Text>
+                    <View style={[styles.cFormInput, { backgroundColor: theme.border + '20', borderColor: theme.border, flexDirection: 'row', alignItems: 'center' }]}>
+                      <Text style={{ flex: 1, fontSize: 11, color: theme.textSecondary }} numberOfLines={1}>{email}</Text>
+                      <Ionicons name="lock-closed" size={11} color={theme.textSecondary + '60'} />
                     </View>
                   </View>
                 </View>
-              </>
+              </View>
             )}
 
             {/* Auto-generated Note (New Student Only) */}
             {!editingStudent && (
               <View style={[styles.formInfoNote, { backgroundColor: '#eef2ff', borderColor: '#c7d2fe' }]}>
-                <Ionicons name="information-circle" size={18} color="#667eea" />
+                <Ionicons name="information-circle" size={16} color="#667eea" />
                 <Text style={styles.formInfoNoteText}>
-                  Student ID, Email, and Password will be auto-generated upon saving.
+                  Student ID, Email &amp; Password will be auto-generated on save.
                 </Text>
               </View>
             )}
 
+
             {/* Save Button */}
-            <TouchableOpacity onPress={handleSaveStudent} activeOpacity={0.85}>
+            <TouchableOpacity onPress={handleSaveStudent} activeOpacity={0.85} style={{ marginTop: 12 }}>
               <LinearGradient
                 colors={['#667eea', '#764ba2']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.formSaveButton}
               >
-                <Ionicons name={editingStudent ? 'checkmark-circle' : 'person-add'} size={20} color="#fff" />
+                <Ionicons name={editingStudent ? 'checkmark-circle' : 'person-add'} size={18} color="#fff" />
                 <Text style={styles.formSaveButtonText}>
                   {editingStudent ? 'Update Student' : 'Save Student'}
                 </Text>
@@ -963,14 +1172,14 @@ Made with ❤ by The Seeks Academy`;
                   <Text style={styles.modalIdText}>{viewingStudent?.studentId}</Text>
                 </View>
 
-                <View style={styles.profileImageContainer}>
+                <View style={[styles.profileImageContainer, { width: 90, height: 90, borderRadius: 45, borderWidth: 4, borderColor: '#ffffff', backgroundColor: theme.card, marginTop: -35, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 5 }]}>
                   {viewingStudent?.profileImage ? (
                     <Image
                       source={{ uri: viewingStudent.profileImage }}
-                      style={styles.profileImage}
+                      style={{ width: '100%', height: '100%', borderRadius: 45 }}
                     />
                   ) : (
-                    <Ionicons name="person" size={40} color="#fff" />
+                    <Ionicons name="person" size={45} color={theme.primary} />
                   )}
                 </View>
 
@@ -1023,7 +1232,7 @@ Made with ❤ by The Seeks Academy`;
                 <Pressable
                   style={styles.infoTextContainer}
                   onLongPress={async () => {
-                    const credentials = `Email: ${viewingStudent?.email}\nPassword: ${viewingStudent?.password}`;
+                    const credentials = `Email: ${viewingStudent?.email}\nPassword: ${viewingStudent?.password || 'N/A'}`;
                     await Clipboard.setStringAsync(credentials);
                     Alert.alert('Copied!', 'Email and Password copied to clipboard');
                   }}
@@ -1041,14 +1250,15 @@ Made with ❤ by The Seeks Academy`;
                 <Pressable
                   style={styles.infoTextContainer}
                   onLongPress={async () => {
-                    const credentials = `Email: ${viewingStudent?.email}\nPassword: ${viewingStudent?.password}`;
-                    await Clipboard.setStringAsync(credentials);
-                    Alert.alert('Copied!', 'Email and Password copied to clipboard');
+                    if (viewingStudent?.password) {
+                      await Clipboard.setStringAsync(viewingStudent.password);
+                      Alert.alert('Copied!', 'Password copied to clipboard');
+                    }
                   }}
                   delayLongPress={500}
                 >
                   <Text style={[styles.compactLabel, { color: theme.textSecondary }]}>Password</Text>
-                  <Text style={[styles.compactValue, { color: theme.text }]}>{viewingStudent?.password}</Text>
+                  <Text style={[styles.compactValue, { color: theme.text }]}>{viewingStudent?.password || 'No Password Set'}</Text>
                 </Pressable>
               </View>
             </View>
@@ -1239,15 +1449,19 @@ const styles = StyleSheet.create({
   backButton: { padding: 2 },
   addButton: { padding: 2 },
   searchContainer: {
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 12,
+    marginVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
   },
   searchInput: {
-    padding: 10,
-    borderRadius: 6,
-    borderWidth: 1,
+    flex: 1,
     fontSize: 13,
+    paddingVertical: 0,
   },
   content: { padding: 12, paddingTop: 8 },
   listTitle: { fontSize: 13, fontWeight: '600', marginBottom: 10 },
@@ -1541,6 +1755,79 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  // Compact Form Styles (2-column grid)
+  cFormSection: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+  },
+  cFormSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 6,
+  },
+  cFormSectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  cFormRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  cFormCol: {
+    flex: 1,
+  },
+  cFormLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 4,
+  },
+  cFormInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    fontSize: 13,
+  },
+  // Table Styles
+  tableContent: { paddingBottom: 4 },
+  tableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderBottomWidth: 1,
+  },
+  tableHeaderCell: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderBottomWidth: 0.5,
+  },
+  tableAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+
+
   modalBtn: {
     paddingVertical: 8,
     paddingHorizontal: 16,

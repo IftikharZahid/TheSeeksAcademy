@@ -1,0 +1,99 @@
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import {
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    signOut,
+    sendPasswordResetEmail,
+    User,
+} from 'firebase/auth';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { auth, db } from '../firebase';
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+export interface AdminProfile {
+    fullname: string;
+    email: string;
+    image?: string;
+    role?: string;
+}
+
+interface AuthCtx {
+    user: User | null;
+    profile: AdminProfile | null;
+    loading: boolean;
+    login: (email: string, password: string) => Promise<void>;
+    logout: () => Promise<void>;
+    resetPassword: (email: string) => Promise<void>;
+}
+
+// ── Context ────────────────────────────────────────────────────────────────────
+const AuthContext = createContext<AuthCtx | null>(null);
+
+export function useAuth() {
+    const ctx = useContext(AuthContext);
+    if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
+    return ctx;
+}
+
+// ── Provider ───────────────────────────────────────────────────────────────────
+export function AuthProvider({ children }: { children: ReactNode }) {
+    const [user, setUser] = useState<User | null>(null);
+    const [profile, setProfile] = useState<AdminProfile | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    // Mirror the same profile-fetch logic as mobile authSlice.fetchUserProfile
+    const fetchProfile = async (firebaseUser: User) => {
+        const email = firebaseUser.email;
+        try {
+            // 1️⃣ 'profile' collection by email (admin/teacher path used by mobile)
+            if (email) {
+                const q = query(collection(db, 'profile'), where('email', '==', email));
+                const snap = await getDocs(q);
+                if (!snap.empty) {
+                    const data = snap.docs[0].data() as AdminProfile;
+                    setProfile(data);
+                    return;
+                }
+            }
+            // Fallback: just use Firebase Auth display name
+            setProfile({
+                fullname: firebaseUser.displayName || email || 'Admin',
+                email: email || '',
+            });
+        } catch {
+            setProfile({ fullname: email || 'Admin', email: email || '' });
+        }
+    };
+
+    useEffect(() => {
+        const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+            setUser(firebaseUser);
+            if (firebaseUser) {
+                await fetchProfile(firebaseUser);
+            } else {
+                setProfile(null);
+            }
+            setLoading(false);
+        });
+        return unsub;
+    }, []);
+
+    const login = async (email: string, password: string) => {
+        await signInWithEmailAndPassword(auth, email.trim(), password);
+        // profile set automatically by onAuthStateChanged above
+    };
+
+    const logout = async () => {
+        await signOut(auth);
+    };
+
+    const resetPassword = async (email: string) => {
+        await sendPasswordResetEmail(auth, email.trim());
+    };
+
+    return (
+        <AuthContext.Provider value={{ user, profile, loading, login, logout, resetPassword }}>
+            {children}
+        </AuthContext.Provider>
+    );
+}

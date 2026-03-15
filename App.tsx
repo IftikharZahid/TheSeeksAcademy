@@ -1,7 +1,11 @@
 import React, { useEffect } from 'react';
+import * as SplashScreenNative from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+SplashScreenNative.preventAutoHideAsync().catch(() => {});
 import { Provider } from 'react-redux';
-import { store } from './src/store';
+import { PersistGate } from 'redux-persist/integration/react';
+import { store, persistor } from './src/store';
 import { useAppDispatch, useAppSelector } from './src/store/hooks';
 import { initAuthListener } from './src/store/slices/authSlice';
 import { loadSavedTheme } from './src/store/slices/themeSlice';
@@ -9,9 +13,8 @@ import { initCoursesListener } from './src/store/slices/coursesSlice';
 import { initTeachersListener } from './src/store/slices/teachersSlice';
 import { initNotificationsListener } from './src/store/slices/notificationsSlice';
 import { initVideoGalleriesListener, initLikedVideosListener } from './src/store/slices/videosSlice';
-import { initMessagesListener } from './src/store/slices/messagesSlice';
+import { initMessagesListener, loadLastReadTimestamp } from './src/store/slices/messagesSlice';
 import { AppNavigator } from './src/screens/navigation/AppNavigator';
-import { OfflineScreen, useOfflineStatus } from './src/components/OfflineBanner';
 
 /**
  * Inner component that has access to Redux dispatch
@@ -20,11 +23,14 @@ import { OfflineScreen, useOfflineStatus } from './src/components/OfflineBanner'
 function AppContent() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
-  const isOffline = useOfflineStatus();
 
   // ── Global Auth & Data Listeners ────────────────────
   useEffect(() => {
+    // Dismiss the native Expo splash screen once our app is ready
+    SplashScreenNative.hideAsync().catch(() => {});
+
     dispatch(loadSavedTheme());
+    dispatch(loadLastReadTimestamp());
 
     const unsubAuth = initAuthListener(dispatch);
     const unsubCourses = initCoursesListener(dispatch);
@@ -53,19 +59,17 @@ function AppContent() {
     }
   }, [dispatch, user?.uid]);
 
-  if (isOffline) {
-    return <OfflineScreen />;
-  }
-
   return <AppNavigator />;
 }
 
 export default function App() {
   return (
     <Provider store={store}>
-      <SafeAreaProvider>
-        <AppContent />
-      </SafeAreaProvider>
+      <PersistGate loading={null} persistor={persistor}>
+        <SafeAreaProvider>
+          <AppContent />
+        </SafeAreaProvider>
+      </PersistGate>
     </Provider>
   );
 }

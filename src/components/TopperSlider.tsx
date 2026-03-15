@@ -1,15 +1,17 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { View, Text, FlatList, StyleSheet, Dimensions } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
 import { scale } from '../utils/responsive';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAppSelector } from '../store/hooks';
 
 const { width } = Dimensions.get('window');
 
 interface TopperData {
     id: string;
     studentName: string;
+    rollNo: string;
     testNo: string;
     testDate: string;
     obtainedMarks: number;
@@ -17,60 +19,6 @@ interface TopperData {
     position: number;
     className: string;
 }
-
-// Sample topper students data
-const toppersData: TopperData[] = [
-    {
-        id: '1',
-        studentName: 'Ahmed Ali',
-        testNo: 'Test #12',
-        testDate: '15 Jan 2026',
-        obtainedMarks: 98,
-        totalMarks: 100,
-        position: 1,
-        className: '10th',
-    },
-    {
-        id: '2',
-        studentName: 'Fatima Khan',
-        testNo: 'Test #11',
-        testDate: '08 Jan 2026',
-        obtainedMarks: 95,
-        totalMarks: 100,
-        position: 1,
-        className: '9th',
-    },
-    {
-        id: '3',
-        studentName: 'Hassan Raza',
-        testNo: 'Test #12',
-        testDate: '15 Jan 2026',
-        obtainedMarks: 96,
-        totalMarks: 100,
-        position: 2,
-        className: '10th',
-    },
-    {
-        id: '4',
-        studentName: 'Ayesha Malik',
-        testNo: 'Test #10',
-        testDate: '02 Jan 2026',
-        obtainedMarks: 97,
-        totalMarks: 100,
-        position: 1,
-        className: '1st Year',
-    },
-    {
-        id: '5',
-        studentName: 'Usman Shah',
-        testNo: 'Test #12',
-        testDate: '15 Jan 2026',
-        obtainedMarks: 94,
-        totalMarks: 100,
-        position: 3,
-        className: '2nd Year',
-    },
-];
 
 const getPositionColor = (position: number): string => {
     switch (position) {
@@ -105,6 +53,107 @@ export const TopperSlider: React.FC = () => {
     const isUserScrolling = useRef(false);
     const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
 
+    const exams = useAppSelector((state) => state.admin.exams);
+
+    const toppersData = useMemo(() => {
+        if (!exams || exams.length === 0) return [];
+
+        const classTestGroups: Record<string, Record<string, {
+            studentName: string;
+            rollNo: string;
+            obtainedMarks: number;
+            totalMarks: number;
+            testDate: string;
+        }>> = {};
+
+        exams.forEach(exam => {
+            if (exam.status === 'Absent') return;
+            const className = exam.studentClass || 'Unknown Class';
+            const testTitle = exam.title || 'Unknown Test';
+            const groupKey = `${className}_${testTitle}`;
+
+            if (!classTestGroups[groupKey]) {
+                classTestGroups[groupKey] = {};
+            }
+
+            const studentKey = exam.rollNo || exam.studentName || 'unknown';
+            if (!studentKey) return;
+
+            let obtained = 0;
+            let total = 0;
+
+            if (exam.books && exam.books.length > 0) {
+                exam.books.forEach(b => {
+                    obtained += parseFloat(b.obtainedMarks || '0');
+                    total += parseFloat(b.totalMarks || '0');
+                });
+            } else {
+                obtained += parseFloat(exam.obtainedMarks || '0');
+                total += parseFloat(exam.totalMarks || '0');
+            }
+
+            if (!classTestGroups[groupKey][studentKey]) {
+                classTestGroups[groupKey][studentKey] = {
+                    studentName: exam.studentName || 'Unknown Student',
+                    rollNo: exam.rollNo || '',
+                    obtainedMarks: 0,
+                    totalMarks: 0,
+                    testDate: exam.date || '',
+                };
+            }
+
+            classTestGroups[groupKey][studentKey].obtainedMarks += obtained;
+            classTestGroups[groupKey][studentKey].totalMarks += total;
+
+            if (exam.date && (!classTestGroups[groupKey][studentKey].testDate || new Date(exam.date) > new Date(classTestGroups[groupKey][studentKey].testDate))) {
+                classTestGroups[groupKey][studentKey].testDate = exam.date;
+            }
+        });
+
+        const allToppers: TopperData[] = [];
+
+        Object.keys(classTestGroups).forEach(groupKey => {
+            const [className, testTitle] = groupKey.split('_');
+            const students = Object.values(classTestGroups[groupKey]);
+
+            students.sort((a, b) => b.obtainedMarks - a.obtainedMarks);
+
+            let currentRank = 1;
+            let previousMarks = -1;
+
+            students.forEach((student, index) => {
+                if (index > 0 && student.obtainedMarks < previousMarks) {
+                    currentRank = index + 1;
+                }
+                previousMarks = student.obtainedMarks;
+
+                if (currentRank <= 3 && student.totalMarks > 0) {
+                    allToppers.push({
+                        id: `${student.rollNo}_${groupKey}_${index}`,
+                        studentName: student.studentName,
+                        rollNo: student.rollNo,
+                        testNo: testTitle,
+                        testDate: student.testDate,
+                        obtainedMarks: student.obtainedMarks,
+                        totalMarks: student.totalMarks,
+                        position: currentRank,
+                        className: className
+                    });
+                }
+            });
+        });
+
+        allToppers.sort((a, b) => {
+            const dateA = new Date(a.testDate).getTime();
+            const dateB = new Date(b.testDate).getTime();
+            if (dateB !== dateA) return dateB - dateA;
+            if (a.position !== b.position) return a.position - b.position;
+            return b.obtainedMarks - a.obtainedMarks;
+        });
+
+        return allToppers;
+    }, [exams]);
+
     // Auto-scroll functionality with pause on user interaction
     useEffect(() => {
         const interval = setInterval(() => {
@@ -118,7 +167,7 @@ export const TopperSlider: React.FC = () => {
         }, 4000); // 4 seconds for better readability
 
         return () => clearInterval(interval);
-    }, []);
+    }, [toppersData.length]);
 
     // Handle user scroll interaction
     const handleScrollBeginDrag = () => {
@@ -169,6 +218,17 @@ export const TopperSlider: React.FC = () => {
 
                     {/* Bottom Row: Test Info */}
                     <View style={styles.bottomRow}>
+                        {item.rollNo ? (
+                            <>
+                                <View style={styles.testInfo}>
+                                    <Ionicons name="id-card" size={10} color={theme.textSecondary} />
+                                    <Text style={[styles.testText, { color: theme.textSecondary }]}>
+                                        Roll: {item.rollNo}
+                                    </Text>
+                                </View>
+                                <View style={styles.dot} />
+                            </>
+                        ) : null}
                         <View style={styles.testInfo}>
                             <Ionicons name="document-text" size={10} color={theme.textSecondary} />
                             <Text style={[styles.testText, { color: theme.textSecondary }]}>
@@ -205,9 +265,11 @@ export const TopperSlider: React.FC = () => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>🏆 Top Performers</Text>
-            </View>
+            {toppersData.length > 0 && (
+                <View style={styles.header}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>🏆 Top Performers</Text>
+                </View>
+            )}
 
             <FlatList
                 ref={flatListRef}

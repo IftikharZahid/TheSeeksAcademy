@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, StatusBar, Dimensions, RefreshControl, Image, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, StatusBar, Dimensions, RefreshControl, FlatList } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +12,7 @@ import { collection, query, orderBy, onSnapshot, getDoc, doc } from 'firebase/fi
 import { useAppSelector } from '../store/hooks';
 
 // Components
-import { CourseCategories } from '../components/CourseCategories';
+import { CourseCategories } from '../components/QuickActions';
 import { TopperSlider } from '../components/TopperSlider';
 import { CourseList } from '../components/CourseList';
 
@@ -74,7 +75,9 @@ export const HomeScreen: React.FC = () => {
       <Image
         source={{ uri: item.thumbnail || `https://img.youtube.com/vi/${item.youtubeId}/hqdefault.jpg` }}
         style={styles.topCourseImage}
-        defaultSource={require('../assets/default-profile.png')}
+        placeholder={require('../assets/default-profile.png')}
+        contentFit="cover"
+        transition={200}
       />
       <View style={styles.topCourseInfo}>
         <Text style={[styles.topCourseCategory, { color: theme.textSecondary }]}>

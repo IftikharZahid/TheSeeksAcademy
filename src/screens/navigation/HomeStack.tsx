@@ -9,7 +9,6 @@ import { TeachersScreen } from '../TeachersScreen';
 import { AttendanceScreen } from '../AttendanceScreen';
 import { StaffInfoScreen } from '../StaffInfoScreen';
 import { SettingsScreen } from '../SettingScreens/SettingsScreen';
-import SimTrackerScreen from '../AdminScreens/SimTrackerScreen';
 import ChangePasswordScreen from '../SettingScreens/ChangePasswordScreen';
 import { AboutScreen } from '../SettingScreens/AboutScreen';
 import { PrivacyPolicyScreen } from '../SettingScreens/PrivacyPolicyScreen';
@@ -34,7 +33,6 @@ export type HomeStackParamList = {
   TeachersScreen: undefined;
   AttendanceScreen: undefined;
   SettingsScreen: undefined;
-  SimTrackerScreen: undefined;
   ChangePasswordScreen: undefined;
   AboutScreen: undefined;
   PrivacyPolicyScreen: undefined;
@@ -85,7 +83,6 @@ export const HomeStack: React.FC = () => {
       <Stack.Screen name="TeachersScreen" component={TeachersScreen} />
       <Stack.Screen name="AttendanceScreen" component={AttendanceScreen} />
       <Stack.Screen name="SettingsScreen" component={SettingsScreen} />
-      <Stack.Screen name="SimTrackerScreen" component={SimTrackerScreen} />
       <Stack.Screen name="ChangePasswordScreen" component={ChangePasswordScreen} />
       <Stack.Screen name="AboutScreen" component={AboutScreen} />
       <Stack.Screen name="PrivacyPolicyScreen" component={PrivacyPolicyScreen} />

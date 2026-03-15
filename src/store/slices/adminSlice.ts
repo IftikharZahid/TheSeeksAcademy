@@ -12,7 +12,8 @@ export interface AdminStudent {
     studentId: string;
     email: string;
     password: string;
-    authUid?: string;
+    uid?: string;       // Firebase Auth UID — written by createStudentAuthAccount
+    authUid?: string;   // Legacy alias, same purpose
     authError?: string;
     grade: string;
     profileImage?: string;
@@ -203,6 +204,17 @@ const adminSlice = createSlice({
             state.feeRecords = action.payload;
             state.feeLoading = false;
         },
+        /** Optimistic single-record patch — instant UI, Firestore write in background */
+        updateFeeRecord(state, action: PayloadAction<Partial<AdminFeeRecord> & { studentId: string }>) {
+            const idx = state.feeRecords.findIndex(r => r.studentId === action.payload.studentId);
+            if (idx !== -1) {
+                const updated = { ...state.feeRecords[idx], ...action.payload };
+                const pending = updated.totalFee - updated.paidAmount;
+                updated.pendingAmount = pending;
+                updated.status = pending === 0 ? 'paid' : pending === updated.totalFee ? 'pending' : 'partial';
+                state.feeRecords[idx] = updated;
+            }
+        },
         setStudentsLoading(state, action: PayloadAction<boolean>) {
             state.studentsLoading = action.payload;
         },
@@ -249,6 +261,7 @@ export const {
     setComplaints,
     setTimetable,
     setFeeRecords,
+    updateFeeRecord,
     setStudentsLoading,
     setExamsLoading,
     setComplaintsLoading,

@@ -192,17 +192,21 @@ export const AssignmentsScreen: React.FC = () => {
       >
 
         {/* Search Bar */}
-        <TextInput
-          placeholder="Search assignment..."
-          placeholderTextColor={theme.textSecondary}
-          style={[styles.searchInput, {
-            backgroundColor: isDark ? theme.card : '#fff',
-            borderColor: theme.border,
-            color: theme.text
-          }]}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
+        <View style={[styles.compactSearchContainer, { backgroundColor: isDark ? theme.card : '#fff', borderColor: theme.border }]}>
+          <Ionicons name="search" size={18} color={theme.textSecondary} style={styles.searchIcon} />
+          <TextInput
+            placeholder="Search assignment..."
+            placeholderTextColor={theme.textSecondary}
+            style={[styles.compactSearchInput, { color: theme.text }]}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={16} color={theme.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Filters */}
         <View style={styles.filterRow}>
@@ -302,39 +306,41 @@ const styles = StyleSheet.create({
     padding: scale(16),
   },
 
-  searchInput: {
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 14,
+  compactSearchContainer: {
+    flexDirection: 'row', alignItems: 'center',
     marginBottom: 12,
-    borderWidth: 1,
+    paddingHorizontal: 10, height: 38,
+    borderRadius: 10, borderWidth: 1,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
   },
+  searchIcon: {
+    marginRight: 8,
+  },
+  compactSearchInput: {
+    flex: 1,
+    fontSize: 13,
+    paddingVertical: 6,
+  },
 
   filterRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 15,
+    marginBottom: 12,
   },
 
   filterBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
   },
 
   filterText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: "600",
   },
 
@@ -343,15 +349,15 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    padding: 16,
-    borderRadius: 14,
-    marginBottom: 14,
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 10,
     borderWidth: 1,
-    elevation: 2,
+    elevation: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
   },
 
   subjectRow: {
@@ -360,24 +366,25 @@ const styles = StyleSheet.create({
   },
 
   subjectIcon: {
-    fontSize: 32,
-    marginRight: 12,
+    fontSize: 24,
+    marginRight: 10,
   },
 
   subjectText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "700",
   },
 
   teacherText: {
-    fontSize: 12,
+    fontSize: 10,
+    marginTop: 2,
   },
 
   assignmentTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
-    marginTop: 10,
-    marginBottom: 15,
+    marginTop: 8,
+    marginBottom: 10,
   },
 
   deadlineRow: {
@@ -387,19 +394,19 @@ const styles = StyleSheet.create({
   },
 
   deadline: {
-    fontSize: 13,
+    fontSize: 11,
   },
 
   statusBadge: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
   },
 
   statusText: {
     color: "#fff",
     fontWeight: "700",
-    fontSize: 12,
+    fontSize: 10,
   },
 
   fab: {

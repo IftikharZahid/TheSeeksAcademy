@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { scale } from '../utils/responsive';
@@ -51,7 +52,7 @@ export const CourseList: React.FC = () => {
             >
                 <View style={[styles.iconContainer, { backgroundColor: isDark ? '#1f2937' : '#f3f4f6' }]}>
                     {item.thumbnail ? (
-                        <Image source={{ uri: item.thumbnail }} style={styles.courseIcon} resizeMode="cover" />
+                        <Image source={{ uri: item.thumbnail }} style={styles.courseIcon} contentFit="cover" transition={200} />
                     ) : (
                         <LinearGradient
                             colors={colors as [string, string]}
@@ -94,14 +95,14 @@ export const CourseList: React.FC = () => {
                     <Text style={[styles.seeAllText, { color: theme.primary }]}>See All</Text>
                 </TouchableOpacity>
             </View>
-            <FlatList
-                data={galleries}
-                renderItem={renderCourseItem}
-                keyExtractor={(item) => item.id}
-                scrollEnabled={false}
-                contentContainerStyle={styles.listContent}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
-            />
+            <View style={styles.listContent}>
+                {galleries.map((item, index) => (
+                    <React.Fragment key={item.id}>
+                        {renderCourseItem({ item, index })}
+                        {index < galleries.length - 1 && <View style={styles.separator} />}
+                    </React.Fragment>
+                ))}
+            </View>
         </View>
     );
 };

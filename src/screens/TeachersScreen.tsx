@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { NavigationHeader } from '../components/NavigationHeader';
-import { PageTransition } from '../components/PageTransition';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Dimensions } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -177,65 +175,57 @@ export const TeachersScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      {/* Modern Animated Header - With high zIndex to stay on top */}
-      <View style={styles.headerWrapper}>
-        <NavigationHeader
-          title="Staff Members"
-          subtitle={`${staff.length} available`}
-          showBack={true}
-          showSearch={true}
-          onBackPress={() => {
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-            } else {
-              navigation.navigate('HomeScreen');
-            }
-          }}
-          onSearchPress={() => {/* TODO: Implement search */ }}
-          rightAction={{
-            icon: 'heart',
-            onPress: () => navigation.navigate('LikedTeachersScreen')
-          }}
-        />
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: theme.border, borderBottomWidth: 1 }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('HomeScreen')}
+        >
+          <Ionicons name="arrow-back" size={scale(22)} color={theme.text} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Staff Members</Text>
+          <Text style={{ fontSize: scale(12), color: theme.textSecondary }}>{staff.length} available</Text>
+        </View>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('LikedTeachersScreen')}>
+          <Ionicons name="heart-outline" size={scale(22)} color={theme.text} />
+        </TouchableOpacity>
       </View>
 
-      {/* Content with Page Transition - Lower zIndex */}
       <View style={styles.contentWrapper}>
-        <PageTransition type="slide" duration={300}>
-          {/* Loading State */}
-          {loading && !refreshing && (
-            <View style={styles.centerContainer}>
-              <ActivityIndicator size="large" color={theme.primary} />
-              <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading instructors...</Text>
-            </View>
-          )}
+        {/* Loading State */}
+        {loading && !refreshing && (
+          <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading instructors...</Text>
+          </View>
+        )}
 
-          {/* Error State */}
-          {error && !loading && !refreshing && (
-            <View style={styles.centerContainer}>
-              <Text style={styles.errorText}>⚠️ {error}</Text>
-              <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary }]} onPress={fetchTeachers}>
-                <Text style={styles.retryButtonText}>Retry</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+        {/* Error State */}
+        {error && !loading && !refreshing && (
+          <View style={styles.centerContainer}>
+            <Text style={styles.errorText}>⚠️ {error}</Text>
+            <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary }]} onPress={fetchTeachers}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-          {/* Teacher Cards Grid */}
-          {(!loading || refreshing) && !error && (
-            <ScrollView
-              style={styles.scrollView}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 100 }}
-              refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
-              }
-            >
-              <View style={styles.cardsGrid}>
-                {staff.map((teacher, index) => renderTeacherCard(teacher, index))}
-              </View>
-            </ScrollView>
-          )}
-        </PageTransition>
+        {/* Teacher Cards Grid */}
+        {(!loading || refreshing) && !error && (
+          <ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 100 }}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+            }
+          >
+            <View style={styles.cardsGrid}>
+              {staff.map((teacher, index) => renderTeacherCard(teacher, index))}
+            </View>
+          </ScrollView>
+        )}
       </View>
     </SafeAreaView>
   );

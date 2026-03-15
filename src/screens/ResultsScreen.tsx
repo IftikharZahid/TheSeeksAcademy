@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, A
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
+import { useAppSelector } from '../store/hooks';
 import { db, auth } from '../api/firebaseConfig';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, or } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
@@ -72,72 +73,75 @@ export const ResultsScreen: React.FC = () => {
     return ['All', ...sorted];
   }, [entries]);
   const [loading, setLoading] = useState(true);
-  const [userRollNo, setUserRollNo] = useState<string | null>(null);
-  const [studentName, setStudentName] = useState<string | null>(null);
-  const [fatherName, setFatherName] = useState<string | null>(null);
-  const [studentClass, setStudentClass] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const viewShotRef = useRef<View>(null);
   const [status, requestPermission] = MediaLibrary.usePermissions();
 
-  // Fetch student profile data
-  useEffect(() => {
-    const user = auth.currentUser;
-    if (!user?.email) return;
-    const q = query(collection(db, "profile"), where("email", "==", user.email));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const d = snapshot.docs[0].data();
-        setUserRollNo(d.rollNo || d.roll || d.rollNumber || null);
-        setStudentName(d.name || d.displayName || d.studentName || null);
-        setFatherName(d.fatherName || d.father || d.parentName || null);
-        setStudentClass(d.class || d.className || d.grade || d.studentClass || null);
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+  // Get user profile accurately from Redux (handles both 'profile' and 'studentsprofile' securely)
+  const profile = useAppSelector(state => state.auth.profile);
+  const user = useAppSelector(state => state.auth.user);
+  const allSystemExams = useAppSelector(state => state.admin.exams); // Used to calculate Class Position against peers
+
+  const userRollNo = profile?.rollno || null;
+  const studentName = profile?.fullname || null;
+  const studentClass = profile?.class || null;
+  const fatherName = profile?.fathername || null;
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
-  const unsubscribeRollRef = useRef<(() => void) | null>(null);
 
   const fetchExams = useCallback(() => {
-    const user = auth.currentUser;
-    if (!user?.email) { setLoading(false); return; }
+    if (!user) { setLoading(false); return; }
     setLoading(true);
-    let emailExams: ExamEntry[] = [];
-    let rollNoExams: ExamEntry[] = [];
-    const updateMerged = () => {
-      const map = new Map();
-      [...emailExams, ...rollNoExams].forEach(e => map.set(e.id, e));
-      const merged = Array.from(map.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setEntries(merged);
 
-      // Fallback: Get student info from exam data if not in profile
-      if (merged.length > 0) {
-        const firstExam = merged[0];
-        if (!studentName && firstExam.studentName) setStudentName(firstExam.studentName);
-        if (!userRollNo && firstExam.rollNo) setUserRollNo(firstExam.rollNo);
-        if (!studentClass && firstExam.studentClass) setStudentClass(firstExam.studentClass);
-      }
-      setLoading(false);
-    };
-    if (unsubscribeRef.current) unsubscribeRef.current();
-    unsubscribeRef.current = onSnapshot(query(collection(db, 'exams'), where('studentEmail', '==', user.email)), (snap) => {
-      emailExams = snap.docs.map(d => ({ id: d.id, ...d.data() } as ExamEntry));
-      updateMerged();
-    }, () => setLoading(false));
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
+
+    // Build query conditions
+    // If student has a roll number, query strongly by roll number.
+    // Otherwise, try to match by email if it exists, or exact name and class.
+    const examsRef = collection(db, 'exams');
+    let q;
+
     if (userRollNo) {
-      if (unsubscribeRollRef.current) unsubscribeRollRef.current();
-      unsubscribeRollRef.current = onSnapshot(query(collection(db, 'exams'), where('rollNo', '==', userRollNo)), (snap) => {
-        rollNoExams = snap.docs.map(d => ({ id: d.id, ...d.data() } as ExamEntry));
-        updateMerged();
-      });
-    } else { updateMerged(); }
-  }, [userRollNo, studentName, studentClass]);
+      // Find exams matching their roll no OR their exact email
+      if (user.email) {
+        q = query(examsRef, or(where('rollNo', '==', userRollNo), where('studentEmail', '==', user.email)));
+      } else {
+        q = query(examsRef, where('rollNo', '==', userRollNo));
+      }
+    } else if (user.email) {
+      q = query(examsRef, where('studentEmail', '==', user.email));
+    } else if (studentName && studentClass) {
+      q = query(examsRef, where('studentName', '==', studentName), where('studentClass', '==', studentClass));
+    } else {
+      setEntries([]);
+      setLoading(false);
+      return;
+    }
+
+    unsubscribeRef.current = onSnapshot(q, (snap) => {
+      const fetchedExams = snap.docs.map(d => ({ id: d.id, ...d.data() } as ExamEntry));
+
+      // Sort newest first
+      const sorted = fetchedExams.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setEntries(sorted);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching exams: ", error);
+      setLoading(false);
+    });
+  }, [userRollNo, studentName, studentClass, user?.email]);
 
   useEffect(() => { fetchExams(); }, [fetchExams]);
-  const onRefresh = useCallback(async () => { setRefreshing(true); await fetchExams(); setRefreshing(false); }, [fetchExams]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    fetchExams(); // We can't await onSnapshot setup, so just call it and assume loading state handles UI
+    setTimeout(() => setRefreshing(false), 800);
+  }, [fetchExams]);
 
   // Process data for the result sheet - aggregate by subject
   const processedData = useMemo(() => {
@@ -183,8 +187,55 @@ export const ResultsScreen: React.FC = () => {
     const overallPercentage = grandTotal > 0 ? (grandObtained / grandTotal) * 100 : 0;
     const testType = activeTab === 'All' ? 'Grand Total' : `${activeTab} Test`;
 
-    return { subjects: subjectsData, grandTotal, grandObtained, overallPercentage, testType, examCount: filtered.length };
-  }, [entries, activeTab, searchQuery]);
+    // Calculate Class Position dynamically based on Redux array (allSystemExams)
+    let computedPosition = '-';
+    if (studentClass && activeTab !== 'All' && allSystemExams.length > 0) {
+      // Find all exams matching this class and this test (activeTab)
+      const peerExams = allSystemExams.filter(
+        ex => ex.studentClass === studentClass && (ex.title || '').toUpperCase() === activeTab.toUpperCase()
+      );
+
+      const studentRankings = new Map<string, { total: number; obtained: number }>();
+
+      peerExams.forEach(ex => {
+        const id = ex.rollNo || ex.studentEmail || ex.studentName || 'unknown';
+        const existing = studentRankings.get(id) || { total: 0, obtained: 0 };
+
+        let exTotal = 0, exObt = 0;
+        if (ex.books && ex.books.length > 0) {
+          exTotal = ex.books.reduce((sum, b) => sum + (parseFloat(b.totalMarks) || 0), 0);
+          exObt = ex.books.reduce((sum, b) => sum + (parseFloat(b.obtainedMarks) || 0), 0);
+        } else {
+          exTotal = parseFloat(ex.totalMarks || '0');
+          exObt = parseFloat(ex.obtainedMarks || '0');
+        }
+
+        studentRankings.set(id, { total: existing.total + exTotal, obtained: existing.obtained + exObt });
+      });
+
+      // Convert to array of percentages and sort descending
+      const rankingList = Array.from(studentRankings.entries()).map(([id, scores]) => {
+        const perc = scores.total > 0 ? (scores.obtained / scores.total) * 100 : 0;
+        return { id, percentage: perc };
+      }).sort((a, b) => b.percentage - a.percentage);
+
+      // Find this user's position
+      const myId = userRollNo || user?.email || studentName;
+      if (myId) {
+        const myIndex = rankingList.findIndex(r => r.id === myId);
+        if (myIndex !== -1) {
+          computedPosition = (myIndex + 1).toString();
+          // Add suffix logic (1st, 2nd, 3rd)
+          if (computedPosition.endsWith('1') && computedPosition !== '11') computedPosition += 'st';
+          else if (computedPosition.endsWith('2') && computedPosition !== '12') computedPosition += 'nd';
+          else if (computedPosition.endsWith('3') && computedPosition !== '13') computedPosition += 'rd';
+          else computedPosition += 'th';
+        }
+      }
+    }
+
+    return { subjects: subjectsData, grandTotal, grandObtained, overallPercentage, testType, examCount: filtered.length, classPosition: computedPosition };
+  }, [entries, activeTab, searchQuery, allSystemExams, studentClass, userRollNo, user?.email, studentName]);
 
   const handleSaveResult = async () => {
     try {
@@ -298,7 +349,7 @@ export const ResultsScreen: React.FC = () => {
                   <Text style={[styles.totalCell, { fontSize: fontSize.cell }]}>{processedData.grandTotal}</Text>
                   <Text style={[styles.totalCell, { fontSize: fontSize.cell }]}>{processedData.grandObtained}</Text>
                   <Text style={[styles.totalCell, { fontSize: fontSize.cell }]}>{processedData.overallPercentage.toFixed(1)}</Text>
-                  <Text style={[styles.totalCell, { flex: 2.5, fontSize: fontSize.cell }]}>Position: -</Text>
+                  <Text style={[styles.totalCell, { flex: 2.5, fontSize: fontSize.cell }]}>Position: {processedData.classPosition}</Text>
                 </View>
               </View>
 

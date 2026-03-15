@@ -18,12 +18,13 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { db, auth } from '../api/firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { scale } from '../utils/responsive';
 import { captureRef } from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
-import { useAppSelector } from '../store/hooks';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { fetchAdminFeeRecords } from '../store/slices/adminSlice';
 
 interface FeeDetail {
   totalFee: number;
@@ -77,13 +78,16 @@ export const FeeDetailScreen: React.FC = () => {
   const feeSlipRef = useRef<View>(null);
 
   // User data from Redux
+  const dispatch = useAppDispatch();
   const profile = useAppSelector((state) => state.auth.profile);
   const reduxUser = useAppSelector((state) => state.auth.user);
+  const feeRecords = useAppSelector((state) => state.admin.feeRecords);
 
   const userData = {
     studentName: profile?.fullname || reduxUser?.displayName || 'Student',
+    fatherName: profile?.fathername || '',
     className: profile?.class || '10th',
-    serialNo: reduxUser?.uid?.slice(-6).toUpperCase() || 'TSA001',
+    serialNo: profile?.rollno || reduxUser?.uid?.slice(-6).toUpperCase() || 'TSA001',
   };
 
   // Animations
@@ -117,26 +121,64 @@ export const FeeDetailScreen: React.FC = () => {
   const fetchFeeDetails = async () => {
     try {
       const user = auth.currentUser;
-      if (user) {
-        const feeDoc = await getDoc(doc(db, 'fees', user.uid));
+      if (!user) return;
+
+      // Attempt to load from admin slice first if we have the student matched
+      if (feeRecords.length === 0) {
+        await dispatch(fetchAdminFeeRecords()).unwrap();
+      }
+
+      let studentDocId = profile?.rollno;
+
+      if (!studentDocId && user.email) {
+        const sq = await getDocs(query(collection(db, 'students'), where('email', '==', user.email)));
+        if (!sq.empty) {
+          studentDocId = sq.docs[0].id;
+        }
+      }
+
+      let feeDocExists = false;
+      if (studentDocId) {
+        const feeDoc = await getDoc(doc(db, 'fees', studentDocId));
         if (feeDoc.exists()) {
           setFeeData(feeDoc.data() as FeeDetail);
-        } else {
-          // Default demo data
+          feeDocExists = true;
+        }
+      }
+
+      if (!feeDocExists) {
+        // Fallback to checking the system fee list by user name or roll number
+        const myName = profile?.fullname || reduxUser?.displayName;
+
+        const systemMatchedFee = feeRecords.find(f =>
+          (studentDocId && f.studentId === studentDocId) ||
+          (profile?.rollno && f.rollno === profile.rollno) ||
+          (myName && f.studentName === myName)
+        );
+
+        if (systemMatchedFee) {
           setFeeData({
-            totalFee: 50000,
-            paidAmount: 30000,
-            pendingAmount: 20000,
+            totalFee: systemMatchedFee.totalFee,
+            paidAmount: systemMatchedFee.paidAmount,
+            pendingAmount: systemMatchedFee.pendingAmount,
             breakdown: {
-              tuition: 35000,
-              books: 5000,
-              labs: 8000,
-              exam: 2000,
+              tuition: Math.floor(systemMatchedFee.totalFee * 0.7),
+              books: Math.floor(systemMatchedFee.totalFee * 0.1),
+              labs: Math.floor(systemMatchedFee.totalFee * 0.15),
+              exam: Math.floor(systemMatchedFee.totalFee * 0.05),
             },
-            payments: [
-              { date: '2024-01-15', amount: 15000, method: 'Bank Transfer' },
-              { date: '2024-03-20', amount: 15000, method: 'Cash' },
-            ],
+            payments: systemMatchedFee.paidAmount > 0 ? [
+              { date: new Date().toISOString().split('T')[0], amount: systemMatchedFee.paidAmount, method: 'Admin Update' }
+            ] : [],
+          });
+        } else {
+          // Ultimate fallback if no fee record assigned yet by admin
+          setFeeData({
+            totalFee: 0,
+            paidAmount: 0,
+            pendingAmount: 0,
+            breakdown: { tuition: 0, books: 0, labs: 0, exam: 0 },
+            payments: [],
           });
         }
       }
@@ -490,11 +532,19 @@ export const FeeDetailScreen: React.FC = () => {
                       <Text style={styles.feeSlipFieldValue}>{userData.studentName}</Text>
                     </View>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'flex-end', width: 80 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-end', width: 130 }}>
                     <Text style={styles.feeSlipFieldLabel}>Class:</Text>
                     <View style={[styles.feeSlipFieldLineShort, { flex: 1 }]}>
                       <Text style={styles.feeSlipFieldValue}>{userData.className}</Text>
                     </View>
+                  </View>
+                </View>
+
+                {/* Father Name */}
+                <View style={styles.feeSlipFieldRow}>
+                  <Text style={styles.feeSlipFieldLabel}>Father Name:</Text>
+                  <View style={styles.feeSlipFieldLine}>
+                    <Text style={styles.feeSlipFieldValue}>{userData.fatherName}</Text>
                   </View>
                 </View>
 
@@ -511,14 +561,6 @@ export const FeeDetailScreen: React.FC = () => {
                     <View style={styles.feeSlipFieldLineShort}>
                       <Text style={styles.feeSlipFieldValue}>PKR {feeData.pendingAmount.toLocaleString()}</Text>
                     </View>
-                  </View>
-                </View>
-
-                {/* Other Charges */}
-                <View style={styles.feeSlipFieldRow}>
-                  <Text style={styles.feeSlipFieldLabel}>Other Charges:</Text>
-                  <View style={styles.feeSlipFieldLine}>
-                    <Text style={styles.feeSlipFieldValue}>PKR {(feeData.breakdown.books + feeData.breakdown.labs + feeData.breakdown.exam).toLocaleString()}</Text>
                   </View>
                 </View>
 

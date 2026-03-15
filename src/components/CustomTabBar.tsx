@@ -5,6 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Svg, Path, Circle } from 'react-native-svg';
+import { useNotifications } from '../context/NotificationContext';
+import { useAppSelector } from '../store/hooks';
+import { selectUnreadMessagesCount } from '../store/slices/messagesSlice';
 
 // Modern sleek icons with rounded corners
 const TabIcons = {
@@ -137,7 +140,7 @@ interface TabData {
 const TAB_CONFIG: TabData[] = [
   { id: 'Home', label: 'Home', icon: 'Dashboard' },
   { id: 'VideoGallery', label: 'Videos', icon: 'VideoGallery' },
-  { id: 'Messages', label: 'Messages', icon: 'Messages', badgeCount: 3 },
+  { id: 'Messages', label: 'Messages', icon: 'Messages' },
   { id: 'NoticeBoard', label: 'Notices', icon: 'NoticeBoard' },
   { id: 'Profile', label: 'Profile', icon: 'Profile' },
 ];
@@ -145,6 +148,8 @@ const TAB_CONFIG: TabData[] = [
 export const EducationalTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { unreadCount: notificationCount } = useNotifications();
+  const unreadMessagesCount = useAppSelector(selectUnreadMessagesCount);
 
   const focusedRoute = state.routes[state.index];
   const focusedDescriptor = descriptors[focusedRoute.key];
@@ -202,6 +207,13 @@ export const EducationalTabBar: React.FC<BottomTabBarProps> = ({ state, descript
 
         const IconComponent = TabIcons[tabData.icon];
 
+        let displayBadgeCount = tabData.badgeCount;
+        if (tabData.id === 'Messages') {
+          displayBadgeCount = unreadMessagesCount;
+        } else if (tabData.id === 'NoticeBoard') {
+          displayBadgeCount = notificationCount;
+        }
+
         const onPress = () => {
           const event = navigation.emit({
             type: 'tabPress',
@@ -210,7 +222,11 @@ export const EducationalTabBar: React.FC<BottomTabBarProps> = ({ state, descript
           });
 
           if (!isFocused && !event.defaultPrevented) {
-            if (route.name === 'Home') {
+            if (tabData.id === 'Messages') {
+              navigation.navigate('Home', { screen: 'MessagesScreen' });
+            } else if (tabData.id === 'NoticeBoard') {
+              navigation.navigate('Home', { screen: 'NoticesScreen' });
+            } else if (route.name === 'Home') {
               navigation.navigate('Home', { screen: 'HomeScreen' });
             } else {
               navigation.navigate(route.name);
@@ -237,7 +253,7 @@ export const EducationalTabBar: React.FC<BottomTabBarProps> = ({ state, descript
                 <IconComponent color={iconColor} size={22} focused={isFocused} />
 
                 {/* Badge */}
-                {tabData.badgeCount && tabData.badgeCount > 0 && (
+                {displayBadgeCount !== undefined && displayBadgeCount > 0 && (
                   <View
                     style={[
                       styles.badge,
@@ -245,7 +261,7 @@ export const EducationalTabBar: React.FC<BottomTabBarProps> = ({ state, descript
                     ]}
                   >
                     <Text style={styles.badgeText}>
-                      {tabData.badgeCount > 9 ? '9+' : tabData.badgeCount}
+                      {displayBadgeCount > 9 ? '9+' : displayBadgeCount}
                     </Text>
                   </View>
                 )}

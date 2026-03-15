@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, KeyboardAvoidingView, Platform, StatusBar, Animated, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, KeyboardAvoidingView, Platform, StatusBar, Animated, FlatList, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { db } from '../../api/firebaseConfig';
-import { collection, getDocs, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchAdminFeeRecords } from '../../store/slices/adminSlice';
+import { fetchAdminFeeRecords, updateFeeRecord } from '../../store/slices/adminSlice';
 import type { AdminFeeRecord } from '../../store/slices/adminSlice';
 import { scale } from '../../utils/responsive';
 
@@ -36,19 +36,21 @@ export const AdminFeeScreen: React.FC = () => {
   const [filteredRecords, setFilteredRecords] = useState<FeeRecord[]>([]);
   // const [loading, setLoading] = useState(true); // managed by redux
   const [searchQuery, setSearchQuery] = useState('');
-  const [visibleCount, setVisibleCount] = useState(10);
+  const [visibleCount, setVisibleCount] = useState(20);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<FeeRecord | null>(null);
   const [classPickerVisible, setClassPickerVisible] = useState(false);
-  const [monthPickerVisible, setMonthPickerVisible] = useState(false);
 
   // Form fields — student info is read-only from Redux, only fee fields are editable
   const [feeMonth, setFeeMonth] = useState<string[]>([]);
-  const [totalFee, setTotalFee] = useState('50000');
+  const [totalFee, setTotalFee] = useState('2500');
   const [paidAmount, setPaidAmount] = useState('0');
   const [filterClass, setFilterClass] = useState('All');
   // Resolved student from Redux store
   const [resolvedStudent, setResolvedStudent] = useState<any>(null);
+  // Fee payment history fetched from Firestore
+  const [feeHistory, setFeeHistory] = useState<{ date: string; amount: number; method: string; months?: string }[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // Animations
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -82,21 +84,30 @@ export const AdminFeeScreen: React.FC = () => {
         // Filter by Status
         result = result.filter(record => record.status.toLowerCase() === filterClass.toLowerCase());
       } else {
-        // Filter by Class
-        result = result.filter(record => record.class === filterClass);
+        // Filter by Class — check fee record AND matched student's class/grade
+        result = result.filter(record => {
+          const student = students.find(s => s.id === record.studentId);
+          const cls = record.class || student?.class || (student as any)?.grade || '';
+          return cls === filterClass;
+        });
       }
     }
 
     // Apply search query
     if (searchQuery.trim() !== '') {
-      result = result.filter(record =>
-        record.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        record.rollno.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      const q = searchQuery.toLowerCase();
+      result = result.filter(record => {
+        const student = students.find(s => s.id === record.studentId);
+        return (
+          (record.studentName || '').toLowerCase().includes(q) ||
+          (record.rollno || '').toLowerCase().includes(q) ||
+          (student?.fullname || '').toLowerCase().includes(q)
+        );
+      });
     }
 
     setFilteredRecords(result);
-  }, [searchQuery, feeRecords, filterClass]);
+  }, [searchQuery, feeRecords, filterClass, students]);
 
   // Fetch logic moved to Redux thunk
   // const fetchStudentsAndFees = async () => {
@@ -141,9 +152,9 @@ export const AdminFeeScreen: React.FC = () => {
   //           studentId: student.id,
   //           studentName: student.fullname,
   //           rollno: student.rollno,
-  //           totalFee: 50000,
+  //           totalFee: 2500,
   //           paidAmount: 0,
-  //           pendingAmount: 50000,
+  //           pendingAmount: 2500,
   //           status: 'pending',
   //         };
   //       }
@@ -159,73 +170,89 @@ export const AdminFeeScreen: React.FC = () => {
   //   }
   // };
 
-  const openEditModal = (record: FeeRecord) => {
+  const openEditModal = async (record: FeeRecord) => {
     setSelectedRecord(record);
-    // Look up live student data from Redux store
     const student = students.find(s => s.id === record.studentId);
     setResolvedStudent(student || null);
     const existingMonths = (record.month || student?.month || '').split(',').map((m: string) => m.trim()).filter(Boolean);
     setFeeMonth(existingMonths);
     setTotalFee(record.totalFee.toString());
     setPaidAmount(record.paidAmount.toString());
+    setFeeHistory([]);
     setEditModalVisible(true);
+
+    // Fetch payment history from Firestore in background
+    setHistoryLoading(true);
+    try {
+      const snap = await getDoc(doc(db, 'fees', record.studentId));
+      if (snap.exists()) {
+        const data = snap.data();
+        const payments = (data.payments || []) as { date: string; amount: number; method: string; months?: string }[];
+        setFeeHistory([...payments].reverse()); // newest first
+      }
+    } catch (e) {
+      // silently ignore — history is non-critical
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
-  const saveFeeRecord = async () => {
+  const saveFeeRecord = () => {
     if (!selectedRecord) return;
 
     const name = resolvedStudent?.fullname || resolvedStudent?.name || selectedRecord.studentName;
-    const roll = resolvedStudent?.rollno || selectedRecord.rollno;
-    const cls = resolvedStudent?.class || selectedRecord.class;
+    const monthString = feeMonth.join(', ');
+    const total = parseInt(totalFee) || 0;
+    const paid = Math.min(parseInt(paidAmount) || 0, total); // never exceed total
 
     if (feeMonth.length === 0) {
       Alert.alert('Error', 'Please select at least one fee month');
       return;
     }
 
-    const monthString = feeMonth.join(', ');
+    // ── 1. Optimistic update — instant UI, no waiting ──
+    dispatch(updateFeeRecord({
+      studentId: selectedRecord.studentId,
+      totalFee: total,
+      paidAmount: paid,
+      month: monthString,
+    }));
+    setEditModalVisible(false); // close immediately
 
-    const total = parseInt(totalFee) || 0;
-    const paid = parseInt(paidAmount) || 0;
-    const pending = total - paid;
+    // ── 2. Firestore writes in background ──
+    const newPayment = paid > 0
+      ? { date: new Date().toISOString().split('T')[0], amount: paid, method: 'Admin Update', months: monthString }
+      : null;
 
-    try {
-      // Update fee month in student record
-      await updateDoc(doc(db, 'students', selectedRecord.studentId), {
-        month: monthString,
-      });
+    // Fetch existing payments, append new one
+    getDoc(doc(db, 'fees', selectedRecord.studentId)).then((snap: any) => {
+      const existing: any[] = snap.exists() ? (snap.data().payments || []) : [];
+      const updatedPayments = newPayment ? [...existing, newPayment] : existing;
 
-      // Update fee record
       const feeData = {
         studentName: name,
         totalFee: total,
         paidAmount: paid,
-        pendingAmount: pending,
+        pendingAmount: total - paid,
         breakdown: {
           tuition: Math.floor(total * 0.7),
           books: Math.floor(total * 0.1),
           labs: Math.floor(total * 0.15),
           exam: Math.floor(total * 0.05),
         },
-        payments: paid > 0 ? [
-          {
-            date: new Date().toISOString().split('T')[0],
-            amount: paid,
-            method: 'Admin Update',
-          }
-        ] : [],
+        payments: updatedPayments,
         lastUpdated: new Date().toISOString(),
       };
 
-      await setDoc(doc(db, 'fees', selectedRecord.studentId), feeData);
-
-      Alert.alert('Success', 'Fee record updated successfully');
-      setEditModalVisible(false);
+      return Promise.all([
+        updateDoc(doc(db, 'students', selectedRecord.studentId), { month: monthString }),
+        setDoc(doc(db, 'fees', selectedRecord.studentId), feeData),
+      ]);
+    }).catch((error: any) => {
+      console.error('Error saving fee record:', error);
       dispatch(fetchAdminFeeRecords());
-    } catch (error) {
-      console.error('Error saving records:', error);
-      Alert.alert('Error', 'Failed to save changes');
-    }
+      Alert.alert('Sync Error', 'Changes shown locally but failed to save to server.');
+    });
   };
 
   const getStatusColor = (status: string) => {
@@ -328,6 +355,11 @@ export const AdminFeeScreen: React.FC = () => {
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={16} color={theme.textSecondary} />
+              </TouchableOpacity>
+            )}
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.compactFilterScroll}>
@@ -363,85 +395,83 @@ export const AdminFeeScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         onEndReached={() => {
           if (visibleCount < filteredRecords.length) {
-            setVisibleCount(prev => prev + 10);
+            setVisibleCount(prev => prev + 20);
           }
         }}
         onEndReachedThreshold={0.3}
         ListFooterComponent={
           visibleCount < filteredRecords.length ? (
             <TouchableOpacity
-              onPress={() => setVisibleCount(prev => prev + 10)}
+              onPress={() => setVisibleCount(prev => prev + 20)}
               style={{ alignItems: 'center', paddingVertical: 14, marginBottom: 10 }}
             >
               <Text style={{ fontSize: 13, fontWeight: '600', color: theme.primary }}>
                 Load more ({filteredRecords.length - visibleCount} remaining)
               </Text>
             </TouchableOpacity>
+          ) : filteredRecords.length > 0 ? (
+            <Text style={{ textAlign: 'center', fontSize: 11, color: theme.textSecondary, paddingVertical: 10 }}>
+              Showing {Math.min(visibleCount, filteredRecords.length)} of {filteredRecords.length} records
+            </Text>
           ) : null
         }
         renderItem={({ item, index }) => {
           const matchedStudent = students.find(st => st.id === item.studentId);
-          const displayClass = item.class || matchedStudent?.class || 'N/A';
-          const displayFather = matchedStudent?.fatherName || 'N/A';
+          const displayClass = item.class || matchedStudent?.class || (matchedStudent as any)?.grade || 'N/A';
+          const initial = (item.studentName || '?')[0].toUpperCase();
+          const statusColor = getStatusColor(item.status);
+          const isEven = index % 2 === 0;
           return (
-            <Animated.View
-              style={{
-                opacity: listAnim,
-                transform: [{
-                  translateY: listAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [18, 0],
-                  }),
-                }],
-              }}
+            <TouchableOpacity
+              style={[styles.tableRow, {
+                backgroundColor: isEven
+                  ? (isDark ? theme.card : '#fff')
+                  : (isDark ? theme.card + 'CC' : '#f9fafb'),
+                borderBottomColor: theme.border + '50',
+              }]}
+              onPress={() => openEditModal(item)}
+              activeOpacity={0.7}
             >
-              <TouchableOpacity
-                style={[styles.card, {
-                  backgroundColor: isDark ? theme.card : '#fff',
-                  borderColor: theme.border,
-                }]}
-                onPress={() => openEditModal(item)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.row1}>
-                  <View style={[styles.avatarSmall, { backgroundColor: `${getStatusColor(item.status)}15` }]}>
-                    <Text style={[styles.avatarTextSmall, { color: getStatusColor(item.status) }]}>
-                      {item.studentName.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={styles.titleBlock}>
-                    <Text style={[styles.listName, { color: theme.text }]} numberOfLines={1}>
-                      {item.studentName}
-                    </Text>
-                    <Text style={[styles.meta, { color: theme.textSecondary }]} numberOfLines={1}>
-                      {item.rollno} · {displayClass} · F: {displayFather}
-                    </Text>
-                  </View>
-                  <View style={[styles.badge, { backgroundColor: `${getStatusColor(item.status)}15` }]}>
-                    <View style={[styles.dot, { backgroundColor: getStatusColor(item.status) }]} />
-                    <Text style={[styles.badgeText, { color: getStatusColor(item.status) }]}>
-                      {item.status}
-                    </Text>
-                  </View>
-                </View>
+              {/* # */}
+              <Text style={[styles.trCol, styles.trSerial, { color: theme.textSecondary }]}>{index + 1}</Text>
 
-                <View style={styles.footer}>
-                  <View style={styles.senderRow}>
-                    <Ionicons name="calendar-outline" size={14} color={theme.textSecondary} />
-                    <Text style={[styles.sender, { color: theme.textSecondary }]}>
-                      {item.month || 'Current'}
-                    </Text>
-                  </View>
-                  <View style={styles.actions}>
-                    <Text style={[styles.listAmountTotal, { color: theme.text }]}>
-                      PKR {item.totalFee.toLocaleString()}
-                    </Text>
-                  </View>
-                </View>
+              {/* Avatar initial */}
+              <View style={[styles.trAvatar, { backgroundColor: statusColor + '18' }]}>
+                <Text style={{ fontSize: 11, fontWeight: '700', color: statusColor }}>{initial}</Text>
+              </View>
+
+              {/* Name + roll + class */}
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: theme.text }} numberOfLines={1}>{item.studentName}</Text>
+                <Text style={{ fontSize: 10, color: theme.textSecondary }} numberOfLines={1}>{item.rollno} · {displayClass}</Text>
+              </View>
+
+              {/* Status badge */}
+              <View style={[styles.trStatusBadge, { backgroundColor: statusColor + '15' }]}>
+                <View style={[styles.trDot, { backgroundColor: statusColor }]} />
+                <Text style={[styles.trStatusText, { color: statusColor }]}>{item.status}</Text>
+              </View>
+
+              {/* Amount */}
+              <Text style={[styles.trAmount, { color: theme.text }]}>{item.totalFee.toLocaleString()}</Text>
+
+              {/* Edit */}
+              <TouchableOpacity onPress={() => openEditModal(item)} style={styles.trEditBtn}>
+                <Ionicons name="pencil" size={13} color={theme.primary} />
               </TouchableOpacity>
-            </Animated.View>
+            </TouchableOpacity>
           );
         }}
+        ListHeaderComponent={
+          <View style={[styles.tableHeader, { backgroundColor: isDark ? theme.card : '#f8fafc', borderBottomColor: theme.border }]}>
+            <Text style={[styles.trCol, styles.trSerial, styles.thCell, { color: theme.textSecondary }]}>#</Text>
+            <View style={{ width: 26 }} />
+            <Text style={[styles.thCell, { color: theme.textSecondary, flex: 1, marginLeft: 8 }]}>STUDENT</Text>
+            <Text style={[styles.thCell, { color: theme.textSecondary, width: 58 }]}>STATUS</Text>
+            <Text style={[styles.thCell, styles.trAmount, { color: theme.textSecondary }]}>TOTAL</Text>
+            <View style={{ width: 28 }} />
+          </View>
+        }
         ListEmptyComponent={
           <View style={[styles.emptyCard, {
             backgroundColor: isDark ? theme.card : '#fff',
@@ -493,96 +523,74 @@ export const AdminFeeScreen: React.FC = () => {
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+              contentContainerStyle={{ padding: 12, paddingBottom: 24 }}
               keyboardShouldPersistTaps="handled"
             >
-              {/* Student Info Card */}
-              <Text style={{ fontSize: 10, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6, marginLeft: 2 }}>STUDENT INFO</Text>
-              <View style={{ backgroundColor: theme.card, borderRadius: 12, borderWidth: 1, borderColor: theme.border, overflow: 'hidden', marginBottom: 16 }}>
-                {/* Name */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: theme.border }}>
-                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#10b98115', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                    <Ionicons name="person" size={16} color="#10b981" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 9, fontWeight: '600', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 }}>Student Name</Text>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: theme.text, marginTop: 1 }} numberOfLines={1}>
+              {/* Student Info — compact 2-column read-only grid */}
+              <Text style={{ fontSize: 9, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5, marginLeft: 2 }}>STUDENT INFO</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                {/* Name + Father */}
+                <View style={{ flex: 1 }}>
+                  <View style={[feeStyles.roCell, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <Text style={[feeStyles.roCellLabel, { color: theme.textSecondary }]}>Name</Text>
+                    <Text style={[feeStyles.roCellValue, { color: theme.text }]} numberOfLines={1}>
                       {resolvedStudent?.fullname || resolvedStudent?.name || selectedRecord?.studentName || '—'}
                     </Text>
                   </View>
-                  <View style={{ paddingHorizontal: 6, paddingVertical: 2, backgroundColor: '#10b98115', borderRadius: 4 }}>
-                    <Text style={{ fontSize: 8, color: '#10b981', fontWeight: '700' }}>LOCKED</Text>
-                  </View>
-                </View>
-                {/* Father Name */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: theme.border }}>
-                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#6366f115', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                    <Ionicons name="people" size={16} color="#6366f1" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 9, fontWeight: '600', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 }}>Father Name</Text>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text, marginTop: 1 }} numberOfLines={1}>
+                  <View style={[feeStyles.roCell, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 6 }]}>
+                    <Text style={[feeStyles.roCellLabel, { color: theme.textSecondary }]}>Father</Text>
+                    <Text style={[feeStyles.roCellValue, { color: theme.text }]} numberOfLines={1}>
                       {resolvedStudent?.fatherName || 'N/A'}
                     </Text>
                   </View>
                 </View>
-                {/* Roll & Class */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10 }}>
-                  <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#f59e0b15', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                    <Ionicons name="id-card" size={16} color="#f59e0b" />
+                {/* Roll + Class */}
+                <View style={{ flex: 1 }}>
+                  <View style={[feeStyles.roCell, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <Text style={[feeStyles.roCellLabel, { color: theme.textSecondary }]}>Roll No</Text>
+                    <Text style={[feeStyles.roCellValue, { color: theme.text }]} numberOfLines={1}>
+                      {resolvedStudent?.rollno || selectedRecord?.rollno || '—'}
+                    </Text>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 9, fontWeight: '600', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 }}>Roll No & Class</Text>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: theme.text, marginTop: 1 }}>
-                      {resolvedStudent?.rollno || selectedRecord?.rollno || '—'}  ·  {resolvedStudent?.class || selectedRecord?.class || '—'}
+                  <View style={[feeStyles.roCell, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 6 }]}>
+                    <Text style={[feeStyles.roCellLabel, { color: theme.textSecondary }]}>Class</Text>
+                    <Text style={[feeStyles.roCellValue, { color: theme.text }]} numberOfLines={1}>
+                      {resolvedStudent?.grade || resolvedStudent?.class || selectedRecord?.class || '—'}
                     </Text>
                   </View>
                 </View>
               </View>
 
-              {/* Fee Month Picker */}
-              <Text style={{ fontSize: 10, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6, marginLeft: 2 }}>FEE MONTHS</Text>
-              <TouchableOpacity
-                style={{ backgroundColor: theme.card, borderRadius: 12, borderWidth: 1, borderColor: theme.border, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}
-                onPress={() => setMonthPickerVisible(true)}
-              >
-                <Ionicons name="calendar-outline" size={18} color="#10b981" />
-                <Text style={{ flex: 1, fontSize: 13, color: feeMonth.length > 0 ? theme.text : theme.textSecondary, marginLeft: 10, fontWeight: '500' }} numberOfLines={1}>
-                  {feeMonth.length > 0 ? feeMonth.join(', ') : 'Tap to select month(s)'}
-                </Text>
-                {feeMonth.length > 0 && (
-                  <View style={{ backgroundColor: '#10b98115', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginRight: 6 }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#10b981' }}>{feeMonth.length}</Text>
-                  </View>
-                )}
-                <Ionicons name="chevron-down" size={16} color={theme.textSecondary} />
-              </TouchableOpacity>
 
-              {/* Fee Details */}
-              <Text style={{ fontSize: 10, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6, marginLeft: 2 }}>FEE DETAILS</Text>
-              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
-                <View style={{ flex: 1, backgroundColor: theme.card, borderRadius: 12, borderWidth: 1, borderColor: theme.border, padding: 14 }}>
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Total Fee</Text>
+              {/* Fee Details — 2-column input grid */}
+              <Text style={{ fontSize: 9, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 5, marginLeft: 2 }}>FEE DETAILS</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                <View style={{ flex: 1, backgroundColor: theme.card, borderRadius: 10, borderWidth: 1, borderColor: theme.border, padding: 10 }}>
+                  <Text style={{ fontSize: 9, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Total Fee</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 12, fontWeight: '800', color: '#10b981', marginRight: 4 }}>PKR</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#10b981', marginRight: 3 }}>PKR</Text>
                     <TextInput
-                      style={{ flex: 1, fontSize: 18, fontWeight: '800', color: theme.text, padding: 0 }}
+                      style={{ flex: 1, fontSize: 16, fontWeight: '800', color: theme.text, padding: 0 }}
                       value={totalFee}
                       onChangeText={setTotalFee}
                       keyboardType="numeric"
-                      placeholder="50000"
+                      placeholder="4500"
                       placeholderTextColor={theme.textSecondary}
                     />
                   </View>
                 </View>
-                <View style={{ flex: 1, backgroundColor: theme.card, borderRadius: 12, borderWidth: 1, borderColor: theme.border, padding: 14 }}>
-                  <Text style={{ fontSize: 9, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Paid Amount</Text>
+                <View style={{ flex: 1, backgroundColor: theme.card, borderRadius: 10, borderWidth: 1, borderColor: theme.border, padding: 10 }}>
+                  <Text style={{ fontSize: 9, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Paid Amount</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 12, fontWeight: '800', color: '#16a34a', marginRight: 4 }}>PKR</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: '#16a34a', marginRight: 3 }}>PKR</Text>
                     <TextInput
-                      style={{ flex: 1, fontSize: 18, fontWeight: '800', color: theme.text, padding: 0 }}
+                      style={{ flex: 1, fontSize: 16, fontWeight: '800', color: theme.text, padding: 0 }}
                       value={paidAmount}
-                      onChangeText={setPaidAmount}
+                      onChangeText={(v) => {
+                        const p = parseInt(v) || 0;
+                        const t = parseInt(totalFee) || 0;
+                        setPaidAmount(t > 0 && p > t ? t.toString() : v);
+                      }}
                       keyboardType="numeric"
                       placeholder="0"
                       placeholderTextColor={theme.textSecondary}
@@ -591,20 +599,59 @@ export const AdminFeeScreen: React.FC = () => {
                 </View>
               </View>
 
+              {/* Inline Month Chips — after fee details */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5, marginTop: 2 }}>
+                <Text style={{ fontSize: 9, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8, marginLeft: 2 }}>
+                  PAID MONTHS {new Date().getFullYear()}
+                </Text>
+                {feeMonth.length > 0 && (
+                  <TouchableOpacity onPress={() => setFeeMonth([])}>
+                    <Text style={{ fontSize: 9, fontWeight: '700', color: '#ef4444' }}>CLEAR</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                {monthOptions.map((month) => {
+                  const sel = feeMonth.includes(month);
+                  return (
+                    <TouchableOpacity
+                      key={month}
+                      onPress={() =>
+                        setFeeMonth(prev =>
+                          prev.includes(month) ? prev.filter(m => m !== month) : [...prev, month]
+                        )
+                      }
+                      activeOpacity={0.7}
+                      style={[
+                        feeStyles.inlineChip,
+                        sel
+                          ? { backgroundColor: '#10b981', borderColor: '#10b981' }
+                          : { backgroundColor: 'transparent', borderColor: theme.border },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: sel ? '#fff' : theme.text }}>
+                        {month.slice(0, 3)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
               {/* Live Summary */}
               {(() => {
                 const pending = (parseInt(totalFee) || 0) - (parseInt(paidAmount) || 0);
                 const isPaid = pending === 0;
                 const clr = isPaid ? '#16a34a' : '#dc2626';
                 return (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: `${clr}08`, borderWidth: 1, borderColor: `${clr}20`, borderRadius: 12, padding: 14, marginBottom: 20 }}>
-                    <Ionicons name={isPaid ? 'checkmark-circle' : 'alert-circle'} size={22} color={clr} />
-                    <View style={{ marginLeft: 10, flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '800', color: clr }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: `${clr}08`, borderWidth: 1, borderColor: `${clr}20`, borderRadius: 10, padding: 10, marginBottom: 14 }}>
+                    <Ionicons name={isPaid ? 'checkmark-circle' : 'alert-circle'} size={18} color={clr} />
+                    <View style={{ marginLeft: 8, flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '800', color: clr }}>
                         {isPaid ? 'Fully Paid' : 'Payment Due'}
                       </Text>
-                      <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>
+                      <Text style={{ fontSize: 10, color: theme.textSecondary }}>
                         Pending: PKR {pending.toLocaleString()}
+                        {feeMonth.length > 0 ? `  ·  ${feeMonth.length} month${feeMonth.length > 1 ? 's' : ''} selected` : ''}
                       </Text>
                     </View>
                   </View>
@@ -616,89 +663,67 @@ export const AdminFeeScreen: React.FC = () => {
                 colors={['#10b981', '#059669']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={{ borderRadius: 12, marginBottom: 8 }}
+                style={{ borderRadius: 10 }}
               >
                 <TouchableOpacity
                   onPress={saveFeeRecord}
-                  style={{ paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
+                  style={{ paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}
                 >
-                  <Ionicons name="checkmark-circle" size={18} color="#fff" />
-                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '800', marginLeft: 8 }}>Save Changes</Text>
+                  <Ionicons name="checkmark-circle" size={17} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800', marginLeft: 7 }}>Save Changes</Text>
                 </TouchableOpacity>
               </LinearGradient>
 
-              <TouchableOpacity
-                onPress={() => setEditModalVisible(false)}
-                style={{ alignItems: 'center', paddingVertical: 10 }}
-              >
-                <Text style={{ fontSize: 13, color: theme.textSecondary, fontWeight: '600' }}>Cancel</Text>
-              </TouchableOpacity>
+              {/* Fee History */}
+              <View style={{ marginTop: 16 }}>
+                <Text style={{ fontSize: 9, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, marginLeft: 2 }}>
+                  FEE HISTORY
+                </Text>
+                {historyLoading ? (
+                  <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+                    <ActivityIndicator size="small" color={theme.primary} />
+                  </View>
+                ) : feeHistory.length === 0 ? (
+                  <View style={[feeStyles.historyEmpty, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <Ionicons name="receipt-outline" size={20} color={theme.textSecondary} />
+                    <Text style={{ fontSize: 11, color: theme.textSecondary, marginLeft: 8 }}>No previous payments</Text>
+                  </View>
+                ) : (
+                  feeHistory.map((entry, idx) => (
+                    <View key={idx} style={[feeStyles.historyRow, {
+                      backgroundColor: idx % 2 === 0 ? theme.card : theme.card + 'AA',
+                      borderColor: theme.border,
+                    }]}>
+                      {/* Left: date + method */}
+                      <View style={[feeStyles.historyDot, { backgroundColor: '#10b98120' }]}>
+                        <Ionicons name="checkmark" size={10} color="#10b981" />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 8 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: theme.text }}>
+                          {entry.date}
+                        </Text>
+                        {entry.months ? (
+                          <Text style={{ fontSize: 9, color: theme.textSecondary }} numberOfLines={1}>
+                            {entry.months}
+                          </Text>
+                        ) : null}
+                      </View>
+                      {/* Right: amount */}
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: '#10b981' }}>
+                        PKR {(entry.amount || 0).toLocaleString()}
+                      </Text>
+                    </View>
+                  ))
+                )}
+              </View>
             </ScrollView>
           </KeyboardAvoidingView>
         </View>
       </Modal>
 
 
-      {/* Month Picker Modal */}
-      <Modal
-        visible={monthPickerVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMonthPickerVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.pickerOverlay}
-          activeOpacity={1}
-          onPress={() => setMonthPickerVisible(false)}
-        >
-          <View style={[styles.pickerContainer, { backgroundColor: theme.card }]}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: scale(10) }}>
-              <Text style={[styles.pickerTitle, { color: theme.text, marginBottom: 0 }]}>Select Months</Text>
-              <TouchableOpacity
-                onPress={() => setMonthPickerVisible(false)}
-                style={{ backgroundColor: theme.primary, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8 }}
-              >
-                <Text style={{ color: '#fff', fontSize: scale(12), fontWeight: '700' }}>Done</Text>
-              </TouchableOpacity>
-            </View>
-            {feeMonth.length > 0 && (
-              <Text style={{ fontSize: scale(10), color: theme.textSecondary, marginBottom: 8 }}>
-                {feeMonth.length} month{feeMonth.length > 1 ? 's' : ''} selected
-              </Text>
-            )}
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
-              {monthOptions.map((monthOption) => {
-                const isSelected = feeMonth.includes(monthOption);
-                return (
-                  <TouchableOpacity
-                    key={monthOption}
-                    style={[styles.pickerOption, { backgroundColor: isSelected ? theme.primary + '15' : 'transparent' }]}
-                    onPress={() => {
-                      setFeeMonth(prev =>
-                        prev.includes(monthOption)
-                          ? prev.filter(m => m !== monthOption)
-                          : [...prev, monthOption]
-                      );
-                    }}
-                  >
-                    <Text style={[styles.pickerOptionText, {
-                      color: isSelected ? theme.primary : theme.text
-                    }]}>
-                      {monthOption}
-                    </Text>
-                    <Ionicons
-                      name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
-                      size={20}
-                      color={isSelected ? theme.primary : theme.border}
-                    />
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    </SafeAreaView >
+    </SafeAreaView>
+
   );
 };
 
@@ -773,7 +798,6 @@ const styles = StyleSheet.create({
 
   /* ── List ── */
   listContent: {
-    paddingHorizontal: scale(16),
     paddingBottom: scale(24),
     paddingTop: scale(4),
   },
@@ -790,6 +814,39 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 1,
   },
+
+  /* ── Compact Table ── */
+  tableHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderBottomWidth: 1,
+  },
+  thCell: {
+    fontSize: 9, fontWeight: '700',
+    letterSpacing: 0.5, textTransform: 'uppercase',
+  },
+  tableRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 12, paddingVertical: 9,
+    borderBottomWidth: 0.5,
+  },
+  trCol: {},
+  trSerial: { width: 22, fontSize: 10, textAlign: 'center', marginRight: 4 },
+  trAvatar: {
+    width: 26, height: 26, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  trStatusBadge: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 6, paddingVertical: 2,
+    borderRadius: 6, marginRight: 8, width: 58,
+  },
+  trDot: { width: 5, height: 5, borderRadius: 2.5, marginRight: 3 },
+  trStatusText: { fontSize: 9, fontWeight: '700', textTransform: 'capitalize' },
+  trAmount: { fontSize: 11, fontWeight: '700', width: 60, textAlign: 'right' },
+  trEditBtn: { padding: 6, borderRadius: 6, marginLeft: 4 },
+
+
   row1: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1029,41 +1086,109 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
-  /* ── Picker Modal ── */
+  /* ── Picker Modal (month bottom sheet) ── */
   pickerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: scale(20),
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
   },
-  pickerContainer: {
-    width: '100%',
-    maxWidth: scale(300),
-    borderRadius: scale(16),
-    padding: scale(20),
+  pickerSheet: {
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    paddingTop: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 12,
   },
-  pickerTitle: {
-    fontSize: scale(16),
-    fontWeight: '700',
-    marginBottom: scale(16),
-    textAlign: 'center',
+  sheetHandle: {
+    width: 36, height: 4, borderRadius: 2,
+    alignSelf: 'center', marginBottom: 12,
   },
-  pickerOption: {
+  sheetHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', marginBottom: 14,
+  },
+  sheetTitle: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
+  sheetBtn: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 8, minWidth: 52, alignItems: 'center',
+  },
+  monthGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: scale(16),
-    borderRadius: scale(12),
-    marginBottom: scale(8),
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  pickerOptionText: {
-    fontSize: scale(14),
-    fontWeight: '600',
+  monthChip: {
+    width: '30%',
+    flexGrow: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  monthChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });
+
+// Compact read-only cell styles for the Edit Fee modal
+const feeStyles = StyleSheet.create({
+  roCell: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  roCellLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 2,
+  },
+  roCellValue: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  inlineChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 44,
+  },
+  historyEmpty: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  historyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 6,
+  },
+  historyDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
+

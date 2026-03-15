@@ -7,6 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { db, firebaseConfig } from '../../api/firebaseConfig';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { initializeAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+// @ts-ignore
+import { getReactNativePersistence } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, setDoc, deleteDoc, serverTimestamp, getDocs, query, where, collection } from 'firebase/firestore';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -35,6 +38,101 @@ const CATEGORIES = ['Weekly', 'Monthly', 'Quarterly', 'Half-Year', 'Final'];
 const STATUS_OPTIONS = ['Pending', 'Pass', 'Fail', 'Absent'];
 const TITLE_OPTIONS = Array.from({ length: 20 }, (_, i) => `T${i + 1}`);
 const CLASS_OPTIONS = ['9th', '10th', '1st Year', '2nd Year'];
+const ROW_HEIGHT = 56; // Fixed row height for getItemLayout
+
+// ─── Memoized row component ───────────────────────────────────────────────────
+type StudentProgress = {
+  studentName: string; rollNo: string; studentClass: string;
+  totalMarks: number; obtainedMarks: number; testCount: number; tests: string[];
+  latestExam: ExamEntry;
+};
+
+const ExamRow = React.memo((
+  { student, index, theme, onPress }: {
+    student: StudentProgress;
+    index: number;
+    theme: any;
+    onPress: (exam: ExamEntry) => void;
+  }
+) => {
+  const pct = student.totalMarks > 0 ? (student.obtainedMarks / student.totalMarks) * 100 : 0;
+  const barColor = pct >= 80 ? '#10b981' : pct >= 60 ? '#3b82f6' : pct >= 40 ? '#f59e0b' : '#ef4444';
+  const isEven = index % 2 === 0;
+  return (
+    <TouchableOpacity
+      activeOpacity={0.65}
+      onPress={() => onPress(student.latestExam)}
+      style={[
+        examRowStyles.row,
+        {
+          backgroundColor: isEven ? theme.card : theme.background,
+          borderBottomColor: theme.border,
+          height: ROW_HEIGHT,
+        },
+      ]}
+    >
+      {/* Avatar + Name */}
+      <View style={{ flex: 2.2, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+        <View style={[examRowStyles.avatar, { backgroundColor: barColor + '18' }]}>
+          <Text style={{ fontSize: 10, fontWeight: '800', color: barColor }}>
+            {(student.studentName || '?').charAt(0).toUpperCase()}
+          </Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: theme.text }} numberOfLines={1}>
+            {student.studentName}
+          </Text>
+          <Text style={{ fontSize: 10, color: theme.textSecondary }} numberOfLines={1}>
+            {student.rollNo || '—'}
+          </Text>
+        </View>
+      </View>
+      {/* Class */}
+      <Text style={{ flex: 0.8, fontSize: 11, color: theme.textSecondary, textAlign: 'center' }} numberOfLines={1}>
+        {student.studentClass || '—'}
+      </Text>
+      {/* Tests */}
+      <View style={{ flex: 0.6, alignItems: 'center' }}>
+        <Text style={{ fontSize: 11, fontWeight: '600', color: theme.text }}>
+          {student.testCount}
+        </Text>
+      </View>
+      {/* Marks */}
+      <Text style={{ flex: 0.7, fontSize: 10, color: theme.textSecondary, textAlign: 'center' }} numberOfLines={1}>
+        {student.obtainedMarks}/{student.totalMarks}
+      </Text>
+      {/* Score Badge */}
+      <View style={{ flex: 0.7, alignItems: 'flex-end' }}>
+        <View style={[examRowStyles.scoreBadge, { backgroundColor: barColor + '18', borderColor: barColor + '35' }]}>
+          <Text style={{ fontSize: 11, fontWeight: '800', color: barColor }}>{pct.toFixed(0)}%</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
+
+const examRowStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+  },
+  avatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  scoreBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+});
 
 export const AdminExamsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -504,7 +602,9 @@ export const AdminExamsScreen: React.FC = () => {
                 if (existingProfile.empty) {
                   const password = generatePassword();
                   secondaryApp = initializeApp(firebaseConfig, `examStudent_${Date.now()}_${addedCount}`);
-                  const secondaryAuth = initializeAuth(secondaryApp);
+                  const secondaryAuth = initializeAuth(secondaryApp, {
+                    persistence: getReactNativePersistence(AsyncStorage)
+                  });
                   const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
                   const uid = userCredential.user.uid;
 
@@ -641,111 +741,6 @@ export const AdminExamsScreen: React.FC = () => {
     setModalVisible(true);
   };
 
-  // Bulk-create login accounts for existing exam students who don't have one
-  const [creatingAccounts, setCreatingAccounts] = useState(false);
-  const [acctProgress, setAcctProgress] = useState(0);
-  const [acctTotal, setAcctTotal] = useState(0);
-
-  const handleCreateAccountsForExisting = () => {
-    // Collect unique emails from all exams
-    const emailMap = new Map<string, { studentName: string; rollNo: string; studentClass: string }>();
-    for (const e of exams) {
-      const email = (e.studentEmail || '').trim().toLowerCase();
-      if (email && !emailMap.has(email)) {
-        emailMap.set(email, {
-          studentName: e.studentName || '',
-          rollNo: e.rollNo || '',
-          studentClass: e.studentClass || '',
-        });
-      }
-    }
-
-    if (emailMap.size === 0) {
-      Alert.alert('No Emails', 'No student emails found in existing records.');
-      return;
-    }
-
-    Alert.alert(
-      'Create Accounts',
-      `Found ${emailMap.size} unique student email(s). Create login accounts for those who don't have one yet?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Create', style: 'default', onPress: async () => {
-            setCreatingAccounts(true);
-            setAcctTotal(emailMap.size);
-            setAcctProgress(0);
-
-            let created = 0;
-            let skipped = 0;
-            let failed = 0;
-            let processed = 0;
-
-            const generatePassword = () => {
-              const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$!';
-              let pass = '';
-              for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
-              return pass;
-            };
-
-            for (const [email, info] of emailMap) {
-              let secondaryApp;
-              try {
-                // Check if profile already exists
-                const existing = await getDocs(
-                  query(collection(db, 'studentsprofile'), where('email', '==', email))
-                );
-                if (!existing.empty) {
-                  skipped++;
-                } else {
-                  const password = generatePassword();
-                  secondaryApp = initializeApp(firebaseConfig, `bulkAcct_${Date.now()}_${processed}`);
-                  const secondaryAuth = initializeAuth(secondaryApp);
-                  const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-                  const uid = userCredential.user.uid;
-
-                  await setDoc(doc(db, 'studentsprofile', uid), {
-                    fullname: info.studentName,
-                    fathername: '',
-                    email: email,
-                    phone: '',
-                    rollno: info.rollNo,
-                    class: info.studentClass,
-                    section: '',
-                    session: '',
-                    image: '',
-                    gender: '',
-                    role: 'student',
-                    password: password,
-                    createdAt: serverTimestamp(),
-                    updatedAt: serverTimestamp(),
-                  });
-                  created++;
-                }
-              } catch (err: any) {
-                console.warn('Bulk account error for', email, err?.message);
-                failed++;
-              } finally {
-                if (secondaryApp) {
-                  try { await deleteApp(secondaryApp); } catch (_) { }
-                }
-              }
-              processed++;
-              setAcctProgress(processed);
-            }
-
-            setCreatingAccounts(false);
-            setAcctProgress(0);
-            setAcctTotal(0);
-            Alert.alert(
-              'Accounts Created',
-              `Created: ${created}\nAlready existed: ${skipped}\nFailed: ${failed}`
-            );
-          }
-        },
-      ]
-    );
-  };
 
   const onDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
@@ -813,9 +808,6 @@ export const AdminExamsScreen: React.FC = () => {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Exams & Results</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <TouchableOpacity onPress={handleCreateAccountsForExisting} style={styles.addButton} disabled={creatingAccounts}>
-            <Ionicons name="key" size={20} color={creatingAccounts ? theme.textSecondary : '#f59e0b'} />
-          </TouchableOpacity>
           <TouchableOpacity onPress={() => openModal()} style={styles.addButton}>
             <Ionicons name="add" size={24} color={theme.primary} />
           </TouchableOpacity>
@@ -945,137 +937,91 @@ export const AdminExamsScreen: React.FC = () => {
         <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <ActivityIndicator size="small" color={theme.primary} />
-              <Text style={{ fontSize: 13, fontWeight: '700', color: theme.text }}>Uploading Records...</Text>
+              <ActivityIndicator size="small" color="#f59e0b" />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: theme.text }}>Uploading Exams...</Text>
             </View>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: theme.primary }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: '#f59e0b' }}>
               {uploadProgress}/{uploadTotal} ({uploadTotal > 0 ? Math.round((uploadProgress / uploadTotal) * 100) : 0}%)
             </Text>
           </View>
           <View style={{ height: 6, borderRadius: 3, backgroundColor: theme.border + '40', overflow: 'hidden' }}>
-            <View style={{ height: '100%', borderRadius: 3, backgroundColor: theme.primary, width: `${uploadTotal > 0 ? Math.min((uploadProgress / uploadTotal) * 100, 100) : 0}%` }} />
+            <View style={{ height: '100%', borderRadius: 3, backgroundColor: '#f59e0b', width: `${uploadTotal > 0 ? Math.min((uploadProgress / uploadTotal) * 100, 100) : 0}%` }} />
           </View>
           <Text style={{ fontSize: 10, color: theme.textSecondary, marginTop: 4, textAlign: 'center' }}>
-            Please wait while records are being uploaded...
+            Please wait while exam records are being uploaded...
           </Text>
         </View>
       )}
 
-      {/* Account Creation Progress */}
-      {creatingAccounts && acctTotal > 0 && (
-        <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <ActivityIndicator size="small" color="#f59e0b" />
-              <Text style={{ fontSize: 13, fontWeight: '700', color: theme.text }}>Creating Accounts...</Text>
-            </View>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: '#f59e0b' }}>
-              {acctProgress}/{acctTotal} ({acctTotal > 0 ? Math.round((acctProgress / acctTotal) * 100) : 0}%)
-            </Text>
-          </View>
-          <View style={{ height: 6, borderRadius: 3, backgroundColor: theme.border + '40', overflow: 'hidden' }}>
-            <View style={{ height: '100%', borderRadius: 3, backgroundColor: '#f59e0b', width: `${acctTotal > 0 ? Math.min((acctProgress / acctTotal) * 100, 100) : 0}%` }} />
-          </View>
-          <Text style={{ fontSize: 10, color: theme.textSecondary, marginTop: 4, textAlign: 'center' }}>
-            Creating login credentials for students...
-          </Text>
-        </View>
-      )}
+
       {
         loading ? (
           <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
         ) : (
-          <FlatList
-            data={studentProgressList.slice(0, visibleCount)}
-            keyExtractor={(_, idx) => idx.toString()}
-            contentContainerStyle={styles.content}
-            ListHeaderComponent={
-              <Text style={[styles.listTitle, { color: theme.text }]}>Students ({studentProgressList.length})</Text>
-            }
-            ListEmptyComponent={
-              <Text style={[styles.noDataText, { color: theme.textSecondary }]}>No entries found.</Text>
-            }
-            ListFooterComponent={
-              visibleCount < studentProgressList.length ? (
-                <TouchableOpacity
-                  onPress={() => setVisibleCount(prev => prev + 10)}
-                  style={{ alignItems: 'center', paddingVertical: 14, marginBottom: 10 }}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: theme.primary }}>
-                    Load more ({studentProgressList.length - visibleCount} remaining)
-                  </Text>
-                </TouchableOpacity>
-              ) : null
-            }
-            onEndReached={() => {
-              if (visibleCount < studentProgressList.length) {
-                setVisibleCount(prev => prev + 10);
+          <>
+            {/* Compact Table Header */}
+            <View style={[styles.tableHeader, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+              <Text style={[styles.tableHeaderCell, { flex: 2.2, color: theme.textSecondary }]}>STUDENT</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 0.8, textAlign: 'center', color: theme.textSecondary }]}>CLASS</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 0.6, textAlign: 'center', color: theme.textSecondary }]}>TESTS</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 0.7, textAlign: 'center', color: theme.textSecondary }]}>MARKS</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 0.7, textAlign: 'right', color: theme.textSecondary }]}>SCORE</Text>
+            </View>
+            <FlatList
+              data={studentProgressList.slice(0, visibleCount)}
+              keyExtractor={(_, idx) => idx.toString()}
+              contentContainerStyle={styles.tableContent}
+              // ── Performance optimizations ──
+              initialNumToRender={12}
+              maxToRenderPerBatch={10}
+              updateCellsBatchingPeriod={50}
+              windowSize={5}
+              removeClippedSubviews
+              getItemLayout={(_, index) => ({
+                length: ROW_HEIGHT,
+                offset: ROW_HEIGHT * index,
+                index,
+              })}
+              ListEmptyComponent={
+                <Text style={[styles.noDataText, { color: theme.textSecondary }]}>No entries found.</Text>
               }
-            }}
-            onEndReachedThreshold={0.3}
-            renderItem={({ item: student }) => {
-              const pct = student.totalMarks > 0 ? (student.obtainedMarks / student.totalMarks) * 100 : 0;
-              const status = pct >= 40 ? 'Pass' : 'Fail';
-              const barColor = pct >= 80 ? '#10b981' : pct >= 60 ? '#3b82f6' : pct >= 40 ? '#f59e0b' : '#ef4444';
-              return (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    setSelectedExamForOptions(student.latestExam);
+              ListFooterComponent={
+                visibleCount < studentProgressList.length ? (
+                  <TouchableOpacity
+                    onPress={() => setVisibleCount(prev => prev + 20)}
+                    style={{ alignItems: 'center', paddingVertical: 10, marginBottom: 6 }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: theme.primary }}>
+                      Load {Math.min(20, studentProgressList.length - visibleCount)} more  ({studentProgressList.length - visibleCount} remaining)
+                    </Text>
+                  </TouchableOpacity>
+                ) : null
+              }
+              onEndReached={() => {
+                if (visibleCount < studentProgressList.length) {
+                  setVisibleCount(prev => prev + 20);
+                }
+              }}
+              onEndReachedThreshold={0.4}
+              renderItem={({ item: student, index }) => (
+                <ExamRow
+                  student={student}
+                  index={index}
+                  theme={theme}
+                  onPress={(exam) => {
+                    setSelectedExamForOptions(exam);
                     setShowOptionsModal(true);
                   }}
-                  style={{
-                    backgroundColor: theme.card,
-                    borderRadius: 12, padding: 12, marginBottom: 10,
-                    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.06, shadowRadius: 3, elevation: 2,
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{
-                      width: 40, height: 40, borderRadius: 20,
-                      backgroundColor: barColor + '15',
-                      alignItems: 'center', justifyContent: 'center', marginRight: 10,
-                    }}>
-                      <Ionicons name="person" size={18} color={barColor} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: theme.text }} numberOfLines={1}>{student.studentName}</Text>
-                      <Text style={{ fontSize: 11, color: theme.textSecondary }}>
-                        {student.rollNo || 'No ID'}{student.studentClass ? ` · ${student.studentClass}` : ''}
-                      </Text>
-                    </View>
-                    <View style={{
-                      backgroundColor: barColor + '12',
-                      paddingHorizontal: 10, paddingVertical: 4,
-                      borderRadius: 8, alignItems: 'center',
-                      borderWidth: 1, borderColor: barColor + '20',
-                    }}>
-                      <Text style={{ fontSize: 16, fontWeight: '800', color: barColor }}>{pct.toFixed(0)}%</Text>
-                      <Text style={{ fontSize: 8, fontWeight: '700', color: barColor, textTransform: 'uppercase', letterSpacing: 0.3 }}>{status}</Text>
-                    </View>
-                  </View>
-                  <View style={{ height: 5, borderRadius: 3, backgroundColor: theme.border + '40', marginTop: 10, overflow: 'hidden' }}>
-                    <View style={{ height: '100%', borderRadius: 3, backgroundColor: barColor, width: `${Math.min(pct, 100)}%` }} />
-                  </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Ionicons name="documents-outline" size={11} color={theme.textSecondary} />
-                      <Text style={{ fontSize: 10, color: theme.textSecondary, fontWeight: '600' }}>{student.testCount} test{student.testCount > 1 ? 's' : ''}</Text>
-                    </View>
-                    <Text style={{ fontSize: 10, color: theme.textSecondary, fontWeight: '600' }}>
-                      {student.obtainedMarks}/{student.totalMarks} marks
-                    </Text>
-                    {student.tests.length > 0 && (
-                      <Text style={{ fontSize: 10, color: theme.textSecondary }} numberOfLines={1}>
-                        {student.tests.sort((a, b) => (parseInt(a.replace('T', ''), 10) || 0) - (parseInt(b.replace('T', ''), 10) || 0)).join(', ')}
-                      </Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            }}
-          />
+                />
+              )}
+            />
+            {/* Count footer */}
+            <View style={{ paddingHorizontal: 12, paddingVertical: 5, borderTopWidth: 1, borderTopColor: theme.border }}>
+              <Text style={{ fontSize: 10, color: theme.textSecondary, textAlign: 'center' }}>
+                Showing {Math.min(visibleCount, studentProgressList.length)} of {studentProgressList.length} students
+              </Text>
+            </View>
+          </>
         )
       }
 
@@ -2121,8 +2067,44 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   content: { padding: 16 },
+  tableContent: { paddingBottom: 4 },
   listTitle: { fontSize: 16, fontWeight: '600', marginBottom: 16 },
   noDataText: { textAlign: 'center', marginTop: 20, fontSize: 16 },
+  tableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderBottomWidth: 1,
+  },
+  tableHeaderCell: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderBottomWidth: 0.5,
+  },
+  tableAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  scoreBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
   card: {
     padding: 12,
     borderRadius: 12,

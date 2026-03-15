@@ -254,9 +254,10 @@ export const AdminDashboard: React.FC = () => {
     { id: 3, title: 'Faculty', icon: 'people', color: '#ec4899', action: () => navigation.navigate('AdminTeachers') },
     { id: 4, title: 'Exams', icon: 'trophy', color: '#f59e0b', action: () => navigation.navigate('AdminExams') },
     { id: 5, title: 'Timetable', icon: 'calendar', color: '#10b981', action: () => navigation.navigate('AdminTimetable') },
-    { id: 6, title: 'Fees', icon: 'wallet', color: '#8b5cf6', action: () => navigation.navigate('AdminFeeScreen') },
-    { id: 7, title: 'Complaints', icon: 'chatbubble-ellipses', color: '#ef4444', action: () => navigation.navigate('AdminComplaints'), badge: pendingComplaintsCount },
-    { id: 8, title: 'Notifications', icon: 'notifications', color: '#06b6d4', action: () => navigation.navigate('AdminNoticeBoardScreen') },
+    { id: 6, title: 'Attendance', icon: 'finger-print', color: '#f43f5e', action: () => navigation.navigate('AdminAttendanceScreen') },
+    { id: 7, title: 'Fees', icon: 'wallet', color: '#8b5cf6', action: () => navigation.navigate('AdminFeeScreen') },
+    { id: 8, title: 'Complaints', icon: 'chatbubble-ellipses', color: '#ef4444', action: () => navigation.navigate('AdminComplaints'), badge: pendingComplaintsCount },
+    { id: 9, title: 'Notifications', icon: 'notifications', color: '#06b6d4', action: () => navigation.navigate('AdminNoticeBoardScreen') },
   ];
 
   const currentHour = new Date().getHours();

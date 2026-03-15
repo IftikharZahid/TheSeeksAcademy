@@ -1,4 +1,5 @@
 {
     "avdmanager.sdkPath": "C:\\Users\\USER\\AppData\\Local\\Android\\Sdk",
-    "files.autoSave": "afterDelay"
+    "files.autoSave": "afterDelay",
+    "avdmanager.sdkManager": "d:\\cmdline-tools\\bin\\sdkmanager.bat"
 }
