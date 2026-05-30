@@ -1,6 +1,6 @@
 # The Seeks Academy 🎓
 
-**The Seeks Academy** is a modern, feature-rich educational mobile application built with React Native. It provides a comprehensive platform for students to manage their academic life, including courses, assignments, results, and communication with the institute.
+**The Seeks Academy** is a comprehensive educational platform that includes a **Mobile Application** (built with React Native) for students and teachers, and a powerful **Desktop/Web Administrative Dashboard** (built with React, Vite, and Electron) for institute management. It provides everything needed to manage academic life, including courses, assignments, results, and seamless communication.
 
 ## ✨ Features
 
@@ -19,56 +19,82 @@
 - **Communication**:
   - **NoticeBoard**: Stay updated with important announcements (Alerts, Fees, Exams).
   - **Messages**: Receive updates from the admin and teachers.
-  - **WhatsApp Integration**: Direct contact with the developer via WhatsApp.
 - **Profile & Settings**:
   - **Profile**: Manage personal information.
   - **Settings**: Configure app preferences, view developer info, and secure logout.
   - **About Screen**: View developer details and portfolio.
+- **Admin Dashboard (Desktop/Web)**:
+  - **Centralized Management**: Manage students, teachers, courses, and finances in one place.
+  - **Data Visualization**: Rich charts and analytics for attendance, revenue, and exam performance.
+  - **Export Capabilities**: Easily generate and download PDF and Excel reports for records.
+  - **Cross-Platform**: Run as a web app or install as a native desktop application via Electron.
 
 ## 🛠️ Tech Stack
 
+### Mobile App
 - **Framework**: [React Native](https://reactnative.dev/) (via [Expo](https://expo.dev/))
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Navigation**: [React Navigation](https://reactnavigation.org/) (Stack & Bottom Tabs)
+- **Navigation**: [React Navigation](https://reactnavigation.org/)
 - **Styling**: [NativeWind](https://www.nativewind.dev/) (Tailwind CSS for React Native)
 - **Icons**: React Native Vector Icons / Lucide React Native / React Native SVG
 
+### Admin Dashboard
+- **Framework**: [React](https://react.dev/) + [Vite](https://vitejs.dev/)
+- **Desktop Packaging**: [Electron](https://www.electronjs.org/)
+- **Routing**: [React Router](https://reactrouter.com/)
+- **Charts & Visualization**: [Recharts](https://recharts.org/)
+
+### Shared
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Backend/Database**: [Firebase](https://firebase.google.com/)
+
 ## 🚀 Getting Started
 
-Follow these instructions to set up and run the project locally.
+Follow these instructions to set up and run the projects locally.
 
 ### Prerequisites
 
-- **Node.js** (v14 or later)
+- **Node.js** (v18 or later recommended)
 - **npm** or **yarn**
 - **Expo Go** app on your physical device (Android/iOS) OR an Emulator/Simulator.
 
-### Installation
+### 📱 Mobile App Setup
 
-1.  **Clone the repository** (if applicable) or navigate to the project directory:
-
+1.  Navigate to the main project directory:
     ```bash
     cd TheSeeksAcademy
     ```
-
-2.  **Install dependencies**:
-
+2.  Install dependencies:
     ```bash
     npm install
-    # or
-    yarn install
     ```
-
-3.  **Start the development server**:
+3.  Start the Expo development server:
     ```bash
     npx expo start
     ```
+4.  **Running**: Scan the QR code with **Expo Go**, or press `a` for Android Emulator / `i` for iOS Simulator.
 
-### Running the App
+### 💻 Admin Dashboard Setup
 
-- **Physical Device**: Scan the QR code displayed in the terminal using the **Expo Go** app.
-- **Android Emulator**: Press `a` in the terminal.
-- **iOS Simulator**: Press `i` in the terminal (macOS only).
+1.  Navigate to the dashboard directory:
+    ```bash
+    cd TheSeeksAcademy/TheSeeks-Dashboard
+    ```
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  **Run as Web App**:
+    ```bash
+    npm run dev
+    ```
+4.  **Run as Desktop App (Electron)**:
+    ```bash
+    npm run electron:dev
+    ```
+5.  **Build Desktop App (Windows .exe)**:
+    ```bash
+    npm run electron:build
+    ```
 
 ## 💻 Moving to Another Laptop
 
@@ -98,14 +124,20 @@ If you want to move this project to another laptop, follow these steps:
 ## 📂 Project Structure
 
 ```
-src/
-├── assets/          # Images and static assets
-├── components/      # Reusable UI components (DeckSwiper, TopHeader, etc.)
-├── context/         # React Context for state management (CoursesContext)
-├── data/            # Mock data files
-├── screens/         # Application screens (Home, Profile, Login, etc.)
-│   └── navigation/  # Navigation configuration (MainTabs, HomeStack)
-└── ...
+TheSeeksAcademy/
+├── TheSeeks-Dashboard/    # React + Vite + Electron Admin Dashboard
+│   ├── electron/          # Electron main process files
+│   ├── src/               # React web application source code
+│   └── package.json       # Dashboard dependencies and scripts
+│
+├── src/                   # React Native Mobile App Source
+│   ├── assets/            # Images and static assets
+│   ├── components/        # Reusable UI components
+│   ├── screens/           # Application screens
+│   ├── store/             # Redux state management
+│   └── ...
+├── app.json               # Expo configuration
+└── package.json           # Mobile app dependencies
 ```
 
 ## 📦 Moving to a New System
