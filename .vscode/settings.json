@@ -1,5 +1,6 @@
 {
     "avdmanager.sdkPath": "C:\\Users\\USER\\AppData\\Local\\Android\\Sdk",
     "files.autoSave": "afterDelay",
-    "avdmanager.sdkManager": "d:\\cmdline-tools\\bin\\sdkmanager.bat"
+    "avdmanager.sdkManager": "d:\\cmdline-tools\\bin\\sdkmanager.bat",
+    "json.schemaDownload.enable": false
 }

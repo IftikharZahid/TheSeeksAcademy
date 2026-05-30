@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { auth, db } from '../../api/firebaseConfig';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, or } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import type { ThunkDispatch, UnknownAction } from '@reduxjs/toolkit';
 
@@ -69,6 +69,19 @@ export const fetchUserProfile = createAsyncThunk(
                 console.warn('⚠️ Could not read studentsprofile/', uid, spError);
             }
 
+            // 1b️⃣ Direct read from 'profile/{uid}' — used for teacher/admin profiles
+            try {
+                const pDocRef = doc(db, 'profile', uid);
+                const pSnap = await getDoc(pDocRef);
+                if (pSnap.exists()) {
+                    const data = pSnap.data() as UserProfile;
+                    console.log('👤 Profile fetched from profile/', uid, '- name:', data.fullname, '| role:', data.role);
+                    return data;
+                }
+            } catch (pUidError) {
+                console.warn('⚠️ Could not read profile/', uid, pUidError);
+            }
+
             // 2️⃣ Fallback: query 'profile' collection by email
             if (email) {
                 try {
@@ -85,9 +98,23 @@ export const fetchUserProfile = createAsyncThunk(
             }
 
             // 3️⃣ Fallback: query 'students' collection by email (already created students)
+            // Firebase Auth always returns lowercase emails, but the students collection
+            // may store them in mixed-case academy format (STD-9002@TheSeeksAcademy.edu.pk).
+            // Query with both variants to handle legacy data.
             if (email) {
                 try {
-                    const sq = query(collection(db, 'students'), where('email', '==', email));
+                    const emailLower = email.toLowerCase();
+                    // Reconstruct academy mixed-case format: std-9002@theseeksacademy.edu.pk
+                    // → STD-9002@TheSeeksAcademy.edu.pk
+                    const emailParts = emailLower.split('@');
+                    const emailMixed = emailParts.length === 2
+                        ? `${emailParts[0].toUpperCase()}@TheSeeksAcademy.edu.pk`
+                        : emailLower;
+
+                    const sq = emailMixed !== emailLower
+                        ? query(collection(db, 'students'), or(where('email', '==', emailLower), where('email', '==', emailMixed)))
+                        : query(collection(db, 'students'), where('email', '==', emailLower));
+
                     const sSnapshot = await getDocs(sq);
                     if (!sSnapshot.empty) {
                         const sData = sSnapshot.docs[0].data();

@@ -1,29 +1,28 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { HomeScreen } from '../HomeScreen';
+import { HomeScreen } from '../CoreScreens/HomeScreen';
 
-import { ResultsScreen } from '../ResultsScreen';
-import { TimetableScreen } from '../TimetableScreen';
-import { AssignmentsScreen } from '../AssignmentsScreen';
-import { TeachersScreen } from '../TeachersScreen';
-import { AttendanceScreen } from '../AttendanceScreen';
-import { StaffInfoScreen } from '../StaffInfoScreen';
-import { SettingsScreen } from '../SettingScreens/SettingsScreen';
-import ChangePasswordScreen from '../SettingScreens/ChangePasswordScreen';
-import { AboutScreen } from '../SettingScreens/AboutScreen';
-import { PrivacyPolicyScreen } from '../SettingScreens/PrivacyPolicyScreen';
-import { HelpCenterScreen } from '../SettingScreens/HelpCenterScreen';
+import { ResultsScreen } from '../Academics/ResultsScreen';
+import { TimetableScreen } from '../Academics/TimetableScreen';
+import { AssignmentsScreen } from '../Academics/AssignmentsScreen';
+import { TeachersScreen } from '../Teachers/TeachersListScreen';
+import { AttendanceScreen } from '../Academics/AttendanceScreen';
+import { StaffInfoScreen } from '../Teachers/TeacherDetailsScreen';
 import { ComplaintsScreen } from '../AdminScreens/ComplaintsScreen';
 import { AdminTeachersScreen } from '../AdminScreens/AdminTeachersScreen';
-import { FeeDetailScreen } from '../FeeDetailScreen';
-import { VideoLecturesScreen } from '../VideoLecturesScreen';
-import { VideoGalleryScreen } from '../VideoGalleryScreen';
-import { SearchScreen } from '../SearchScreen';
-import { NoticesScreen } from '../NoticeScreen';
+import { FeeDetailScreen } from '../Finance/FeeDetailScreen';
+import { VideoLecturesScreen } from '../Lectures/VideoLecturesScreen';
+import { VideoGalleryScreen } from '../Lectures/VideoGalleryScreen';
+import { SearchScreen } from '../CoreScreens/SearchScreen';
+import { NoticesScreen } from '../Communication/NoticeScreen';
 import { AdminNoticeBoardScreen } from '../AdminScreens/AdminNoticeBoardScreen';
-import { MessagesScreen } from '../MessagesScreen';
-import { LikedVideosScreen } from '../LikedVideosScreen';
-import { LikedTeachersScreen } from '../LikedTeachersScreen';
+import { MessagesScreen } from '../Communication/MessagesScreen';
+import { LikedVideosScreen } from '../Lectures/LikedVideosScreen';
+import { LikedTeachersScreen } from '../Teachers/LikedTeachersScreen';
+
+// NOTE: HelpCenterScreen, AboutScreen, PrivacyPolicyScreen, ChangePasswordScreen,
+// and TeacherDashboardScreen have been moved to the root AppNavigator stack so they
+// render completely fullscreen without any tab bar or TopHeader leaking through.
 
 export type HomeStackParamList = {
   HomeScreen: undefined;
@@ -32,11 +31,6 @@ export type HomeStackParamList = {
   AssignmentsScreen: undefined;
   TeachersScreen: undefined;
   AttendanceScreen: undefined;
-  SettingsScreen: undefined;
-  ChangePasswordScreen: undefined;
-  AboutScreen: undefined;
-  PrivacyPolicyScreen: undefined;
-  HelpCenterScreen: undefined;
   StaffInfoScreen: {
     teacher: {
       id: string;
@@ -63,7 +57,6 @@ export type HomeStackParamList = {
   };
   VideoGalleryScreen: undefined;
   SearchScreen: undefined;
-
   NoticesScreen: undefined;
   AdminNoticeBoardScreen: undefined;
   MessagesScreen: undefined;
@@ -82,11 +75,6 @@ export const HomeStack: React.FC = () => {
       <Stack.Screen name="AssignmentsScreen" component={AssignmentsScreen} />
       <Stack.Screen name="TeachersScreen" component={TeachersScreen} />
       <Stack.Screen name="AttendanceScreen" component={AttendanceScreen} />
-      <Stack.Screen name="SettingsScreen" component={SettingsScreen} />
-      <Stack.Screen name="ChangePasswordScreen" component={ChangePasswordScreen} />
-      <Stack.Screen name="AboutScreen" component={AboutScreen} />
-      <Stack.Screen name="PrivacyPolicyScreen" component={PrivacyPolicyScreen} />
-      <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
       <Stack.Screen name="StaffInfoScreen" component={StaffInfoScreen} />
       <Stack.Screen name="ComplaintsScreen" component={ComplaintsScreen} />
       <Stack.Screen name="AdminTeachersScreen" component={AdminTeachersScreen} />

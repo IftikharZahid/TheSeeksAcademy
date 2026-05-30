@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { db } from '../../api/firebaseConfig';
-import { collection, onSnapshot, query, orderBy, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, getDocs, doc, updateDoc, deleteDoc, getDoc, setDoc } from 'firebase/firestore';
 import type { Dispatch, Unsubscribe } from '@reduxjs/toolkit';
 
 // ── Types ──────────────────────────────────────────────
@@ -48,6 +48,10 @@ export interface AdminExam {
     obtainedMarks?: string;
     status?: string;
     description: string;
+    // ─── Teacher Authorization Tracking ──────────────────────────────────────────
+    teacherId?: string;
+    createdBy?: string;
+    updatedAt?: any;
 }
 
 export interface AdminComplaint {
@@ -178,6 +182,168 @@ export const deleteComplaint = createAsyncThunk(
         return complaintId;
     }
 );
+
+/** Optimistic single-record update with Firestore write */
+export const updateFeeRecordAsync = createAsyncThunk(
+    'admin/updateFeeRecordAsync',
+    async (payload: { studentId: string; totalFee: number; paidAmount: number; month: string; studentName: string }, { dispatch }) => {
+        // Optimistic UI update
+        dispatch(adminSlice.actions.updateFeeRecord({
+            studentId: payload.studentId,
+            totalFee: payload.totalFee,
+            paidAmount: payload.paidAmount,
+            month: payload.month,
+        }));
+
+        const newPayment = payload.paidAmount > 0
+            ? { date: new Date().toISOString().split('T')[0], amount: payload.paidAmount, method: 'Admin Update', months: payload.month }
+            : null;
+
+        const snap: any = await getDoc(doc(db, 'fees', payload.studentId));
+        const existing: any[] = snap.exists() ? (snap.data().payments || []) : [];
+        const updatedPayments = newPayment ? [...existing, newPayment] : existing;
+
+        const feeData = {
+            studentName: payload.studentName,
+            totalFee: payload.totalFee,
+            paidAmount: payload.paidAmount,
+            pendingAmount: payload.totalFee - payload.paidAmount,
+            breakdown: {
+                tuition: Math.floor(payload.totalFee * 0.7),
+                books: Math.floor(payload.totalFee * 0.1),
+                labs: Math.floor(payload.totalFee * 0.15),
+                exam: Math.floor(payload.totalFee * 0.05),
+            },
+            payments: updatedPayments,
+            lastUpdated: new Date().toISOString(),
+        };
+
+        await Promise.all([
+            updateDoc(doc(db, 'students', payload.studentId), { month: payload.month }),
+            setDoc(doc(db, 'fees', payload.studentId), feeData),
+        ]);
+
+        return payload;
+    }
+);
+
+// ── Selectors ──────────────────────────────────────────
+
+export const selectAdminExams = (state: any) => state.admin.exams;
+
+let lastExamsRef: AdminExam[] | null = null;
+let cachedToppers: any[] = [];
+
+export const selectToppersData = (state: any) => {
+    const exams: AdminExam[] = state.admin.exams;
+    
+    if (exams === lastExamsRef) {
+        return cachedToppers;
+    }
+    
+    lastExamsRef = exams;
+
+    if (!exams || exams.length === 0) {
+        cachedToppers = [];
+        return cachedToppers;
+    }
+
+    const classTestGroups: Record<string, Record<string, {
+        studentName: string;
+        rollNo: string;
+        obtainedMarks: number;
+        totalMarks: number;
+        testDate: string;
+    }>> = {};
+
+    exams.forEach(exam => {
+        if (exam.status === 'Absent') return;
+        const className = exam.studentClass || 'Unknown Class';
+        const testTitle = exam.title || 'Unknown Test';
+        const groupKey = `${className}_${testTitle}`;
+
+        if (!classTestGroups[groupKey]) {
+            classTestGroups[groupKey] = {};
+        }
+
+        const studentKey = exam.rollNo || exam.studentName || 'unknown';
+        if (!studentKey) return;
+
+        let obtained = 0;
+        let total = 0;
+
+        if (exam.books && exam.books.length > 0) {
+            exam.books.forEach(b => {
+                obtained += parseFloat(b.obtainedMarks || '0');
+                total += parseFloat(b.totalMarks || '0');
+            });
+        } else {
+            obtained += parseFloat(exam.obtainedMarks || '0');
+            total += parseFloat(exam.totalMarks || '0');
+        }
+
+        if (!classTestGroups[groupKey][studentKey]) {
+            classTestGroups[groupKey][studentKey] = {
+                studentName: exam.studentName || 'Unknown Student',
+                rollNo: exam.rollNo || '',
+                obtainedMarks: 0,
+                totalMarks: 0,
+                testDate: exam.date || '',
+            };
+        }
+
+        classTestGroups[groupKey][studentKey].obtainedMarks += obtained;
+        classTestGroups[groupKey][studentKey].totalMarks += total;
+
+        if (exam.date && (!classTestGroups[groupKey][studentKey].testDate || new Date(exam.date) > new Date(classTestGroups[groupKey][studentKey].testDate))) {
+            classTestGroups[groupKey][studentKey].testDate = exam.date;
+        }
+    });
+
+    const allToppers: any[] = [];
+
+    Object.keys(classTestGroups).forEach(groupKey => {
+        const [className, testTitle] = groupKey.split('_');
+        const students = Object.values(classTestGroups[groupKey]);
+
+        students.sort((a, b) => b.obtainedMarks - a.obtainedMarks);
+
+        let currentRank = 1;
+        let previousMarks = -1;
+
+        students.forEach((student, index) => {
+            if (index > 0 && student.obtainedMarks < previousMarks) {
+                currentRank = index + 1;
+            }
+            previousMarks = student.obtainedMarks;
+
+            if (currentRank <= 3 && student.totalMarks > 0) {
+                allToppers.push({
+                    id: `${student.rollNo}_${groupKey}_${index}`,
+                    studentName: student.studentName,
+                    rollNo: student.rollNo,
+                    testNo: testTitle,
+                    testDate: student.testDate,
+                    obtainedMarks: student.obtainedMarks,
+                    totalMarks: student.totalMarks,
+                    position: currentRank,
+                    className: className
+                });
+            }
+        });
+    });
+
+    allToppers.sort((a, b) => {
+        const dateA = new Date(a.testDate).getTime();
+        const dateB = new Date(b.testDate).getTime();
+        if (dateB !== dateA) return dateB - dateA;
+        if (a.position !== b.position) return a.position - b.position;
+        return b.obtainedMarks - a.obtainedMarks;
+    });
+
+    cachedToppers = allToppers;
+    return cachedToppers;
+};
 
 // ── Slice ──────────────────────────────────────────────
 const adminSlice = createSlice({

@@ -2,12 +2,13 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 
-import { Notice } from '../../pages/NoticesPage';
-import { Complaint } from '../../pages/ComplaintsPage';
-import { Gallery } from '../../pages/VideosPage';
-import { TimetableEntry } from '../../pages/TimetablePage';
+import { Notice } from '../../pages/communication/NoticesPage';
+import { Complaint } from '../../pages/communication/ComplaintsPage';
+import { Gallery } from '../../pages/academics/VideosPage';
+import { TimetableEntry } from '../../pages/academics/TimetablePage';
 
 interface GeneralState {
+    globalSearchQuery: string;
     notices: Notice[];
     noticesStatus: 'idle' | 'loading' | 'succeeded' | 'failed';
     
@@ -22,6 +23,7 @@ interface GeneralState {
 }
 
 const initialState: GeneralState = {
+    globalSearchQuery: '',
     notices: [], noticesStatus: 'idle',
     complaints: [], complaintsStatus: 'idle',
     videos: [], videosStatus: 'idle',
@@ -46,18 +48,45 @@ export const fetchVideos = createAsyncThunk('general/fetchVideos', async () => {
 
 export const fetchTimetable = createAsyncThunk('general/fetchTimetable', async () => {
     const snap = await getDocs(collection(db, 'timetable'));
-    return snap.docs.map(d => ({ id: d.id, ...d.data() })) as TimetableEntry[];
+    const entries: TimetableEntry[] = [];
+    snap.docs.forEach(d => {
+        const data = d.data();
+        const day = d.id; // doc ID is the day name e.g. "Monday"
+        if (Array.isArray(data.classes)) {
+            // New schema: timetable/{dayName} with classes[]
+            data.classes.forEach((cls: any) => {
+                entries.push({
+                    id: cls.id || `${day}_${cls.subject}`,
+                    day,
+                    period: cls.period || '',
+                    subject: cls.subject || '',
+                    class: cls.class || '',
+                    teacher: cls.instructor || cls.teacher || '',
+                    room: cls.room || '',
+                    startTime: cls.startTime || (cls.time ? cls.time.split('-')[0] : ''),
+                    endTime: cls.endTime || (cls.time ? cls.time.split('-')[1] : ''),
+                } as TimetableEntry);
+            });
+        } else if (data.day && data.subject) {
+            // Old flat schema: individual docs (backward compat)
+            entries.push({ id: d.id, ...data } as TimetableEntry);
+        }
+    });
+    return entries;
 });
 
 const generalSlice = createSlice({
     name: 'general',
     initialState,
     reducers: {
+        setGlobalSearchQuery: (state, action: PayloadAction<string>) => { state.globalSearchQuery = action.payload; },
+        setNotices: (state, action) => { state.notices = action.payload; state.noticesStatus = 'succeeded'; },
         addOrUpdateNotice: (state, action) => {
             const idx = state.notices.findIndex(n => n.id === action.payload.id);
             if (idx !== -1) state.notices[idx] = action.payload; else state.notices.push(action.payload);
         },
         removeNotice: (state, action) => { state.notices = state.notices.filter(n => n.id !== action.payload); },
+        setComplaints: (state, action) => { state.complaints = action.payload; state.complaintsStatus = 'succeeded'; },
         addOrUpdateComplaint: (state, action) => {
             const idx = state.complaints.findIndex(c => c.id === action.payload.id);
             if (idx !== -1) state.complaints[idx] = action.payload; else state.complaints.push(action.payload);
@@ -72,6 +101,7 @@ const generalSlice = createSlice({
             const idx = state.timetable.findIndex(t => t.id === action.payload.id);
             if (idx !== -1) state.timetable[idx] = action.payload; else state.timetable.push(action.payload);
         },
+        setTimetable: (state, action) => { state.timetable = action.payload; state.timetableStatus = 'succeeded'; },
         removeTimetable: (state, action) => { state.timetable = state.timetable.filter(t => t.id !== action.payload); },
     },
     extraReducers(builder) {
@@ -88,10 +118,11 @@ const generalSlice = createSlice({
 });
 
 export const { 
-    addOrUpdateNotice, removeNotice, 
-    addOrUpdateComplaint, removeComplaint,
-    addOrUpdateGallery, deleteGallery,
-    addOrUpdateTimetable, removeTimetable
-} = generalSlice.actions;
+        setGlobalSearchQuery,
+        setNotices, addOrUpdateNotice, removeNotice, 
+        setComplaints, addOrUpdateComplaint, removeComplaint,
+        addOrUpdateGallery, deleteGallery,
+        addOrUpdateTimetable, setTimetable, removeTimetable
+    } = generalSlice.actions;
 
 export default generalSlice.reducer;

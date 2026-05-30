@@ -21,7 +21,7 @@ export type { Notice } from './slices/notificationsSlice';
 export { setGalleries, toggleLikeVideo, setVideoProgress, clearVideoProgress, initVideoGalleriesListener } from './slices/videosSlice';
 export type { VideoGallery, Video } from './slices/videosSlice';
 
-export { fetchFeeDetails, clearFee } from './slices/feeSlice';
+export { fetchFeeDetails, clearFee, setFeeDetails } from './slices/feeSlice';
 export type { FeeDetail } from './slices/feeSlice';
 
 export { fetchResults, clearResults } from './slices/resultsSlice';
@@ -29,7 +29,7 @@ export type { ExamEntry, BookEntry } from './slices/resultsSlice';
 
 export { fetchAttendance, clearAttendance } from './slices/attendanceSlice';
 
-export { setMessages, addMessage, clearMessages, initMessagesListener } from './slices/messagesSlice';
+export { setMessages, addMessage, clearMessages, initMessagesListener, incrementTodayMsgCount, fetchMessagingSettings, fetchTodayMessageCount } from './slices/messagesSlice';
 
 export {
     setStudents as setAdminStudents,
@@ -43,6 +43,7 @@ export {
     initExamsListener,
     initComplaintsListener,
     initTimetableListener,
+    updateFeeRecordAsync,
 } from './slices/adminSlice';
 export type {
     AdminStudent,
@@ -52,3 +53,10 @@ export type {
     AdminFeeRecord,
     BookEntry as AdminBookEntry,
 } from './slices/adminSlice';
+
+export {
+    createAssignment,
+    removeAssignment,
+    initAssignmentsListener,
+} from './slices/assignmentsSlice';
+export type { Assignment } from './slices/assignmentsSlice';

@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, LayoutAnimation, Platform, Linking } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  LayoutAnimation,
+  Platform,
+  Linking,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
-
-
+import { Ionicons } from '@expo/vector-icons';
 
 interface FAQItemProps {
   question: string;
@@ -18,14 +26,16 @@ const FAQItem: React.FC<FAQItemProps> = ({ question, answer, isOpen, onToggle })
 
   return (
     <View style={[styles.faqItem, { backgroundColor: theme.card, borderColor: theme.border }]}>
-      <TouchableOpacity onPress={onToggle} style={styles.faqHeader}>
+      <TouchableOpacity onPress={onToggle} style={styles.faqHeader} activeOpacity={0.7}>
         <Text style={[styles.faqQuestion, { color: theme.text }]}>{question}</Text>
-        <Text style={[styles.chevron, { color: theme.textTertiary, transform: [{ rotate: isOpen ? '180deg' : '0deg' }] }]}>
-          ▼
-        </Text>
+        <Ionicons 
+          name={isOpen ? "chevron-up" : "chevron-down"} 
+          size={16} 
+          color={theme.textSecondary} 
+        />
       </TouchableOpacity>
       {isOpen && (
-        <View style={styles.faqBody}>
+        <View style={[styles.faqBody, { borderTopWidth: 1, borderTopColor: theme.border + '50' }]}>
           <Text style={[styles.faqAnswer, { color: theme.textSecondary }]}>{answer}</Text>
         </View>
       )}
@@ -39,7 +49,9 @@ export const HelpCenterScreen: React.FC = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const toggleFAQ = (index: number) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (Platform.OS !== 'web') {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }
     setOpenIndex(openIndex === index ? null : index);
   };
 
@@ -68,120 +80,119 @@ export const HelpCenterScreen: React.FC = () => {
       question: "How do I update my profile picture?",
       answer: "Currently, profile pictures are managed by the administration. Please contact the office to update your photo."
     },
-     {
+    {
       question: "Is there a dark mode?",
       answer: "Yes! You can enable Dark Mode in Settings > General > Dark Mode."
     }
   ];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundSecondary }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: theme.background }]}>
-          <Text style={[styles.backIcon, { color: theme.text }]}>‹</Text>
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={[styles.backBtn, { backgroundColor: theme.backgroundSecondary }]}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={20} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Help Center</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Frequently Asked Questions */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Frequently Asked Questions</Text>
-          {faqs.map((faq, index) => (
-            <FAQItem
-              key={index}
-              question={faq.question}
-              answer={faq.answer}
-              isOpen={openIndex === index}
-              onToggle={() => toggleFAQ(index)}
-            />
-          ))}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Contact Support</Text>
-          <View style={[styles.card, { backgroundColor: theme.card }]}>
-            <Text style={[styles.contactText, { color: theme.textSecondary }]}>
-              Still need help? Our support team is available to assist you.
-            </Text>
-            
-            <TouchableOpacity 
-              style={[styles.contactButton, { backgroundColor: theme.primary }]}
-              onPress={handleEmailPress}
-            >
-              <Text style={styles.contactButtonText}>Email Support</Text>
-            </TouchableOpacity>
-             <TouchableOpacity 
-              style={[styles.contactButton, { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.primary, marginTop: 10 }]}
-              onPress={handleCallPress}
-             >
-              <Text style={[styles.contactButtonText, { color: theme.primary }]}>Call Us</Text>
-            </TouchableOpacity>
+          <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>FREQUENTLY ASKED QUESTIONS</Text>
+          <View style={styles.faqList}>
+            {faqs.map((faq, index) => (
+              <FAQItem
+                key={index}
+                question={faq.question}
+                answer={faq.answer}
+                isOpen={openIndex === index}
+                onToggle={() => toggleFAQ(index)}
+              />
+            ))}
           </View>
         </View>
 
-        <View style={{ height: 40 }} />
+        {/* Contact Support */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>CONTACT SUPPORT</Text>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconWrap, { backgroundColor: theme.primary + '15' }]}>
+                <Ionicons name="chatbubbles-outline" size={18} color={theme.primary} />
+              </View>
+              <Text style={[styles.cardTitle, { color: theme.text }]}>Still Need Help?</Text>
+            </View>
+            <Text style={[styles.cardText, { color: theme.textSecondary }]}>
+              Our support team is available to assist you. Get in touch with us via email or phone call.
+            </Text>
+
+            <View style={styles.contactButtonsRow}>
+              <TouchableOpacity
+                style={[styles.contactBtn, { backgroundColor: theme.primary }]}
+                onPress={handleEmailPress}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="mail-outline" size={16} color="#ffffff" />
+                <Text style={[styles.contactBtnText, { color: '#ffffff' }]}>Email Support</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.contactBtn, { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.primary }]}
+                onPress={handleCallPress}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="call-outline" size={16} color={theme.primary} />
+                <Text style={[styles.contactBtnText, { color: theme.primary }]}>Call Us</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  backBtn: {
+    width: 36, height: 36,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
   },
-  backIcon: {
-    fontSize: 30,
+  headerTitle: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
+
+  scroll: { padding: 12, paddingBottom: 32, gap: 16 },
+
+  section: { gap: 8 },
+
+  sectionLabel: {
+    fontSize: 10,
     fontWeight: '700',
-    marginTop: -3,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    paddingLeft: 4,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
+
+  faqList: { gap: 8 },
+
   faqItem: {
-    borderRadius: 12,
-    marginBottom: 10,
+    borderRadius: 14,
     borderWidth: 1,
     overflow: 'hidden',
   },
@@ -189,51 +200,71 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   faqQuestion: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     flex: 1,
     marginRight: 10,
-  },
-  chevron: {
-    fontSize: 12,
+    lineHeight: 18,
   },
   faqBody: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 14,
+    paddingTop: 10,
   },
   faqAnswer: {
-    fontSize: 14,
+    fontSize: 13,
     lineHeight: 20,
   },
+
   card: {
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  iconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  contactText: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  contactButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    width: '100%',
-    alignItems: 'center',
-  },
-  contactButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
+  cardTitle: {
+    fontSize: 15,
     fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  cardText: {
+    fontSize: 13,
+    lineHeight: 21,
+    letterSpacing: 0.2,
+  },
+
+  contactButtonsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+  },
+  contactBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  contactBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

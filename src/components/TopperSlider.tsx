@@ -4,7 +4,9 @@ import { useTheme } from '../context/ThemeContext';
 import { scale } from '../utils/responsive';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAppSelector } from '../store/hooks';
+import { useNetInfo } from '@react-native-community/netinfo';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { initExamsListener, selectToppersData } from '../store/slices/adminSlice';
 
 const { width } = Dimensions.get('window');
 
@@ -46,113 +48,59 @@ const getPositionEmoji = (position: number) => {
     }
 };
 
+const TopperSliderSkeleton: React.FC<{ theme: any; isDark: boolean }> = ({ theme, isDark }) => {
+    const skeletonColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+    return (
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <View style={{ width: scale(120), height: scale(15), backgroundColor: skeletonColor, borderRadius: scale(4), marginBottom: scale(4) }} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: scale(10) }}>
+                {[1, 2].map((i) => (
+                    <View key={i} style={[styles.listItem, { backgroundColor: theme.card, borderColor: theme.border, elevation: 0, shadowOpacity: 0 }]}>
+                        <View style={[styles.positionBadge, { backgroundColor: skeletonColor }]} />
+                        <View style={styles.studentSection}>
+                            <View style={styles.topRow}>
+                                <View style={{ width: '55%', height: scale(12), backgroundColor: skeletonColor, borderRadius: scale(3) }} />
+                                <View style={{ width: '22%', height: scale(15), backgroundColor: skeletonColor, borderRadius: scale(4) }} />
+                            </View>
+                            <View style={styles.bottomRow}>
+                                <View style={{ width: '35%', height: scale(10), backgroundColor: skeletonColor, borderRadius: scale(2) }} />
+                                <View style={styles.dot} />
+                                <View style={{ width: '45%', height: scale(10), backgroundColor: skeletonColor, borderRadius: scale(2) }} />
+                            </View>
+                        </View>
+                        <View style={styles.marksSection}>
+                            <View style={{ width: scale(38), height: scale(18), backgroundColor: skeletonColor, borderRadius: scale(3) }} />
+                            <View style={{ width: scale(32), height: scale(12), backgroundColor: skeletonColor, borderRadius: scale(2) }} />
+                        </View>
+                    </View>
+                ))}
+            </View>
+        </View>
+    );
+};
+
 export const TopperSlider: React.FC = () => {
-    const { theme } = useTheme();
+    const { theme, isDark } = useTheme();
+    const dispatch = useAppDispatch();
+    const netInfo = useNetInfo();
     const flatListRef = useRef<FlatList>(null);
     const currentIndex = useRef(0);
     const isUserScrolling = useRef(false);
     const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
 
     const exams = useAppSelector((state) => state.admin.exams);
+    const examsLoading = useAppSelector((state) => state.admin.examsLoading);
 
-    const toppersData = useMemo(() => {
-        if (!exams || exams.length === 0) return [];
+    useEffect(() => {
+        const unsub = initExamsListener(dispatch);
+        return () => unsub();
+    }, [dispatch]);
 
-        const classTestGroups: Record<string, Record<string, {
-            studentName: string;
-            rollNo: string;
-            obtainedMarks: number;
-            totalMarks: number;
-            testDate: string;
-        }>> = {};
 
-        exams.forEach(exam => {
-            if (exam.status === 'Absent') return;
-            const className = exam.studentClass || 'Unknown Class';
-            const testTitle = exam.title || 'Unknown Test';
-            const groupKey = `${className}_${testTitle}`;
 
-            if (!classTestGroups[groupKey]) {
-                classTestGroups[groupKey] = {};
-            }
-
-            const studentKey = exam.rollNo || exam.studentName || 'unknown';
-            if (!studentKey) return;
-
-            let obtained = 0;
-            let total = 0;
-
-            if (exam.books && exam.books.length > 0) {
-                exam.books.forEach(b => {
-                    obtained += parseFloat(b.obtainedMarks || '0');
-                    total += parseFloat(b.totalMarks || '0');
-                });
-            } else {
-                obtained += parseFloat(exam.obtainedMarks || '0');
-                total += parseFloat(exam.totalMarks || '0');
-            }
-
-            if (!classTestGroups[groupKey][studentKey]) {
-                classTestGroups[groupKey][studentKey] = {
-                    studentName: exam.studentName || 'Unknown Student',
-                    rollNo: exam.rollNo || '',
-                    obtainedMarks: 0,
-                    totalMarks: 0,
-                    testDate: exam.date || '',
-                };
-            }
-
-            classTestGroups[groupKey][studentKey].obtainedMarks += obtained;
-            classTestGroups[groupKey][studentKey].totalMarks += total;
-
-            if (exam.date && (!classTestGroups[groupKey][studentKey].testDate || new Date(exam.date) > new Date(classTestGroups[groupKey][studentKey].testDate))) {
-                classTestGroups[groupKey][studentKey].testDate = exam.date;
-            }
-        });
-
-        const allToppers: TopperData[] = [];
-
-        Object.keys(classTestGroups).forEach(groupKey => {
-            const [className, testTitle] = groupKey.split('_');
-            const students = Object.values(classTestGroups[groupKey]);
-
-            students.sort((a, b) => b.obtainedMarks - a.obtainedMarks);
-
-            let currentRank = 1;
-            let previousMarks = -1;
-
-            students.forEach((student, index) => {
-                if (index > 0 && student.obtainedMarks < previousMarks) {
-                    currentRank = index + 1;
-                }
-                previousMarks = student.obtainedMarks;
-
-                if (currentRank <= 3 && student.totalMarks > 0) {
-                    allToppers.push({
-                        id: `${student.rollNo}_${groupKey}_${index}`,
-                        studentName: student.studentName,
-                        rollNo: student.rollNo,
-                        testNo: testTitle,
-                        testDate: student.testDate,
-                        obtainedMarks: student.obtainedMarks,
-                        totalMarks: student.totalMarks,
-                        position: currentRank,
-                        className: className
-                    });
-                }
-            });
-        });
-
-        allToppers.sort((a, b) => {
-            const dateA = new Date(a.testDate).getTime();
-            const dateB = new Date(b.testDate).getTime();
-            if (dateB !== dateA) return dateB - dateA;
-            if (a.position !== b.position) return a.position - b.position;
-            return b.obtainedMarks - a.obtainedMarks;
-        });
-
-        return allToppers;
-    }, [exams]);
+    const toppersData = useAppSelector(selectToppersData);
 
     // Auto-scroll functionality with pause on user interaction
     useEffect(() => {
@@ -263,11 +211,45 @@ export const TopperSlider: React.FC = () => {
         );
     };
 
+    const isOffline = netInfo.isConnected === false;
+    const isLoading = examsLoading && toppersData.length === 0;
+
+    if (isLoading) {
+        return <TopperSliderSkeleton theme={theme} isDark={isDark} />;
+    }
+
+    if (isOffline && toppersData.length === 0) {
+        return (
+            <View style={styles.container}>
+                <View style={styles.header}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>🏆 Top Performers</Text>
+                </View>
+                <View style={[styles.errorCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <View style={[styles.errorIconContainer, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#fee2e2' }]}>
+                        <Ionicons name="cloud-offline-outline" size={20} color="#ef4444" />
+                    </View>
+                    <View style={styles.errorContent}>
+                        <Text style={[styles.errorTitle, { color: theme.text }]}>Connection Lost</Text>
+                        <Text style={[styles.errorText, { color: theme.textSecondary }]}>
+                            Connect to the internet to load top performers.
+                        </Text>
+                    </View>
+                </View>
+            </View>
+        );
+    }
+
     return (
         <View style={styles.container}>
             {toppersData.length > 0 && (
                 <View style={styles.header}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>🏆 Top Performers</Text>
+                    {isOffline && (
+                        <View style={[styles.offlineBadge, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7' }]}>
+                            <Ionicons name="cloud-offline-outline" size={10} color="#f59e0b" style={{ marginRight: scale(3) }} />
+                            <Text style={[styles.offlineBadgeText, { color: '#d97706' }]}>Offline Cache</Text>
+                        </View>
+                    )}
                 </View>
             )}
 
@@ -286,6 +268,10 @@ export const TopperSlider: React.FC = () => {
                 onScrollEndDrag={handleScrollEndDrag}
                 onMomentumScrollEnd={handleMomentumScrollEnd}
                 scrollEventThrottle={16}
+                initialNumToRender={4}
+                maxToRenderPerBatch={4}
+                windowSize={5}
+                removeClippedSubviews={true}
                 onScrollToIndexFailed={(info) => {
                     const wait = new Promise((resolve) => setTimeout(resolve, 500));
                     wait.then(() => {
@@ -304,13 +290,17 @@ const LIST_ITEM_WIDTH = width * 0.85;
 
 const styles = StyleSheet.create({
     container: {
-        marginTop: scale(8),
+        marginTop: scale(4),
     },
     header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         marginBottom: scale(6),
+        paddingRight: scale(16),
     },
     sectionTitle: {
-        fontSize: scale(16),
+        fontSize: scale(15),
         fontWeight: '700',
         letterSpacing: -0.3,
     },
@@ -326,8 +316,8 @@ const styles = StyleSheet.create({
         width: LIST_ITEM_WIDTH,
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: scale(8),
-        paddingHorizontal: scale(12),
+        paddingVertical: scale(7),
+        paddingHorizontal: scale(10),
         borderRadius: scale(12),
         borderWidth: 1,
         gap: scale(12),
@@ -418,5 +408,49 @@ const styles = StyleSheet.create({
         fontSize: scale(12),
         fontWeight: '800',
         color: '#8b5cf6',
+    },
+    offlineBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: scale(6),
+        paddingVertical: scale(2),
+        borderRadius: scale(6),
+    },
+    offlineBadgeText: {
+        fontSize: scale(9),
+        fontWeight: '700',
+    },
+    errorCard: {
+        padding: scale(12),
+        borderRadius: scale(12),
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        marginTop: scale(4),
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.03,
+        shadowRadius: 4,
+        elevation: 1,
+    },
+    errorIconContainer: {
+        width: scale(36),
+        height: scale(36),
+        borderRadius: scale(18),
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: scale(12),
+    },
+    errorContent: {
+        flex: 1,
+    },
+    errorTitle: {
+        fontSize: scale(13),
+        fontWeight: '600',
+        marginBottom: scale(2),
+    },
+    errorText: {
+        fontSize: scale(11),
+        lineHeight: scale(15),
     },
 });

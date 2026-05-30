@@ -103,7 +103,7 @@ export const CourseCategories: React.FC = () => {
     };
 
     const renderIcon = (item: typeof categories[0]) => {
-        const iconSize = scale(22);
+        const iconSize = scale(20);
         if (item.iconType === 'MaterialCommunityIcons') {
             return <MaterialCommunityIcons name={item.icon as any} size={iconSize} color={item.color} />;
         } else if (item.iconType === 'FontAwesome5') {
@@ -145,17 +145,17 @@ const cardSize = (width - TOTAL_HORIZONTAL_PADDING - TOTAL_GAPS) / ITEMS_PER_ROW
 
 const styles = StyleSheet.create({
     container: {
-        marginTop: scale(12),
+        marginTop: scale(8),
     },
     sectionTitle: {
-        fontSize: scale(18),
+        fontSize: scale(15),
         fontWeight: '700',
-        marginBottom: scale(8),
+        marginBottom: scale(6),
         letterSpacing: -0.3,
     },
     cardWrapper: {
         borderRadius: scale(16),
-        padding: scale(12),
+        padding: scale(10),
         borderWidth: 1,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
@@ -178,12 +178,12 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent',
     },
     iconContainer: {
-        width: scale(48),
-        height: scale(48),
-        borderRadius: scale(12),
+        width: scale(42),
+        height: scale(42),
+        borderRadius: scale(11),
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: scale(8),
+        marginBottom: scale(5),
     },
     categoryLabel: {
         fontSize: scale(11),

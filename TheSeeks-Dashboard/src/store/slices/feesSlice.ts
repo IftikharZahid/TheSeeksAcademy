@@ -9,6 +9,7 @@ export interface FeeRecord {
     amount: string | number;
     status: 'Paid' | 'Unpaid';
     datePaid: string;
+    history?: { id: string; date: string; amountPaid: number; months: string[] }[];
     [key: string]: any;
 }
 

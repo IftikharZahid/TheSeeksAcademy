@@ -31,7 +31,7 @@ const STATUS_META: Record<StatusType, { label: string; color: string; icon: stri
 };
 
 interface StudentRow {
-  studentId: string; studentName: string; rollno: string; class: string;
+  studentId: string; studentName: string; rollno: string; class: string; gender?: string;
 }
 
 /* ─────────────────── Helpers ─────────────────── */
@@ -81,6 +81,7 @@ export const AdminAttendanceScreen: React.FC = () => {
 
   const [searchQuery, setSearchQuery]   = useState('');
   const [classFilter, setClassFilter]   = useState('All');
+  const [genderFilter, setGenderFilter] = useState('All');
   const [visibleCount, setVisibleCount] = useState(30);
 
   // Month navigation
@@ -158,6 +159,7 @@ export const AdminAttendanceScreen: React.FC = () => {
           studentName: s.fullname || (s as any).name || 'Unknown',
           rollno:      s.rollno || 'N/A',
           class:       s.class  || (s as any).grade || 'N/A',
+          gender:      s.gender || (s as any).gender || 'N/A',
         };
       });
 
@@ -232,6 +234,13 @@ export const AdminAttendanceScreen: React.FC = () => {
   const filtered = useMemo(() => {
     let list = students;
     if (classFilter !== 'All') list = list.filter(s => s.class === classFilter);
+    if (genderFilter !== 'All') {
+      const isBoys = genderFilter === 'Boys';
+      list = list.filter(s => {
+        const g = (s.gender || '').toLowerCase();
+        return isBoys ? (g === 'male' || g === 'boy') : (g === 'female' || g === 'girl');
+      });
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(s =>
@@ -240,7 +249,7 @@ export const AdminAttendanceScreen: React.FC = () => {
       );
     }
     return list;
-  }, [students, classFilter, searchQuery]);
+  }, [students, classFilter, genderFilter, searchQuery]);
 
   /* Mark all visible students — instant Redux update, fire-and-forget batch writes */
   const markAll = useCallback((status: StatusType) => {
@@ -676,6 +685,21 @@ export const AdminAttendanceScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+            {['All', 'Boys', 'Girls'].map(opt => {
+              const active = genderFilter === opt;
+              return (
+                <TouchableOpacity key={'g_'+opt}
+                  style={[styles.chip, {
+                    backgroundColor: active ? theme.primary : (isDark ? theme.card : '#f1f5f9'),
+                    borderColor: active ? theme.primary : theme.border,
+                  }]}
+                  onPress={() => setGenderFilter(opt)}
+                >
+                  <Text style={[styles.chipText, { color: active ? '#fff' : theme.textSecondary }]}>{opt}</Text>
+                </TouchableOpacity>
+              );
+            })}
+            <View style={{ width: 1, backgroundColor: theme.border, marginHorizontal: 6, height: '60%', alignSelf: 'center' }} />
             {classOptions.map(opt => {
               const active = classFilter === opt;
               return (

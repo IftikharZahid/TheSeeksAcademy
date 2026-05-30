@@ -9,7 +9,7 @@ import { collection, getDocs, getDoc, doc, setDoc, updateDoc } from 'firebase/fi
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchAdminFeeRecords, updateFeeRecord } from '../../store/slices/adminSlice';
+import { fetchAdminFeeRecords, updateFeeRecordAsync } from '../../store/slices/adminSlice';
 import type { AdminFeeRecord } from '../../store/slices/adminSlice';
 import { scale } from '../../utils/responsive';
 
@@ -210,49 +210,20 @@ export const AdminFeeScreen: React.FC = () => {
       return;
     }
 
-    // ── 1. Optimistic update — instant UI, no waiting ──
-    dispatch(updateFeeRecord({
+    // ── Optimistic update & Firestore writes handled by Thunk ──
+    dispatch(updateFeeRecordAsync({
       studentId: selectedRecord.studentId,
       totalFee: total,
       paidAmount: paid,
       month: monthString,
-    }));
-    setEditModalVisible(false); // close immediately
-
-    // ── 2. Firestore writes in background ──
-    const newPayment = paid > 0
-      ? { date: new Date().toISOString().split('T')[0], amount: paid, method: 'Admin Update', months: monthString }
-      : null;
-
-    // Fetch existing payments, append new one
-    getDoc(doc(db, 'fees', selectedRecord.studentId)).then((snap: any) => {
-      const existing: any[] = snap.exists() ? (snap.data().payments || []) : [];
-      const updatedPayments = newPayment ? [...existing, newPayment] : existing;
-
-      const feeData = {
-        studentName: name,
-        totalFee: total,
-        paidAmount: paid,
-        pendingAmount: total - paid,
-        breakdown: {
-          tuition: Math.floor(total * 0.7),
-          books: Math.floor(total * 0.1),
-          labs: Math.floor(total * 0.15),
-          exam: Math.floor(total * 0.05),
-        },
-        payments: updatedPayments,
-        lastUpdated: new Date().toISOString(),
-      };
-
-      return Promise.all([
-        updateDoc(doc(db, 'students', selectedRecord.studentId), { month: monthString }),
-        setDoc(doc(db, 'fees', selectedRecord.studentId), feeData),
-      ]);
-    }).catch((error: any) => {
+      studentName: name
+    })).unwrap().catch((error: any) => {
       console.error('Error saving fee record:', error);
       dispatch(fetchAdminFeeRecords());
-      Alert.alert('Sync Error', 'Changes shown locally but failed to save to server.');
+      Alert.alert('Sync Error', 'Failed to save to server.');
     });
+
+    setEditModalVisible(false); // close immediately
   };
 
   const getStatusColor = (status: string) => {

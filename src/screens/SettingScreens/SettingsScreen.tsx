@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
 import { useTheme } from '../../context/ThemeContext';
 import { signOut } from "firebase/auth";
 import { auth } from "../../api/firebaseConfig";
@@ -50,7 +52,7 @@ const SettingItem: React.FC<SettingItemProps> = ({
 };
 
 export const SettingsScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { theme, isDark, toggleTheme } = useTheme();
 
   const ADMIN_EMAILS = ['theseeksacademyfta@gmail.com', 'iftikharzahid@outlook.com'];
@@ -162,7 +164,7 @@ export const SettingsScreen: React.FC = () => {
             <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <TouchableOpacity
                 style={styles.adminRow}
-                onPress={() => navigation.navigate('Admin' as never)}
+                onPress={() => navigation.navigate('Admin')}
                 activeOpacity={0.7}
               >
                 <LinearGradient

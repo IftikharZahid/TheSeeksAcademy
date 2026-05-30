@@ -23,6 +23,7 @@ import { AppNavigator } from './src/screens/navigation/AppNavigator';
 function AppContent() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
+  const profile = useAppSelector((state) => state.auth.profile);
 
   // ── Global Auth & Data Listeners ────────────────────
   useEffect(() => {
@@ -37,7 +38,6 @@ function AppContent() {
     const unsubTeachers = initTeachersListener(dispatch);
     const unsubNotifications = initNotificationsListener(dispatch);
     const unsubGalleries = initVideoGalleriesListener(dispatch);
-    const unsubMessages = initMessagesListener(dispatch);
 
     return () => {
       unsubAuth();
@@ -45,7 +45,6 @@ function AppContent() {
       unsubTeachers();
       unsubNotifications();
       unsubGalleries();
-      unsubMessages();
     };
   }, [dispatch]);
 
@@ -58,6 +57,16 @@ function AppContent() {
       };
     }
   }, [dispatch, user?.uid]);
+
+  // ── Profile-Dependent Global Listeners ────────────────
+  useEffect(() => {
+    if (profile) {
+      const unsubMessages = initMessagesListener(dispatch, profile);
+      return () => {
+        unsubMessages();
+      };
+    }
+  }, [dispatch, profile]);
 
   return <AppNavigator />;
 }

@@ -1,136 +1,131 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  ScrollView,
-  Linking,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { scale } from '../../utils/responsive';
 
 export const AboutScreen: React.FC = () => {
   const navigation = useNavigation();
   const { theme, isDark } = useTheme();
 
   const socialLinks = [
-    { key: 'github',   icon: 'logo-github',   label: 'GitHub',    color: isDark ? '#e2e8f0' : '#24292e', url: 'https://github.com/iftikharzahid' },
-    { key: 'linkedin', icon: 'logo-linkedin', label: 'LinkedIn',  color: '#0A66C2',                      url: 'https://linkedin.com/in/iftikharzahid' },
-    { key: 'globe',    icon: 'globe-outline', label: 'Portfolio', color: theme.primary,                  url: 'https://zahid.codes' },
-    { key: 'whatsapp', icon: 'logo-whatsapp', label: 'WhatsApp',  color: '#25D366',                      url: 'https://wa.me/923007971374' },
+    { key: 'github', icon: 'logo-github', label: 'GitHub', color: isDark ? '#e2e8f0' : '#24292e', url: 'https://github.com/iftikharzahid' },
+    { key: 'linkedin', icon: 'logo-linkedin', label: 'LinkedIn', color: '#0A66C2', url: 'https://linkedin.com/in/iftikharzahid' },
+    { key: 'globe', icon: 'globe-outline', label: 'Portfolio', color: theme.primary, url: 'https://zahid.codes' },
+    { key: 'logo-whatsapp', icon: 'logo-whatsapp', label: 'WhatsApp', color: '#25D366', url: 'https://wa.link/330h0s' },
   ];
-
-
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+      {/* ── Top Bar ───────────────────────────────────────────────────── */}
+      <View style={styles.topBar}>
         <TouchableOpacity
+          style={[styles.iconBtn, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}
           onPress={() => navigation.goBack()}
-          style={[styles.backBtn, { backgroundColor: theme.backgroundSecondary }]}
           activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={20} color={theme.text} />
+          <Ionicons name="arrow-back" size={scale(16)} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>About</Text>
-        <View style={{ width: 36 }} />
+
+        <View style={styles.titleCenter}>
+          <Text style={[styles.screenTitle, { color: theme.text }]}>About</Text>
+        </View>
+
+        <View style={styles.iconBtn} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-
-        {/* App Identity Card */}
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* ── App Identity & Stats ────────────────────────────────────────────── */}
         <LinearGradient
           colors={['#6366f1', '#8b5cf6']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={styles.appCard}
+          style={styles.heroSection}
         >
-          <Image source={require('../../../assets/icon.png')} style={styles.appLogo} resizeMode="contain" />
-          <View>
-            <Text style={styles.appName}>The Seeks Academy</Text>
-            <Text style={styles.appLocation}>Fort Abbas, Bahawalnagar</Text>
+          <View style={styles.heroTop}>
+            <Image source={require('../../../assets/icon.png')} style={styles.appLogo} resizeMode="contain" />
+            <View style={styles.heroInfo}>
+              <Text style={styles.heroName}>The Seeks Academy</Text>
+              <Text style={styles.heroLocation}>Fort Abbas, Bahawalnagar</Text>
+            </View>
           </View>
-          <View style={styles.versionBadge}>
-            <Text style={styles.versionText}>v1.0.1</Text>
+
+          <View style={styles.heroDivider} />
+
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStat}>
+              <Ionicons name="cube" size={scale(14)} color="rgba(255,255,255,0.9)" />
+              <Text style={styles.heroStatValue}>v1.0.1</Text>
+              <Text style={styles.heroStatLabel}>Version</Text>
+            </View>
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStat}>
+              <Ionicons name="calendar" size={scale(14)} color="rgba(255,255,255,0.9)" />
+              <Text style={styles.heroStatValue}>2026</Text>
+              <Text style={styles.heroStatLabel}>Released</Text>
+            </View>
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStat}>
+              <Ionicons name="star" size={scale(14)} color="#fbbf24" />
+              <Text style={styles.heroStatValue}>5.0</Text>
+              <Text style={styles.heroStatLabel}>Rating</Text>
+            </View>
           </View>
         </LinearGradient>
 
-        {/* Stats Row */}
-        <View style={[styles.statsRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {[
-            { label: 'Version',  value: '1.0.1' },
-            { label: 'Released', value: '2026'  },
-            { label: 'Rating',   value: '5.0 ★' },
-          ].map((stat, idx, arr) => (
-            <React.Fragment key={stat.label}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: theme.text }]}>{stat.value}</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{stat.label}</Text>
+        {/* ── Developer Card ──────────────────────────────────────────── */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>DEVELOPER & CONNECT</Text>
+          <View style={[styles.devCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.devRow}>
+              <Image source={require('../../assets/profile.jpg')} style={[styles.devAvatar, { borderColor: theme.border }]} />
+              <View style={styles.devInfo}>
+                <Text style={[styles.devName, { color: theme.text }]}>Iftikhar Zahid</Text>
+                <View style={[styles.rolePill, { backgroundColor: theme.primary + '15' }]}>
+                  <Text style={[styles.roleText, { color: theme.primary }]}>Full Stack Developer</Text>
+                </View>
+                <Text style={[styles.devBio, { color: theme.textSecondary }]}>
+                  Building intuitive mobile apps with clean code & modern design.
+                </Text>
               </View>
-              {idx < arr.length - 1 && <View style={[styles.statDivider, { backgroundColor: theme.border }]} />}
-            </React.Fragment>
-          ))}
-        </View>
-
-        {/* Developer Card */}
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>DEVELOPER</Text>
-          <View style={styles.devRow}>
-            <Image source={require('../../assets/profile.jpg')} style={[styles.devAvatar, { borderColor: theme.border }]} />
-            <View style={styles.devInfo}>
-              <Text style={[styles.devName, { color: theme.text }]}>Iftikhar Zahid</Text>
-              <View style={[styles.rolePill, { backgroundColor: theme.primary + '18' }]}>
-                <Text style={[styles.roleText, { color: theme.primary }]}>Full Stack Developer</Text>
-              </View>
-              <Text style={[styles.devBio, { color: theme.textSecondary }]}>
-                Building intuitive mobile apps with clean code & modern design.
-              </Text>
             </View>
-          </View>
 
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          <Text style={[styles.cardLabel, { color: theme.textSecondary }]}>CONNECT</Text>
-          <View style={styles.socialGrid}>
-            {socialLinks.map((item) => (
-              <TouchableOpacity
-                key={item.key}
-                style={[styles.socialBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderColor: theme.border }]}
-                onPress={() => Linking.openURL(item.url)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name={item.icon as any} size={16} color={item.color} />
-                <Text style={[styles.socialLabel, { color: theme.text }]}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
+            {/* Separator */}
+            <View style={[styles.devDivider, { backgroundColor: theme.border }]} />
+
+            {/* Social Links Row */}
+            <View style={styles.socialRow}>
+              {socialLinks.map((item) => (
+                <TouchableOpacity
+                  key={item.key}
+                  style={[styles.socialIconBtn, { backgroundColor: item.color + '15' }]}
+                  onPress={() => Linking.openURL(item.url)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name={item.icon as any} size={scale(18)} color={item.color} />
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         </View>
 
-
-        {/* App Purpose Card */}
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, padding: 16 }]}>
-          <View style={styles.purposeHeader}>
-            <View style={[styles.purposeIconWrap, { backgroundColor: theme.primary + '15' }]}>
-              <Ionicons name="rocket-outline" size={18} color={theme.primary} />
-            </View>
-            <Text style={[styles.purposeTitle, { color: theme.text }]}>Our Mission</Text>
+        {/* ── Mission ─────────────────────────────────────────────────── */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>OUR MISSION</Text>
+          <View style={[styles.missionCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Text style={[styles.missionText, { color: theme.textSecondary }]}>
+              <Text style={{ fontWeight: '700', color: theme.primary }}>The Seeks Academy</Text> app is thoughtfully designed to streamline communication and management. We aim to digitize operations like attendance tracking, fee management, and academic progress sharing, fostering a more cohesive, efficient, and transparent educational environment for students, parents, and staff.
+            </Text>
           </View>
-          <Text style={[styles.purposeText, { color: theme.textSecondary }]}>
-            The Seeks Academy app is thoughtfully designed to streamline communication and management. We aim to digitize operations like attendance tracking, fee management, and academic progress sharing, fostering a more cohesive, efficient, and transparent educational environment for students, parents, and staff.
-          </Text>
         </View>
 
         <View style={styles.footerWrap}>
           <Text style={[styles.footerText, { color: theme.textSecondary }]}>Made with ❤️ by </Text>
-          <TouchableOpacity onPress={() => Linking.openURL('https://zahid.codes')} activeOpacity={0.7} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://zahid.codes')} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Text style={[styles.footerLink, { color: theme.primary }]}>ZahidCodes</Text>
           </TouchableOpacity>
-          <Text style={[styles.footerText, { color: theme.textSecondary }]}> · v1.0.1</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -139,102 +134,132 @@ export const AboutScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  content: { paddingHorizontal: scale(14), paddingTop: scale(8), paddingBottom: scale(32) },
 
-  header: {
+  // ── Top Bar ────────────────────────────────────────────────────────────────
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: scale(14),
+    paddingTop: scale(10),
+    paddingBottom: scale(10)
+  },
+  titleCenter: { alignItems: 'center', flex: 1 },
+  screenTitle: { fontSize: scale(16), fontWeight: '800', letterSpacing: -0.3 },
+  iconBtn: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(10),
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+
+  // ── Hero Section ───────────────────────────────────────────────────────────
+  heroSection: {
+    borderRadius: scale(14),
+    padding: scale(16),
+    marginBottom: scale(18),
+  },
+  heroTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
   },
-  backBtn: {
-    width: 36, height: 36,
-    borderRadius: 12,
+  appLogo: { width: scale(52), height: scale(52), borderRadius: scale(12), marginRight: scale(14) },
+  heroInfo: { flex: 1, justifyContent: 'center' },
+  heroName: { fontSize: scale(16), fontWeight: '700', color: '#fff', letterSpacing: 0.1 },
+  heroLocation: { fontSize: scale(12), color: 'rgba(255,255,255,0.8)', marginTop: scale(4) },
+  heroDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginVertical: scale(16),
+  },
+  heroStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  heroStat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  heroStatValue: {
+    fontSize: scale(13),
+    fontWeight: '700',
+    color: '#fff',
+    marginTop: scale(6),
+  },
+  heroStatLabel: {
+    fontSize: scale(9.5),
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: scale(3),
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  heroStatDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: scale(28),
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+
+  // ── Sections ───────────────────────────────────────────────────────────────
+  section: { marginBottom: scale(18) },
+  sectionTitle: {
+    fontSize: scale(9.5),
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    marginBottom: scale(8),
+    marginLeft: scale(4),
+  },
+
+  // ── Developer Card ─────────────────────────────────────────────────────────
+  devCard: {
+    borderRadius: scale(14),
+    borderWidth: 1,
+    padding: scale(14),
+  },
+  devRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  devAvatar: { width: scale(48), height: scale(48), borderRadius: scale(12), borderWidth: 1, marginRight: scale(12) },
+  devInfo: { flex: 1 },
+  devName: { fontSize: scale(14), fontWeight: '700' },
+  rolePill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(3),
+    borderRadius: scale(6),
+    marginTop: scale(4),
+  },
+  roleText: { fontSize: scale(9.5), fontWeight: '700', letterSpacing: 0.2 },
+  devBio: { fontSize: scale(11), lineHeight: scale(16), marginTop: scale(6) },
+  devDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: scale(12),
+  },
+  socialRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: scale(8),
+  },
+  socialIconBtn: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
 
-  scroll: { padding: 12, paddingBottom: 32, gap: 10 },
-
-  /* App Identity */
-  appCard: {
-    borderRadius: 14,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  // ── Mission Card ───────────────────────────────────────────────────────────
+  missionCard: {
+    borderRadius: scale(14),
+    borderWidth: 1,
+    padding: scale(14),
   },
-  appLogo: { width: 46, height: 46, borderRadius: 11 },
-  appName: { fontSize: 15, fontWeight: '700', color: '#fff', letterSpacing: 0.1 },
-  appLocation: { fontSize: 12, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
-  versionBadge: {
-    marginLeft: 'auto',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: 20,
-  },
-  versionText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  missionText: { fontSize: scale(11.5), lineHeight: scale(18), letterSpacing: 0.2 },
 
-  /* Stats */
-  statsRow: {
-    flexDirection: 'row',
-    borderRadius: 14, borderWidth: 1,
-    paddingVertical: 12,
-  },
-  statItem: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 14, fontWeight: '700' },
-  statLabel: { fontSize: 10, marginTop: 2, fontWeight: '500' },
-  statDivider: { width: 1, marginVertical: 4 },
-
-  /* Shared Card */
-  card: {
-    borderRadius: 14, borderWidth: 1,
-    padding: 12,
-  },
-  cardLabel: {
-    fontSize: 10, fontWeight: '700',
-    letterSpacing: 0.8, textTransform: 'uppercase',
-    marginBottom: 10,
-  },
-  divider: { height: 1, marginVertical: 12 },
-
-  /* Developer */
-  devRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  devAvatar: { width: 52, height: 52, borderRadius: 13, borderWidth: 1 },
-  devInfo: { flex: 1 },
-  devName: { fontSize: 14, fontWeight: '700' },
-  rolePill: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 7, paddingVertical: 2,
-    borderRadius: 5, marginTop: 4,
-  },
-  roleText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.2 },
-  devBio: { fontSize: 12, lineHeight: 17, marginTop: 6 },
-
-  /* Social */
-  socialGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  socialBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingVertical: 8,
-    borderRadius: 10, borderWidth: 1,
-    gap: 7, width: '48%',
-  },
-  socialLabel: { fontSize: 13, fontWeight: '500' },
-
-
-
-  /* App Purpose */
-  purposeHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  purposeIconWrap: {
-    width: 32, height: 32, borderRadius: 10,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  purposeTitle: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
-  purposeText: { fontSize: 13, lineHeight: 22, letterSpacing: 0.2 },
-
-  footerWrap: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 4 },
-  footerText: { fontSize: 11 },
-  footerLink: { fontSize: 11, fontWeight: '600' },
+  // ── Footer ─────────────────────────────────────────────────────────────────
+  footerWrap: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: scale(8) },
+  footerText: { fontSize: scale(10) },
+  footerLink: { fontSize: scale(10), fontWeight: '700' },
 });

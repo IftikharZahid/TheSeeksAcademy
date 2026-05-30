@@ -26,157 +26,8 @@ import {
   initFeeListener,
   fetchAdminFeeRecords,
 } from '../../store/slices/adminSlice';
+import { MenuRow } from '../../components/CompactUI';
 
-
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 40) / 3;
-
-interface StatCardProps {
-  value: number;
-  label: string;
-  icon: string;
-  gradientColors: string[];
-  delay: number;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ value, label, icon, gradientColors, delay }) => {
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const countAnim = useRef(new Animated.Value(0)).current;
-  const [displayValue, setDisplayValue] = useState(0);
-
-  useEffect(() => {
-    const interaction = InteractionManager.runAfterInteractions(() => {
-      Animated.parallel([
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          delay,
-          friction: 6,
-          tension: 50,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          delay,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    });
-    return () => interaction.cancel();
-  }, []);
-
-  useEffect(() => {
-    Animated.timing(countAnim, {
-      toValue: value,
-      duration: 800,
-      delay: delay + 150,
-      useNativeDriver: false,
-    }).start();
-
-    const listener = countAnim.addListener(({ value: v }) => {
-      setDisplayValue(Math.floor(v));
-    });
-
-    return () => countAnim.removeListener(listener);
-  }, [value]);
-
-  return (
-    <Animated.View
-      style={[
-        styles.statCard,
-        {
-          opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }],
-        }
-      ]}
-    >
-      <LinearGradient
-        colors={gradientColors as [string, string]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.statGradient}
-      >
-        <View style={styles.statIconContainer}>
-          <Ionicons name={icon as any} size={18} color="rgba(255,255,255,0.95)" />
-        </View>
-        <Text style={styles.statValue}>{displayValue}</Text>
-        <Text style={styles.statLabel}>{label}</Text>
-      </LinearGradient>
-    </Animated.View>
-  );
-};
-
-interface ActionCardProps {
-  title: string;
-  icon: string;
-  color: string;
-  onPress: () => void;
-  delay: number;
-  badge?: number;
-}
-
-const ActionCard: React.FC<ActionCardProps> = ({ title, icon, color, onPress, delay, badge }) => {
-  const { theme, isDark } = useTheme();
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const interaction = InteractionManager.runAfterInteractions(() => {
-      Animated.parallel([
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          delay,
-          friction: 6,
-          tension: 50,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          delay,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    });
-    return () => interaction.cancel();
-  }, []);
-
-  return (
-    <Animated.View
-      style={[
-        { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }
-      ]}
-    >
-      <TouchableOpacity
-        style={[
-          styles.actionCard,
-          {
-            backgroundColor: isDark ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.95)',
-            borderColor: isDark ? 'rgba(51, 65, 85, 0.5)' : 'rgba(229, 231, 235, 0.8)',
-          }
-        ]}
-        onPress={onPress}
-        activeOpacity={0.7}
-      >
-        {badge != null && badge > 0 && (
-          <View style={styles.actionBadge}>
-            <Text style={styles.actionBadgeText}>{badge > 99 ? '99+' : badge}</Text>
-          </View>
-        )}
-        <LinearGradient
-          colors={[color, `${color}dd`]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.actionIconGradient}
-        >
-          <Ionicons name={icon as any} size={16} color="#fff" />
-        </LinearGradient>
-        <Text style={[styles.actionTitle, { color: theme.text }]} numberOfLines={2}>{title}</Text>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-};
 
 export const AdminDashboard: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -187,13 +38,7 @@ export const AdminDashboard: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const unsubsRef = useRef<(() => void)[]>([]);
 
-  // Derive counts from Redux instead of separate Firebase listeners
-  const studentCount = useAppSelector(state => state.admin.students.length);
-  const teacherCount = useAppSelector(state => state.teachers.list.length);
-  const courseCount = useAppSelector(state => state.videos.galleries.length);
-  const pendingComplaintsCount = useAppSelector(
-    state => state.admin.complaints.filter(c => c.status === 'Pending').length
-  );
+
 
   useEffect(() => {
     // Defer all heavy work until after the navigation transition completes
@@ -249,15 +94,11 @@ export const AdminDashboard: React.FC = () => {
   }, [dispatch]);
 
   const adminActions = [
-    { id: 1, title: 'Video Gallery', icon: 'videocam', color: '#6366f1', action: () => navigation.navigate('AdminVideoGallery') },
-    { id: 2, title: 'Students', icon: 'school', color: '#0ea5e9', action: () => navigation.navigate('AdminStudentRecords') },
-    { id: 3, title: 'Faculty', icon: 'people', color: '#ec4899', action: () => navigation.navigate('AdminTeachers') },
-    { id: 4, title: 'Exams', icon: 'trophy', color: '#f59e0b', action: () => navigation.navigate('AdminExams') },
-    { id: 5, title: 'Timetable', icon: 'calendar', color: '#10b981', action: () => navigation.navigate('AdminTimetable') },
-    { id: 6, title: 'Attendance', icon: 'finger-print', color: '#f43f5e', action: () => navigation.navigate('AdminAttendanceScreen') },
-    { id: 7, title: 'Fees', icon: 'wallet', color: '#8b5cf6', action: () => navigation.navigate('AdminFeeScreen') },
-    { id: 8, title: 'Complaints', icon: 'chatbubble-ellipses', color: '#ef4444', action: () => navigation.navigate('AdminComplaints'), badge: pendingComplaintsCount },
-    { id: 9, title: 'Notifications', icon: 'notifications', color: '#06b6d4', action: () => navigation.navigate('AdminNoticeBoardScreen') },
+    { id: 1, title: 'Exams', icon: 'trophy', color: '#f59e0b', action: () => navigation.navigate('AdminExams') },
+    { id: 2, title: 'Assignments', icon: 'document-text', color: '#8b5cf6', action: () => navigation.navigate('AdminAssignmentsScreen') },
+    { id: 3, title: 'Timetable', icon: 'calendar', color: '#10b981', action: () => navigation.navigate('AdminTimetable') },
+    { id: 4, title: 'Notifications', icon: 'notifications', color: '#06b6d4', action: () => navigation.navigate('AdminNoticeBoardScreen') },
+    { id: 5, title: 'Messages', icon: 'chatbubbles', color: '#ec4899', action: () => navigation.navigate('MessagesScreen') },
   ];
 
   const currentHour = new Date().getHours();
@@ -317,50 +158,31 @@ export const AdminDashboard: React.FC = () => {
           </LinearGradient>
         </Animated.View>
 
-        {/* Statistics Cards - 3 columns */}
-        <View style={styles.statsSection}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Overview</Text>
-          <View style={styles.statsRow}>
-            <StatCard
-              value={studentCount}
-              label="Students"
-              icon="school"
-              gradientColors={['#6366f1', '#8b5cf6']}
-              delay={0}
-            />
-            <StatCard
-              value={teacherCount}
-              label="Teachers"
-              icon="people"
-              gradientColors={['#ec4899', '#f472b6']}
-              delay={80}
-            />
-            <StatCard
-              value={courseCount}
-              label="Galleries"
-              icon="videocam"
-              gradientColors={['#0ea5e9', '#38bdf8']}
-              delay={160}
-            />
-          </View>
-        </View>
-
-        {/* Quick Actions - Grid Layout */}
-        <View style={styles.actionsSection}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
+        {/* Dashboard Menu Section */}
+        <View style={styles.menuSection}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>MANAGEMENT</Text>
+          <Animated.View 
+            style={[
+              styles.menuCard, 
+              { 
+                backgroundColor: theme.card, 
+                borderColor: theme.border,
+                opacity: headerAnim,
+              }
+            ]}
+          >
             {adminActions.map((item, index) => (
-              <ActionCard
+              <MenuRow
                 key={item.id}
-                title={item.title}
                 icon={item.icon}
+                label={item.title}
+                subtitle={`Manage ${item.title.toLowerCase()}`}
                 color={item.color}
                 onPress={item.action}
-                delay={200 + (index * 40)}
-                badge={item.badge}
+                isLast={index === adminActions.length - 1}
               />
             ))}
-          </View>
+          </Animated.View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -447,123 +269,21 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
-  // Stats Section
-  statsSection: {
+  // ── Menu Section ───────────────────────────────────────────────────────────
+  menuSection: {
     marginTop: 16,
     paddingHorizontal: 12,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 10,
-    letterSpacing: -0.2,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  statCard: {
-    flex: 1,
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  statGradient: {
-    padding: 12,
-    alignItems: 'center',
-    minHeight: 90,
-    justifyContent: 'center',
-  },
-  statIconContainer: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  statValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.5,
-  },
-  statLabel: {
     fontSize: 10,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.85)',
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-    marginTop: 1,
-  },
-  // Actions Section
-  actionsSection: {
-    marginTop: 16,
-    paddingHorizontal: 12,
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    justifyContent: 'flex-start',
-  },
-  actionCard: {
-    width: (width - 48) / 3, // (screen width - 2*paddingHorizontal - 2*gap) / 3 columns
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 4,
-    borderRadius: 16,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  actionIconGradient: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    fontWeight: '700',
+    letterSpacing: 0.8,
     marginBottom: 8,
+    marginLeft: 4,
   },
-  actionTitle: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-    textAlign: 'center',
-  },
-  actionBadge: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#ef4444',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-    zIndex: 10,
-    borderWidth: 1.5,
-    borderColor: '#fff',
-    shadowColor: '#ef4444',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  actionBadgeText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '800',
-    textAlign: 'center',
+  menuCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
 });

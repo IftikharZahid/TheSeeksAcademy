@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { db } from '../../api/firebaseConfig';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
@@ -62,6 +62,11 @@ const feeSlice = createSlice({
             state.details = null;
             state.error = null;
         },
+        setFeeDetails(state, action: PayloadAction<any>) {
+            state.details = action.payload;
+            state.isLoading = false;
+            state.error = null;
+        },
     },
     extraReducers: (builder) => {
         builder
@@ -80,5 +85,5 @@ const feeSlice = createSlice({
     },
 });
 
-export const { clearFee } = feeSlice.actions;
+export const { clearFee, setFeeDetails } = feeSlice.actions;
 export default feeSlice.reducer;

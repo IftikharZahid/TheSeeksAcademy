@@ -40,3 +40,4 @@ firebase-debug.log
 # generated native folders
 /ios
 /android
+TheSeeks-Dashboard/dist_electron/

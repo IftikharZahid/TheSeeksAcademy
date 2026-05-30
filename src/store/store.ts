@@ -13,11 +13,13 @@ import attendanceReducer from './slices/attendanceSlice';
 import messagesReducer from './slices/messagesSlice';
 import adminReducer from './slices/adminSlice';
 import complaintsReducer from './slices/complaintsSlice';
+import assignmentsReducer from './slices/assignmentsSlice';
+import timetableReducer from './slices/timetableSlice';
 
 const persistConfig = {
     key: 'root',
     storage: AsyncStorage,
-    whitelist: ['auth', 'videos', 'theme'], // Only persist these slices
+    whitelist: ['auth', 'videos', 'theme', 'admin'], // Only persist these slices
 };
 
 const rootReducer = combineReducers({
@@ -33,6 +35,8 @@ const rootReducer = combineReducers({
     messages: messagesReducer,
     admin: adminReducer,
     complaints: complaintsReducer,
+    assignments: assignmentsReducer,
+    timetable: timetableReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

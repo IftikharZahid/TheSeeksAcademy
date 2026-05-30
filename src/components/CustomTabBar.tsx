@@ -157,7 +157,7 @@ export const EducationalTabBar: React.FC<BottomTabBarProps> = ({ state, descript
   const tabBarStyle = focusedOptions.tabBarStyle;
 
   // If display is none, return null to completely hide it
-  if ((tabBarStyle as any)?.display === 'none') {
+  if (tabBarStyle && (tabBarStyle as any).display === 'none') {
     return null;
   }
 

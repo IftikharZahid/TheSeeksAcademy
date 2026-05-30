@@ -14,7 +14,7 @@ import {
   StatusBar
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -55,6 +55,22 @@ export const ComplaintsScreen: React.FC = () => {
   const headerAnim = useRef(new Animated.Value(0)).current;
   const formAnim = useRef(new Animated.Value(0)).current;
   const listAnim = useRef(new Animated.Value(0)).current;
+
+  useFocusEffect(
+    React.useCallback(() => {
+      navigation.getParent()?.setOptions({
+        tabBarStyle: { display: 'none' },
+        headerShown: false,
+      });
+
+      return () => {
+        navigation.getParent()?.setOptions({
+          tabBarStyle: undefined,
+          headerShown: true,
+        });
+      };
+    }, [navigation])
+  );
 
   useEffect(() => {
     Animated.stagger(150, [

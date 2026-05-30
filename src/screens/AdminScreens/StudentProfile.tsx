@@ -1,221 +1,366 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions, SafeAreaView, StatusBar } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, Image,
+  TouchableOpacity, SafeAreaView, StatusBar,
+  Platform,
+} from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { scale } from '../../utils/responsive';
 import * as Clipboard from 'expo-clipboard';
+import { CompactCard, MenuRow } from '../../components/CompactUI';
 
-// Define the params list locally or import if centralized
 type RootStackParamList = {
-    AdminStudentRecords: undefined;
-    StudentProfile: { student: any }; // Using any for flexibility, or import AdminStudent interface
+  AdminStudentRecords: undefined;
+  StudentProfile: { student: any };
 };
-
 type StudentProfileRouteProp = RouteProp<RootStackParamList, 'StudentProfile'>;
 
+/** Section title with leading icon */
+const SectionTitle = ({
+  label, icon, theme,
+}: {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  theme: any;
+}) => (
+  <View style={styles.sectionHeader}>
+    <Ionicons name={icon} size={scale(12)} color={theme.textTertiary} />
+    <Text style={[styles.sectionLabel, { color: theme.textTertiary }]}>
+      {label.toUpperCase()}
+    </Text>
+  </View>
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main Screen
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const StudentProfile: React.FC = () => {
-    const route = useRoute<StudentProfileRouteProp>();
-    const navigation = useNavigation();
-    const { theme, isDark } = useTheme();
-    const { student } = route.params;
+  const route = useRoute<StudentProfileRouteProp>();
+  const navigation = useNavigation();
+  const { theme, isDark } = useTheme();
+  const { student } = route.params;
 
-    const copyToClipboard = async (text: string, label: string) => {
-        if (text) {
-            await Clipboard.setStringAsync(text);
-            // Optional: Show a toast or small alert
-        }
-    };
+  const [toastVisible, setToastVisible] = useState(false);
 
-    const InfoRow = ({ icon, label, value, copyable = false }: { icon: string; label: string; value: string; copyable?: boolean }) => (
+  const copy = async (text: string) => {
+    if (!text) return;
+    await Clipboard.setStringAsync(String(text));
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 1600);
+  };
+
+  // Initials for avatar fallback
+  const initials = (student.name || '')
+    .split(' ')
+    .slice(0, 2)
+    .map((w: string) => (w[0] || '').toUpperCase())
+    .join('');
+
+  // Fee status colour
+  const feeColor =
+    student.feeStatus === 'Paid' ? theme.success :
+    student.feeStatus === 'Pending' ? theme.error :
+    theme.warning;
+  const feeLabel = student.feeStatus || 'N/A';
+
+  // Hero top padding: status bar height + breathing room
+  const statusBarH = Platform.OS === 'android' ? StatusBar.currentHeight ?? 24 : 44;
+  const heroPaddingTop = statusBarH + scale(12);
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="transparent"
+        translucent
+      />
+
+      {/* ── HERO ──────────────────────────────────────────── */}
+      <LinearGradient
+        colors={[theme.primaryDark, theme.primary]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.hero, { paddingTop: heroPaddingTop }]}
+      >
+        {/* Back button */}
         <TouchableOpacity
-            style={[styles.infoRow, { backgroundColor: theme.card }]}
-            activeOpacity={copyable ? 0.7 : 1}
-            onPress={() => copyable && copyToClipboard(value, label)}
+          style={[styles.backBtn, { top: heroPaddingTop + scale(4) }]}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-            <View style={[styles.iconContainer, { backgroundColor: theme.primary + '15' }]}>
-                <Ionicons name={icon as any} size={20} color={theme.primary} />
-            </View>
-            <View style={styles.infoContent}>
-                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>{label}</Text>
-                <Text style={[styles.infoValue, { color: theme.text }]}>{value || 'N/A'}</Text>
-            </View>
-            {copyable && (
-                <Ionicons name="copy-outline" size={16} color={theme.textSecondary} />
-            )}
+          <Ionicons name="arrow-back" size={scale(19)} color="#fff" />
         </TouchableOpacity>
-    );
 
-    return (
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color="#fff" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Student Profile</Text>
-                <View style={{ width: 24 }} />
+        {/* Avatar */}
+        <View style={styles.avatarWrap}>
+          {student.profileImage ? (
+            <Image source={{ uri: student.profileImage }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarFallback]}>
+              <Text style={styles.avatarInitials}>{initials || '?'}</Text>
             </View>
+          )}
+          {/* Active indicator */}
+          <View style={styles.activeDot} />
+        </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                {/* Profile Header Card */}
-                <LinearGradient
-                    colors={[theme.primary, theme.primary + '90']}
-                    style={styles.profileHeader}
-                >
-                    <View style={styles.profileImageContainer}>
-                        {student.profileImage ? (
-                            <Image source={{ uri: student.profileImage }} style={styles.profileImage} />
-                        ) : (
-                            <Image source={require('../../assets/default-profile.png')} style={styles.profileImage} />
-                        )}
-                    </View>
-                    <Text style={styles.name}>{student.name}</Text>
-                    <Text style={styles.subText}>{student.studentId} • {student.grade}</Text>
-                </LinearGradient>
+        <Text style={styles.heroName}>{student.name || 'Unknown Student'}</Text>
 
-                {/* Details Section */}
-                <View style={styles.detailsContainer}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Personal Information</Text>
+        {/* Info pills */}
+        <View style={styles.heroMeta}>
+          {[
+            { icon: 'id-card-outline' as const, text: student.studentId },
+            { icon: 'school-outline' as const, text: student.grade },
+            student.gender ? { icon: 'person-outline' as const, text: student.gender } : null,
+          ].filter(Boolean).map((item: any, i) => (
+            <View key={i} style={[styles.heroPill, i > 0 && { marginLeft: scale(6) }]}>
+              <Ionicons name={item.icon} size={scale(9)} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.heroPillText}>{item.text || 'N/A'}</Text>
+            </View>
+          ))}
+        </View>
+      </LinearGradient>
 
-                    <InfoRow icon="person" label="Full Name" value={student.name} copyable />
-                    <InfoRow icon="people" label="Father Name" value={student.fatherName} copyable />
-                    <InfoRow icon="male-female" label="Gender" value={student.gender} />
-                    <InfoRow icon="calendar" label="Date of Birth" value={student.dateofbirth} />
+      {/* ── SCROLL CONTENT ────────────────────────────────── */}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Quick stats bar */}
+        <View style={[styles.statsBar, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          {[
+            { icon: 'time-outline' as const, value: student.session || '2025–26', label: 'Session', color: theme.primary },
+            { icon: 'layers-outline' as const, value: student.section || 'A', label: 'Section', color: theme.info },
+            { icon: 'card-outline' as const, value: feeLabel, label: 'Fee', color: feeColor },
+          ].map((item, i) => (
+            <View
+              key={i}
+              style={[
+                styles.statCell,
+                i < 2 && { borderRightWidth: StyleSheet.hairlineWidth, borderRightColor: theme.border },
+              ]}
+            >
+              <Ionicons name={item.icon} size={scale(14)} color={item.color} />
+              <Text style={[styles.statValue, { color: item.color }]} numberOfLines={1}>
+                {item.value}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.textTertiary }]}>
+                {item.label}
+              </Text>
+            </View>
+          ))}
+        </View>
 
-                    <View style={styles.divider} />
+        {/* ── PERSONAL INFORMATION ──────────────────────── */}
+        <SectionTitle label="Personal Information" icon="person-outline" theme={theme} />
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <MenuRow icon="person" label="Full Name" value={student.name} color={theme.primary} copyable onCopy={() => copy(student.name)} />
+          <MenuRow icon="people" label="Father's Name" value={student.fatherName} color={theme.info} copyable onCopy={() => copy(student.fatherName)} />
+          <MenuRow icon="calendar" label="Date of Birth" value={student.dateofbirth} color={theme.accent} />
+          <MenuRow icon="male-female" label="Gender" value={student.gender} color={theme.accent} />
+          <MenuRow icon="location" label="Address" value={student.address} color={theme.warning} isLast />
+        </View>
 
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Academic Details</Text>
-                    <InfoRow icon="id-card" label="Roll No / ID" value={student.studentId} copyable />
-                    <InfoRow icon="school" label="Class / Grade" value={student.grade} />
-                    <InfoRow icon="time" label="Session" value={student.session || '2025-2026'} />
-                    <InfoRow icon="layers" label="Section" value={student.section || 'A'} />
+        {/* ── ACADEMIC DETAILS ──────────────────────────── */}
+        <SectionTitle label="Academic Details" icon="school-outline" theme={theme} />
+        <View style={styles.gridRow}>
+          <CompactCard icon="id-card" label="Roll / ID" value={student.studentId} color={theme.primary} copyable onCopy={() => copy(student.studentId)} />
+          <CompactCard icon="school" label="Class / Grade" value={student.grade} color={theme.info} />
+          <CompactCard icon="time" label="Session" value={student.session || '2025–26'} color={theme.accent} />
+          <CompactCard icon="layers" label="Section" value={student.section || 'A'} color={theme.warning} />
+        </View>
 
-                    <View style={styles.divider} />
+        {/* ── CONTACT & ACCOUNT ─────────────────────────── */}
+        <SectionTitle label="Contact & Account" icon="call-outline" theme={theme} />
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <MenuRow icon="mail" label="Email Address" value={student.email} color={theme.info} copyable onCopy={() => copy(student.email)} />
+          <MenuRow icon="call" label="Phone Number" value={student.phone} color={theme.success} copyable onCopy={() => copy(student.phone)} />
+          <MenuRow icon="key" label="Password" value={student.password} color={theme.warning} copyable onCopy={() => copy(student.password)} isLast />
+        </View>
 
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Contact & Account</Text>
-                    <InfoRow icon="mail" label="Email" value={student.email} copyable />
-                    <InfoRow icon="call" label="Phone" value={student.phone} copyable />
-                    <InfoRow icon="key" label="Password" value={student.password} copyable />
-                    <InfoRow icon="location" label="Address" value={student.address} />
+        {/* ── CLIPBOARD TOAST ────────────────────────────── */}
+        {toastVisible && (
+          <View style={[styles.toast, { backgroundColor: theme.primary }]}>
+            <Ionicons name="checkmark-circle" size={scale(13)} color="#fff" />
+            <Text style={styles.toastText}>Copied to clipboard</Text>
+          </View>
+        )}
 
-                </View>
-            </ScrollView>
-        </SafeAreaView>
-    );
+        <View style={{ height: scale(32) }} />
+      </ScrollView>
+    </SafeAreaView>
+  );
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Styles — zero `gap` usage, safe for all RN versions
+// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: scale(16),
-        paddingVertical: scale(12),
-        backgroundColor: '#4f46e5', // Fixed color to match gradient or theme primary 
-        // We'll override this with inline style if needed, but keeping it simple for now
-    },
-    backButton: {
-        padding: 4,
-    },
-    headerTitle: {
-        fontSize: scale(18),
-        fontWeight: 'bold',
-        color: '#fff',
-    },
-    scrollContent: {
-        paddingBottom: scale(20),
-    },
-    profileHeader: {
-        alignItems: 'center',
-        paddingVertical: scale(24),
-        borderBottomLeftRadius: scale(30),
-        borderBottomRightRadius: scale(30),
-        marginBottom: scale(16),
-    },
-    profileImageContainer: {
-        width: scale(110),
-        height: scale(110),
-        borderRadius: scale(55),
-        borderWidth: 4,
-        borderColor: '#fff',
-        overflow: 'hidden',
-        marginBottom: scale(12),
-        backgroundColor: '#e0e7ff',
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 5,
-    },
-    profileImage: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
-    },
-    name: {
-        fontSize: scale(22),
-        fontWeight: 'bold',
-        color: '#fff',
-        marginBottom: scale(4),
-    },
-    subText: {
-        fontSize: scale(14),
-        color: '#e0e7ff',
-        opacity: 0.9,
-    },
-    detailsContainer: {
-        paddingHorizontal: scale(16),
-    },
-    sectionTitle: {
-        fontSize: scale(16),
-        fontWeight: '700',
-        marginBottom: scale(12),
-        marginTop: scale(12),
-        opacity: 0.8,
-    },
-    infoRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: scale(12),
-        borderRadius: scale(12),
-        marginBottom: scale(10),
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
-    },
-    iconContainer: {
-        width: scale(36),
-        height: scale(36),
-        borderRadius: scale(18),
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: scale(12),
-    },
-    infoContent: {
-        flex: 1,
-    },
-    infoLabel: {
-        fontSize: scale(12),
-        marginBottom: scale(2),
-    },
-    infoValue: {
-        fontSize: scale(14),
-        fontWeight: '600',
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#ccc', // Use theme border if possible
-        opacity: 0.2,
-        marginVertical: scale(8),
-    },
+  container: { flex: 1 },
+
+  // Hero
+  hero: {
+    paddingBottom: scale(20),
+    paddingHorizontal: scale(16),
+    alignItems: 'center',
+  },
+  backBtn: {
+    position: 'absolute',
+    left: scale(14),
+    width: scale(34),
+    height: scale(34),
+    borderRadius: scale(17),
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarWrap: {
+    position: 'relative',
+    marginBottom: scale(10),
+    marginTop: scale(8),
+  },
+  avatar: {
+    width: scale(78),
+    height: scale(78),
+    borderRadius: scale(39),
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.55)',
+  },
+  avatarFallback: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: {
+    fontSize: scale(26),
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
+  activeDot: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: scale(12),
+    height: scale(12),
+    borderRadius: scale(6),
+    backgroundColor: '#22c55e',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  heroName: {
+    fontSize: scale(19),
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.4,
+    marginBottom: scale(10),
+    textAlign: 'center',
+  },
+  heroMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  heroPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: scale(9),
+    paddingVertical: scale(4),
+    borderRadius: scale(20),
+  },
+  heroPillText: {
+    fontSize: scale(10),
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.92)',
+    marginLeft: scale(4),
+  },
+
+  // Scroll
+  scroll: {
+    paddingHorizontal: scale(14),
+    paddingTop: scale(12),
+  },
+
+  // Stats bar
+  statsBar: {
+    flexDirection: 'row',
+    borderRadius: scale(13),
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginBottom: scale(18),
+  },
+  statCell: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: scale(11),
+  },
+  statValue: {
+    fontSize: scale(12),
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    marginTop: scale(3),
+    marginBottom: scale(1),
+  },
+  statLabel: {
+    fontSize: scale(9),
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  // Section header
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: scale(7),
+    marginTop: scale(2),
+    paddingLeft: scale(2),
+  },
+  sectionLabel: {
+    fontSize: scale(9.5),
+    fontWeight: '700',
+    letterSpacing: 0.9,
+    marginLeft: scale(5),
+  },
+
+  // Card wrapper
+  card: {
+    borderRadius: scale(14),
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginBottom: scale(14),
+  },
+
+  // 2-col grid (Academic)
+  gridRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: scale(14),
+    marginHorizontal: -scale(4), // cancel out column padding
+  },
+
+  // Toast
+  toast: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(8),
+    borderRadius: scale(20),
+    marginTop: scale(8),
+    marginBottom: scale(4),
+  },
+  toastText: {
+    fontSize: scale(12),
+    fontWeight: '600',
+    color: '#fff',
+    marginLeft: scale(6),
+  },
 });

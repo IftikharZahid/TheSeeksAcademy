@@ -16,6 +16,7 @@ export interface Student {
     phone: string;
     rollno?: string;
     profileImage?: string;
+    createdAt?: number;
     [key: string]: any;
 }
 
@@ -51,6 +52,7 @@ export const fetchStudents = createAsyncThunk('students/fetchStudents', async ()
             profileImage: data.profileImage || data.image || '',
             uid: data.uid || '',
             authUid: data.authUid || '',
+            createdAt: data.createdAt ? (data.createdAt.toMillis ? data.createdAt.toMillis() : (typeof data.createdAt === 'number' ? data.createdAt : Date.now())) : null,
         } as Student;
     });
 });

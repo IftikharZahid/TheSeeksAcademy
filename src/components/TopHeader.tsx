@@ -11,9 +11,23 @@ import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { scale } from '../utils/responsive';
 
+const formatRelativeTime = (timeMs: number): string => {
+  if (!timeMs) return '';
+  const diffMs = Date.now() - timeMs;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return 'Yesterday';
+  return new Date(timeMs).toLocaleDateString([], { month: 'short', day: 'numeric' });
+};
+
 export const TopHeader: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const { unreadCount: notificationCount } = useNotifications();
   const unreadMessagesCount = useAppSelector(selectUnreadMessagesCount);
   const user = useAppSelector((state) => state.auth.user);
@@ -22,15 +36,32 @@ export const TopHeader: React.FC = () => {
   const notices = useAppSelector((state) => state.notifications.notices);
   const messages = useAppSelector((state) => state.messages.list);
 
-  // Find latest items
-  const latestNotice = notices.length > 0 ? notices[0] : null;
-  const latestMessage = messages.length > 0 ? messages[messages.length - 1] : null;
-
+  // Combine & Sort Recent Updates
+  const recentUpdates: any[] = [];
+  const getNoticeTime = (n: any) => {
+    if (n.createdAt?.toMillis) return n.createdAt.toMillis();
+    if (n.createdAt?.seconds) return n.createdAt.seconds * 1000;
+    return 0;
+  };
+  
+  if (notices && notices.length > 0) {
+    notices.forEach(n => {
+      recentUpdates.push({ id: `notice-${n.id}`, type: 'notice', item: n, timeMs: getNoticeTime(n) });
+    });
+  }
+  if (messages && messages.length > 0) {
+    messages.forEach(m => {
+      recentUpdates.push({ id: `msg-${m.id}`, type: 'message', item: m, timeMs: (m as any).createdAtMs || 0 });
+    });
+  }
+  
+  recentUpdates.sort((a, b) => b.timeMs - a.timeMs);
+  const topUpdates = recentUpdates.slice(0, 4);
   const [showDropdown, setShowDropdown] = useState(false);
 
   // Fallback logic
   const displayName = profile?.fullname || user?.displayName || 'Student';
-  const displayImage = (profile?.image && profile.image.trim() !== '') ? profile.image : (user?.photoURL || null);
+  const displayImage = (profile?.image && profile.image.trim() !== '') ? profile.image : (user?.photoURL && user.photoURL.trim() !== '' ? user.photoURL : null);
 
   // Time-based academic greeting
   const getGreeting = (): string => {
@@ -160,7 +191,7 @@ export const TopHeader: React.FC = () => {
               <Image
                 source={displayImage ? { uri: displayImage } : require('../assets/default-profile.png')}
                 placeholder={require('../assets/default-profile.png')}
-                style={styles.avatarImage}
+                style={[styles.avatarImage, (!displayImage && isDark) ? { tintColor: '#fff' } : null]}
                 contentFit="cover"
                 transition={200}
               />
@@ -182,39 +213,54 @@ export const TopHeader: React.FC = () => {
                   </TouchableOpacity>
                 </View>
 
-                {/* Latest Notice */}
-                {latestNotice ? (
-                  <TouchableOpacity
-                    style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
-                    onPress={() => { setShowDropdown(false); navigation.navigate('Home', { screen: 'NoticesScreen' }) }}
-                  >
-                    <View style={[styles.iconBox, { backgroundColor: latestNotice.iconBgColor || theme.backgroundSecondary }]}>
-                      <Ionicons name={(latestNotice.iconName as any) || 'notifications'} size={20} color={latestNotice.iconColor || theme.primary} />
-                    </View>
-                    <View style={styles.dropdownContent}>
-                      <Text style={[styles.itemTitle, { color: theme.text }]} numberOfLines={1}>{latestNotice.title}</Text>
-                      <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={1}>{latestNotice.message}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ) : null}
-
-                {/* Latest Message */}
-                {latestMessage ? (
-                  <TouchableOpacity
-                    style={styles.dropdownItem}
-                    onPress={() => { setShowDropdown(false); navigation.navigate('Home', { screen: 'MessagesScreen' }) }}
-                  >
-                    <View style={[styles.iconBox, { backgroundColor: theme.backgroundSecondary }]}>
-                      <Ionicons name="chatbubbles" size={20} color={theme.accent} />
-                    </View>
-                    <View style={styles.dropdownContent}>
-                      <Text style={[styles.itemTitle, { color: theme.text }]} numberOfLines={1}>Groups: {latestMessage.senderName}</Text>
-                      <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={1}>{latestMessage.text}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ) : null}
-
-                {!latestNotice && !latestMessage && (
+                {/* Dynamic Updates List */}
+                {topUpdates.length > 0 ? (
+                  topUpdates.map(update => {
+                    if (update.type === 'notice') {
+                      const n = update.item;
+                      return (
+                        <TouchableOpacity
+                          key={update.id}
+                          style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
+                          onPress={() => { setShowDropdown(false); navigation.navigate('Home', { screen: 'NoticesScreen', params: { noticeId: n.id } }) }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.iconBox, { backgroundColor: n.iconBgColor || 'rgba(139,92,246,0.1)' }]}>
+                            <Ionicons name={(n.iconName as any) || 'notifications'} size={18} color={n.iconColor || theme.primary} />
+                          </View>
+                          <View style={styles.dropdownContent}>
+                            <View style={styles.itemTitleRow}>
+                              <Text style={[styles.itemTitle, { color: theme.text }]} numberOfLines={1}>{n.title}</Text>
+                              <Text style={[styles.itemTime, { color: theme.textTertiary }]}>{formatRelativeTime(update.timeMs)}</Text>
+                            </View>
+                            <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={1}>{n.message}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    } else {
+                      const m = update.item;
+                      return (
+                        <TouchableOpacity
+                          key={update.id}
+                          style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
+                          onPress={() => { setShowDropdown(false); navigation.navigate('Home', { screen: 'MessagesScreen', params: { groupId: m.groupId } }) }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.iconBox, { backgroundColor: 'rgba(6,182,212,0.1)' }]}>
+                            <Ionicons name="chatbubbles" size={18} color={theme.accent} />
+                          </View>
+                          <View style={styles.dropdownContent}>
+                            <View style={styles.itemTitleRow}>
+                              <Text style={[styles.itemTitle, { color: theme.text }]} numberOfLines={1}>Groups: {m.senderName}</Text>
+                              <Text style={[styles.itemTime, { color: theme.textTertiary }]}>{formatRelativeTime(update.timeMs)}</Text>
+                            </View>
+                            <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={1}>{m.text}</Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    }
+                  })
+                ) : (
                   <View style={styles.emptyDropdown}>
                     <Text style={{ color: theme.textSecondary, fontSize: 13 }}>No recent updates</Text>
                   </View>
@@ -318,13 +364,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: scale(60), // Just below header
     right: scale(16),
-    width: scale(280),
-    borderRadius: 14,
+    width: scale(290), // Slightly wider for layout polish
+    borderRadius: 16,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
     elevation: 8,
     overflow: 'hidden',
   },
@@ -333,44 +379,56 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   dropdownTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   viewAllText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   dropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   dropdownContent: {
     flex: 1,
   },
-  itemTitle: {
-    fontSize: 13,
-    fontWeight: '600',
+  itemTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 2,
   },
-  itemText: {
+  itemTitle: {
     fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+    marginRight: 6,
+  },
+  itemTime: {
+    fontSize: 9,
+    fontWeight: '500',
+  },
+  itemText: {
+    fontSize: 11,
   },
   emptyDropdown: {
     padding: 20,
     alignItems: 'center',
-  }
+  },
 });

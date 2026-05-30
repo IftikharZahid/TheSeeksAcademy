@@ -1,5 +1,5 @@
 import React from "react";
-import { View } from "react-native";
+import { View, ActivityIndicator } from "react-native";
 import {
   NavigationContainer,
   DefaultTheme,
@@ -8,14 +8,12 @@ import {
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useTheme } from "../../context/ThemeContext";
 import { useAppSelector } from "../../store/hooks";
-import { LoadingScreen } from "../LoadingScreen";
 
-import { LoginScreen } from "../LoginScreen";
-import { SignupScreen } from "../SignupScreen";
-import { WelcomeScreen } from "../WelcomeScreen";
+import { LoginScreen } from "../AuthScreens/LoginScreen";
+import { WelcomeScreen } from "../AuthScreens/WelcomeScreen";
 import { MainTabs } from "./MainTabs";
 import { AdminDashboard } from "../AdminScreens/AdminDashboard";
-import { HomeScreen } from "../HomeScreen";
+import { HomeScreen } from "../CoreScreens/HomeScreen";
 import { AdminComplaintsScreen } from "../AdminScreens/AdminComplaintsScreen";
 import { AdminTimetableScreen } from "../AdminScreens/AdminTimetableScreen";
 import { AdminTeachersScreen } from "../AdminScreens/AdminTeachersScreen";
@@ -25,12 +23,19 @@ import { AdminExamsScreen } from "../AdminScreens/AdminExamsScreen";
 import { AdminFeeScreen } from "../AdminScreens/AdminFeeScreen";
 import { AdminNoticeBoardScreen } from "../AdminScreens/AdminNoticeBoardScreen";
 import { AdminAttendanceScreen } from "../AdminScreens/AdminAttendanceScreen";
+import { AdminAssignmentsScreen } from "../AdminScreens/AdminAssignmentsScreen";
 import { StudentProfile } from "../AdminScreens/StudentProfile";
+
+// Profile sub-screens — moved to root so they overlay cleanly (no header/tab bar flash)
+import { HelpCenterScreen } from "../SettingScreens/HelpCenterScreen";
+import { AboutScreen } from "../SettingScreens/AboutScreen";
+import { PrivacyPolicyScreen } from "../SettingScreens/PrivacyPolicyScreen";
+import ChangePasswordScreen from "../SettingScreens/ChangePasswordScreen";
+import { TeacherDashboardScreen } from "../Teachers/TeacherDashboardScreen";
 
 export type RootStackParamList = {
   Welcome: undefined;
   Login: undefined;
-  Signup: undefined;
   Main: undefined;
   Admin: undefined;
   Home: undefined;
@@ -43,7 +48,14 @@ export type RootStackParamList = {
   AdminFeeScreen: undefined;
   AdminNoticeBoardScreen: undefined;
   AdminAttendanceScreen: undefined;
+  AdminAssignmentsScreen: undefined;
   StudentProfile: { student: any };
+  // Profile sub-screens at root level
+  HelpCenterScreen: undefined;
+  AboutScreen: undefined;
+  PrivacyPolicyScreen: undefined;
+  ChangePasswordScreen: undefined;
+  TeacherDashboardScreen: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -74,9 +86,13 @@ export const AppNavigator: React.FC = () => {
     },
   };
 
-  // Show branded loading screen while Firebase auth resolves
+  // Show themed spinner while Firebase auth resolves
   if (initializing && !timedOut) {
-    return <LoadingScreen />;
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
+    );
   }
 
   return (
@@ -98,7 +114,6 @@ export const AppNavigator: React.FC = () => {
             <>
               <Stack.Screen name="Welcome" component={WelcomeScreen} />
               <Stack.Screen name="Login" component={LoginScreen} />
-              <Stack.Screen name="Signup" component={SignupScreen} />
             </>
           ) : (
             <>
@@ -114,7 +129,14 @@ export const AppNavigator: React.FC = () => {
               <Stack.Screen name="AdminFeeScreen" component={AdminFeeScreen} />
               <Stack.Screen name="AdminNoticeBoardScreen" component={AdminNoticeBoardScreen} />
               <Stack.Screen name="AdminAttendanceScreen" component={AdminAttendanceScreen} />
+              <Stack.Screen name="AdminAssignmentsScreen" component={AdminAssignmentsScreen} />
               <Stack.Screen name="StudentProfile" component={StudentProfile} />
+              {/* Profile sub-screens — root level ensures no header/tab bar leak */}
+              <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
+              <Stack.Screen name="AboutScreen" component={AboutScreen} />
+              <Stack.Screen name="PrivacyPolicyScreen" component={PrivacyPolicyScreen} />
+              <Stack.Screen name="ChangePasswordScreen" component={ChangePasswordScreen} />
+              <Stack.Screen name="TeacherDashboardScreen" component={TeacherDashboardScreen} />
             </>
           )}
         </Stack.Navigator>

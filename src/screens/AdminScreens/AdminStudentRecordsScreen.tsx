@@ -1091,22 +1091,57 @@ Made with ❤ by The Seeks Academy`;
                     <Text style={{ fontSize: 9, fontWeight: '700', color: theme.primary, textTransform: 'uppercase' }}>Read Only</Text>
                   </View>
                 </View>
-                <View style={styles.cFormRow}>
-                  <View style={styles.cFormCol}>
-                    <Text style={[styles.cFormLabel, { color: theme.textSecondary }]}>Student ID</Text>
-                    <View style={[styles.cFormInput, { backgroundColor: theme.border + '20', borderColor: theme.border, flexDirection: 'row', alignItems: 'center' }]}>
-                      <Text style={{ flex: 1, fontSize: 12, color: theme.textSecondary, fontFamily: 'monospace' }} numberOfLines={1}>{studentId}</Text>
-                      <Ionicons name="lock-closed" size={11} color={theme.textSecondary + '60'} />
-                    </View>
+                <View style={{ backgroundColor: theme.card, borderRadius: 10, borderWidth: 1, borderColor: theme.border, overflow: 'hidden' }}>
+                  {/* ID */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+                    <Ionicons name="id-card-outline" size={18} color="#6366f1" style={{ width: 28 }} />
+                    <Text style={{ fontSize: 12, color: theme.textSecondary, width: 75, fontWeight: '500' }}>Student ID</Text>
+                    <Text style={{ flex: 1, fontSize: 13, color: theme.text, fontFamily: 'monospace', fontWeight: '600' }} numberOfLines={1}>{studentId}</Text>
+                    <TouchableOpacity 
+                      onPress={async () => { await Clipboard.setStringAsync(studentId); Alert.alert('Copied', 'Student ID copied to clipboard'); }} 
+                      style={{ padding: 6, backgroundColor: theme.primary + '10', borderRadius: 6 }}
+                    >
+                      <Ionicons name="copy-outline" size={14} color={theme.primary} />
+                    </TouchableOpacity>
                   </View>
-                  <View style={styles.cFormCol}>
-                    <Text style={[styles.cFormLabel, { color: theme.textSecondary }]}>Email</Text>
-                    <View style={[styles.cFormInput, { backgroundColor: theme.border + '20', borderColor: theme.border, flexDirection: 'row', alignItems: 'center' }]}>
-                      <Text style={{ flex: 1, fontSize: 11, color: theme.textSecondary }} numberOfLines={1}>{email}</Text>
-                      <Ionicons name="lock-closed" size={11} color={theme.textSecondary + '60'} />
-                    </View>
+                  {/* Email */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+                    <Ionicons name="mail-outline" size={18} color="#10b981" style={{ width: 28 }} />
+                    <Text style={{ fontSize: 12, color: theme.textSecondary, width: 75, fontWeight: '500' }}>Email</Text>
+                    <Text style={{ flex: 1, fontSize: 13, color: theme.text, fontWeight: '500' }} numberOfLines={1}>{email}</Text>
+                    <TouchableOpacity 
+                      onPress={async () => { await Clipboard.setStringAsync(email); Alert.alert('Copied', 'Email copied to clipboard'); }} 
+                      style={{ padding: 6, backgroundColor: theme.primary + '10', borderRadius: 6 }}
+                    >
+                      <Ionicons name="copy-outline" size={14} color={theme.primary} />
+                    </TouchableOpacity>
+                  </View>
+                  {/* Password */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12 }}>
+                    <Ionicons name="key-outline" size={18} color="#f59e0b" style={{ width: 28 }} />
+                    <Text style={{ fontSize: 12, color: theme.textSecondary, width: 75, fontWeight: '500' }}>Password</Text>
+                    <Text style={{ flex: 1, fontSize: 13, color: theme.text, fontFamily: 'monospace', fontWeight: '600' }} numberOfLines={1}>{password || 'Not Set'}</Text>
+                    <TouchableOpacity 
+                      onPress={async () => { if(password){ await Clipboard.setStringAsync(password); Alert.alert('Copied', 'Password copied to clipboard'); } }} 
+                      style={{ padding: 6, backgroundColor: theme.primary + '10', borderRadius: 6 }}
+                    >
+                      <Ionicons name="copy-outline" size={14} color={theme.primary} />
+                    </TouchableOpacity>
                   </View>
                 </View>
+
+                {/* Bulk Copy Action */}
+                <TouchableOpacity 
+                  onPress={async () => {
+                    const text = `Student ID: ${studentId}\nEmail: ${email}\nPassword: ${password || 'Not Set'}`;
+                    await Clipboard.setStringAsync(text);
+                    Alert.alert('Copied!', 'All credentials copied to clipboard');
+                  }}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.primary + '15', borderRadius: 8, paddingVertical: 10, marginTop: 12 }}
+                >
+                  <Ionicons name="copy" size={16} color={theme.primary} style={{ marginRight: 6 }} />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: theme.primary }}>Copy All Credentials</Text>
+                </TouchableOpacity>
               </View>
             )}
 

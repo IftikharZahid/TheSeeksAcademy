@@ -4,10 +4,10 @@ import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { HomeStack } from './HomeStack';
 import { ProfileStack } from './ProfileStack';
-import { VideoGalleryScreen } from '../VideoGalleryScreen';
-import { MessagesScreen } from '../MessagesScreen';
+import { VideoGalleryScreen } from '../Lectures/VideoGalleryScreen';
+import { MessagesScreen } from '../Communication/MessagesScreen';
 import { TopHeader } from '../../components/TopHeader';
-import { NoticesScreen } from '../NoticeScreen';
+import { NoticesScreen } from '../Communication/NoticeScreen';
 import { EducationalTabBar } from '../../components/CustomTabBar';
 
 type TabParamList = {
@@ -24,17 +24,17 @@ export const MainTabs: React.FC = () => {
   return (
     <Tab.Navigator
       tabBar={props => <EducationalTabBar {...props} />}
-      screenOptions={{
-        headerShown: true,
+      screenOptions={({ route }) => ({
+        headerShown: route.name !== 'Messages',
         header: () => <TopHeader />
-      }}
+      })}
     >
       <Tab.Screen
         name="Home"
         component={HomeStack}
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeScreen';
-          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'StaffInfoScreen', 'SettingsScreen', 'ChangePasswordScreen', 'AboutScreen', 'PrivacyPolicyScreen', 'HelpCenterScreen', 'ComplaintsScreen', 'AdminTeachersScreen', 'FeeDetailScreen', 'VideoLecturesScreen', 'VideoGalleryScreen', 'NoticesScreen', 'MessagesScreen', 'SearchScreen', 'LikedVideosScreen', 'LikedTeachersScreen'];
+          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'StaffInfoScreen', 'ComplaintsScreen', 'AdminTeachersScreen', 'FeeDetailScreen', 'VideoLecturesScreen', 'VideoGalleryScreen', 'NoticesScreen', 'SearchScreen', 'LikedVideosScreen', 'LikedTeachersScreen', 'MessagesScreen'];
 
           const isHidden = hiddenRoutes.includes(routeName);
 
@@ -82,13 +82,8 @@ export const MainTabs: React.FC = () => {
         name="Profile"
         component={ProfileStack}
         options={({ route }) => {
-          const routeName = getFocusedRouteNameFromRoute(route) ?? 'ProfileScreen';
-          const hiddenRoutes = ['HelpCenterScreen'];
-          const isHidden = hiddenRoutes.includes(routeName);
-
           return {
             headerShown: false,
-            tabBarStyle: isHidden ? { display: 'none' } : undefined,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="person" size={size} color={color} />
             ),
