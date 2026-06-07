@@ -46,6 +46,7 @@ interface Gallery {
     description: string;
     thumbnail: string;
     videos: Video[];
+    targetClass?: string;
 }
 
 interface GalleryCardProps {
@@ -154,15 +155,26 @@ export const VideoGalleryScreen: React.FC = () => {
     // ── Use Redux store (single source of truth) ──
     const reduxGalleries = useAppSelector(state => state.videos.galleries);
     const loading = useAppSelector(state => state.videos.isLoading);
+    const userProfile = useAppSelector(state => state.auth.profile);
 
-    // Map Redux galleries to the local Gallery type
-    const galleries: Gallery[] = reduxGalleries.map(g => ({
-        id: g.id,
-        name: g.name || '',
-        description: g.description || '',
-        thumbnail: g.thumbnail || '',
-        videos: g.videos || [],
-    }));
+    // Map Redux galleries to the local Gallery type and filter based on user's class
+    const galleries: Gallery[] = reduxGalleries
+        .filter((g: any) => {
+            // Filter by targetClass: if it exists, it must match the user's class.
+            // If it doesn't exist, it's a general gallery available to everyone.
+            if (userProfile?.class && g.targetClass) {
+                return g.targetClass.toLowerCase() === userProfile.class.toLowerCase();
+            }
+            return true;
+        })
+        .map((g: any) => ({
+            id: g.id,
+            name: g.name || '',
+            description: g.description || '',
+            thumbnail: g.thumbnail || '',
+            videos: g.videos || [],
+            targetClass: g.targetClass,
+        }));
 
     useEffect(() => {
         Animated.timing(headerAnim, {

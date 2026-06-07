@@ -160,6 +160,21 @@ export default function AttendancePage() {
     const STATUS_OPTIONS = ['All', 'Present', 'Absent', 'Late', 'Pending'];
     const GENDER_OPTIONS = ['All', 'Boys', 'Girls'];
 
+    // ── Pending Changes State ──────────────────────────────────────────────────
+    const [pendingChanges, setPendingChanges] = useState<Record<string, StatusType>>({});
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+
+    // ── Selection State ────────────────────────────────────────────────────────
+    const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+
+    // Clear pending changes and selection when navigating dates
+    useEffect(() => {
+        setPendingChanges({});
+        setSaveSuccess(false);
+        setSelectedStudents([]);
+    }, [selectedDate]);
+
     // ── Month navigation ───────────────────────────────────────────────────────
     const prevMonth = () => {
         const newM = viewMonth === 0 ? 11 : viewMonth - 1;
@@ -179,7 +194,9 @@ export default function AttendancePage() {
     };
 
     const scrollStrip = (dir: 'left' | 'right') => {
-        dateStripRef.current?.scrollBy({ left: dir === 'left' ? -132 : 132, behavior: 'smooth' });
+        if (!dateStripRef.current) return;
+        const w = dateStripRef.current.clientWidth;
+        dateStripRef.current.scrollBy({ left: dir === 'left' ? -w : w, behavior: 'smooth' });
     };
 
     // Real-time Firestore listener — subscribe on mount, clean up on unmount
@@ -242,7 +259,7 @@ export default function AttendancePage() {
         if (filterStatus !== 'All' && selectedDate) {
             const loweredTarget = filterStatus.toLowerCase() as StatusType;
             list = list.filter((s: any) => {
-                const currentStatus = (adminDb[s.id]?.[selectedDate] || 'pending').toLowerCase() as StatusType;
+                const currentStatus = pendingChanges[s.id] || adminDb[s.id]?.[selectedDate] || 'pending';
                 return currentStatus === loweredTarget;
             });
         }
@@ -255,7 +272,10 @@ export default function AttendancePage() {
     const sentinelRef = useRef<HTMLDivElement>(null);
 
     // Reset to first page whenever filters change
-    useEffect(() => { setVisibleCount(PAGE_SIZE); }, [search, filterClass, filterGender, filterStatus]);
+    useEffect(() => { 
+        setVisibleCount(PAGE_SIZE); 
+        setSelectedStudents([]);
+    }, [search, filterClass, filterGender, filterStatus]);
 
     useEffect(() => {
         const el = sentinelRef.current;
@@ -279,36 +299,85 @@ export default function AttendancePage() {
         const c = { present: 0, absent: 0, late: 0, pending: 0 };
         if (!selectedDate) return c;
         filteredStudents.forEach((s: any) => {
-            const st = ((adminDb[s.id]?.[selectedDate]) || 'pending').toLowerCase() as StatusType;
+            const st = (pendingChanges[s.id] || (adminDb[s.id]?.[selectedDate]) || 'pending').toLowerCase() as StatusType;
             if (st in c) (c as any)[st]++;
             else c.pending++;
         });
         return c;
-    }, [filteredStudents, adminDb, selectedDate]);
+    }, [filteredStudents, adminDb, selectedDate, pendingChanges]);
 
     // Attendance % per day for progress bar in calendar strip
     const dayRate = useCallback((dStr: string): number => {
         if (!filteredStudents.length) return 0;
-        const n = filteredStudents.filter((s: any) => adminDb[s.id]?.[dStr] === 'present').length;
+        const n = filteredStudents.filter((s: any) => {
+            const status = (dStr === selectedDate && pendingChanges[s.id]) ? pendingChanges[s.id] : adminDb[s.id]?.[dStr];
+            return status === 'present';
+        }).length;
         return Math.round((n / filteredStudents.length) * 100);
-    }, [filteredStudents, adminDb]);
+    }, [filteredStudents, adminDb, pendingChanges, selectedDate]);
 
     // ── Actions ────────────────────────────────────────────────────────────────
-    const handleMark = async (studentId: string, status: StatusType) => {
-        if (!selectedDate) return;
-        const updated = { ...(adminDb[studentId] ?? {}), [selectedDate]: status };
-        try {
-            await dispatch(writeStudentAttendance({ studentId, dailyRecords: updated })).unwrap();
-        } catch (err) {
-            console.error('Failed to mark attendance:', err);
-            alert('Failed to mark attendance. Check permissions.');
-        }
+    const toggleSelectAll = (checked: boolean) => {
+        if (checked) setSelectedStudents(filteredStudents.map((s: any) => s.id));
+        else setSelectedStudents([]);
     };
 
-    const handleMarkAll = async (status: StatusType) => {
+    const toggleSelectStudent = (id: string, checked: boolean) => {
+        if (checked) setSelectedStudents(prev => [...prev, id]);
+        else setSelectedStudents(prev => prev.filter(sId => sId !== id));
+    };
+
+    const handleMark = (studentId: string, status: StatusType) => {
         if (!selectedDate) return;
-        if (!window.confirm(`Mark all ${filteredStudents.length} students as ${status.toUpperCase()}?`)) return;
-        for (const s of filteredStudents) await handleMark(s.id, status);
+        setPendingChanges(prev => ({ ...prev, [studentId]: status }));
+        setSaveSuccess(false);
+    };
+
+    const handleMarkAll = (status: StatusType) => {
+        if (!selectedDate) return;
+        const targetStudents = selectedStudents.length > 0 
+            ? filteredStudents.filter(s => selectedStudents.includes(s.id))
+            : filteredStudents;
+
+        const confirmMsg = selectedStudents.length > 0 
+            ? `Mark ${selectedStudents.length} selected students as ${status.toUpperCase()}?`
+            : `Mark all ${filteredStudents.length} students as ${status.toUpperCase()}?`;
+
+        if (!window.confirm(confirmMsg)) return;
+        
+        const updates: Record<string, StatusType> = {};
+        targetStudents.forEach(s => {
+            updates[s.id] = status;
+        });
+        setPendingChanges(prev => ({ ...prev, ...updates }));
+        setSaveSuccess(false);
+        if (selectedStudents.length > 0) setSelectedStudents([]);
+    };
+
+    const handleSave = async () => {
+        if (!selectedDate) return;
+        const studentIds = Object.keys(pendingChanges);
+        if (studentIds.length === 0) return;
+
+        setIsSaving(true);
+        try {
+            await Promise.all(studentIds.map(async (studentId) => {
+                const status = pendingChanges[studentId];
+                const updated = { ...(adminDb[studentId] ?? {}), [selectedDate]: status };
+                return dispatch(writeStudentAttendance({ studentId, dailyRecords: updated })).unwrap();
+            }));
+
+            setSaveSuccess(true);
+            setPendingChanges({});
+            
+            // Clear success message after 3 seconds
+            setTimeout(() => setSaveSuccess(false), 3000);
+        } catch (err) {
+            console.error('Failed to save attendance:', err);
+            alert('Failed to save attendance. Please try again.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     // ── Render ─────────────────────────────────────────────────────────────────
@@ -320,15 +389,10 @@ export default function AttendancePage() {
     ];
 
     return (
-        <div style={{
-            padding: '16px 18px',
-            fontFamily: "'Inter','Segoe UI',system-ui,sans-serif",
-            maxWidth: 1100,
-            margin: '0 auto',
-        }}>
+        <div className="page" style={{ padding: '0px', height: '100%', display: 'flex', flexDirection: 'column', fontFamily: "'Inter','Segoe UI',system-ui,sans-serif" }}>
 
             {/* ── Page Header ── */}
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+            <div className="page-header" style={{ padding: '10px 20px', background: 'var(--card)', borderBottom: '1px solid var(--border)', zIndex: 10, display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink: 0 }}>
                 <div>
                     <h1 style={{ fontSize:17, fontWeight:700, color:'var(--text)', margin:0, letterSpacing:'-0.3px' }}>
                         Attendance Register
@@ -337,61 +401,97 @@ export default function AttendancePage() {
                         Daily student attendance tracking
                     </p>
                 </div>
-                {selectedDate && (
-                    <div style={{
-                        fontSize:11, color:'var(--text2)', fontWeight:500,
-                        background:'var(--bg3,rgba(255,255,255,0.04))',
-                        border:'1px solid var(--border,rgba(255,255,255,0.08))',
-                        borderRadius:7, padding:'4px 10px',
-                    }}>
-                        {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
-                            weekday:'short', month:'short', day:'numeric', year:'numeric',
-                        })}
-                    </div>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {saveSuccess && (
+                        <div style={{
+                            fontSize: 12, fontWeight: 600, color: '#16a34a',
+                            background: 'rgba(22,163,74,0.1)', padding: '6px 12px',
+                            borderRadius: 6, border: '1px solid rgba(22,163,74,0.2)',
+                            display: 'flex', alignItems: 'center', gap: 6
+                        }}>
+                            ✓ Records saved successfully
+                        </div>
+                    )}
+                    
+                    <button 
+                        onClick={handleSave} 
+                        disabled={isSaving || Object.keys(pendingChanges).length === 0}
+                        style={{
+                            padding: '6px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600,
+                            background: isSaving || Object.keys(pendingChanges).length === 0 ? 'var(--bg3,rgba(255,255,255,0.05))' : 'var(--primary,#6366f1)',
+                            color: isSaving || Object.keys(pendingChanges).length === 0 ? 'var(--text2)' : '#fff', 
+                            border: '1px solid var(--border,rgba(255,255,255,0.1))', 
+                            cursor: isSaving ? 'wait' : Object.keys(pendingChanges).length === 0 ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s', boxShadow: Object.keys(pendingChanges).length > 0 ? '0 4px 12px rgba(99,102,241,0.3)' : 'none',
+                            display: 'flex', alignItems: 'center', gap: 6
+                        }}
+                    >
+                        {isSaving ? 'Saving...' : `Save Attendance${Object.keys(pendingChanges).length > 0 ? ` (${Object.keys(pendingChanges).length})` : ''}`}
+                    </button>
+
+                    {selectedDate && (
+                        <div style={{
+                            fontSize:11, color:'var(--text2)', fontWeight:500,
+                            background:'var(--bg3,rgba(255,255,255,0.04))',
+                            border:'1px solid var(--border,rgba(255,255,255,0.08))',
+                            borderRadius:7, padding:'4px 10px',
+                        }}>
+                            {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+                                weekday:'short', month:'short', day:'numeric', year:'numeric',
+                            })}
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* ── Summary Cards ── */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, marginBottom:14 }}>
-                {summaryItems.map(item => (
-                    <div key={item.label} style={{
-                        background:'var(--bg2,#1e293b)',
-                        border:'1px solid var(--border,rgba(255,255,255,0.07))',
-                        borderRadius:10, padding:'10px 14px',
-                        display:'flex', alignItems:'center', gap:10,
-                        position:'relative', overflow:'hidden',
-                    }}>
-                        <div style={{
-                            position:'absolute', left:0, top:0, bottom:0, width:3,
-                            background:item.color, borderRadius:'10px 0 0 10px',
-                        }} />
-                        <div style={{
-                            width:30, height:30, borderRadius:8,
-                            background:item.bg, color:item.color,
-                            display:'flex', alignItems:'center', justifyContent:'center',
-                            fontSize:14, flexShrink:0,
-                        }}>{item.icon}</div>
-                        <div>
-                            <div style={{ fontSize:20, fontWeight:700, color:item.color, lineHeight:1 }}>
-                                {item.val}
-                            </div>
+            {/* ── Main Content Scroll Area ── */}
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '14px 20px', background: 'var(--bg)' }}>
+                {/* ── Top Layout: Summary & Calendar side-by-side ── */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginBottom: 14, flexShrink: 0, alignItems: 'stretch' }}>
+                
+                {/* ── Summary Cards (Left Column) ── */}
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gridTemplateRows:'repeat(2,1fr)', gap:10, flex: '1 1 340px', maxWidth: 450 }}>
+                    {summaryItems.map(item => (
+                        <div key={item.label} style={{
+                            background:'var(--bg2,#1e293b)',
+                            border:'1px solid var(--border,rgba(255,255,255,0.07))',
+                            borderRadius:10, padding:'10px 14px',
+                            display:'flex', alignItems:'center', gap:10,
+                            position:'relative', overflow:'hidden',
+                        }}>
                             <div style={{
-                                fontSize:10, color:'var(--text2)', marginTop:2,
-                                textTransform:'uppercase', letterSpacing:'0.4px', fontWeight:500,
-                            }}>
-                                {item.label}
+                                position:'absolute', left:0, top:0, bottom:0, width:3,
+                                background:item.color, borderRadius:'10px 0 0 10px',
+                            }} />
+                            <div style={{
+                                width:30, height:30, borderRadius:8,
+                                background:item.bg, color:item.color,
+                                display:'flex', alignItems:'center', justifyContent:'center',
+                                fontSize:14, flexShrink:0,
+                            }}>{item.icon}</div>
+                            <div>
+                                <div style={{ fontSize:20, fontWeight:700, color:item.color, lineHeight:1 }}>
+                                    {item.val}
+                                </div>
+                                <div style={{
+                                    fontSize:10, color:'var(--text2)', marginTop:2,
+                                    textTransform:'uppercase', letterSpacing:'0.4px', fontWeight:500,
+                                }}>
+                                    {item.label}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
 
-            {/* ── Calendar Card ── */}
-            <div style={{
-                background:'var(--bg2,#1e293b)',
-                border:'1px solid var(--border,rgba(255,255,255,0.07))',
-                borderRadius:10, marginBottom:14, overflow:'hidden',
-            }}>
+                {/* ── Calendar Card (Right Column) ── */}
+                <div style={{
+                    flex: '3 1 500px',
+                    background:'var(--bg2,#1e293b)',
+                    border:'1px solid var(--border,rgba(255,255,255,0.07))',
+                    borderRadius:10, overflow:'hidden',
+                    display: 'flex', flexDirection: 'column'
+                }}>
                 {/* Month navigation bar */}
                 <div style={{
                     display:'flex', alignItems:'center', justifyContent:'space-between',
@@ -441,6 +541,7 @@ export default function AttendancePage() {
                             display:'flex', gap:5, flex:1,
                             overflowX:'auto', scrollbarWidth:'none',
                             padding:'2px 0',
+                            scrollSnapType: 'x mandatory',
                         }}
                     >
                         {daysInMonth.map(day => {
@@ -459,7 +560,8 @@ export default function AttendancePage() {
                                     onClick={() => !blocked && setSelectedDate(dStr)}
                                     title={blocked ? (isSunday ? 'Sunday — off' : 'Future date') : dStr}
                                     style={{
-                                        flexShrink:0, width:38,
+                                        flexShrink:0, width:'calc((100% - 30px) / 7)',
+                                        scrollSnapAlign: 'start',
                                         borderRadius:8, padding:'4px 0 6px',
                                         border:`1px solid ${
                                             isSel    ? 'var(--primary,#6366f1)' :
@@ -520,10 +622,12 @@ export default function AttendancePage() {
                     }}>›</button>
                 </div>
             </div>
+            </div>
 
             {/* ── Table + Toolbar ── */}
-            <div style={{
-                background:'var(--bg2,#1e293b)',
+            <div className="table-wrap" style={{
+                flex: 1, display: 'flex', flexDirection: 'column', margin: 0,
+                background:'var(--card)',
                 border:'1px solid var(--border,rgba(255,255,255,0.07))',
                 borderRadius:10, overflow:'hidden',
             }}>
@@ -694,65 +798,84 @@ export default function AttendancePage() {
 
                 ) : (
                     <>
-                        <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
-                            <thead>
-                                <tr>
-                                    <th style={TH({ width:36, textAlign:'center' })}>#</th>
-                                    <th style={TH()}>Student</th>
-                                    <th style={TH()}>Roll No</th>
-                                    <th style={TH()}>Class</th>
-                                    <th style={TH()}>Status</th>
-                                    <th style={TH({ textAlign:'center', width:110 })}>Mark</th>
+                        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', width: '100%' }}>
+                            <table style={{ background: 'var(--card)', width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+                            <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                                <tr style={{ background: 'linear-gradient(90deg, #1e3a8a 0%, #1d4ed8 100%)', color: '#ffffff', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    <th style={{ padding: '7px 10px', borderRight: '1px solid rgba(255,255,255,0.15)', width: 30, textAlign: 'center' }}>
+                                        <input type="checkbox" 
+                                            checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0} 
+                                            onChange={e => toggleSelectAll(e.target.checked)} 
+                                            style={{ cursor: 'pointer' }}
+                                        />
+                                    </th>
+                                    <th style={{ padding: '7px 10px', borderRight: '1px solid rgba(255,255,255,0.15)', width: '5%', textAlign: 'center', color: '#ffffff' }}>#</th>
+                                    <th style={{ padding: '7px 10px', borderRight: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', width: '30%', textAlign: 'left' }}>Student</th>
+                                    <th style={{ padding: '7px 10px', borderRight: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', width: '15%', textAlign: 'left' }}>Roll No</th>
+                                    <th style={{ padding: '7px 10px', borderRight: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', width: '15%', textAlign: 'left' }}>Class</th>
+                                    <th style={{ padding: '7px 10px', borderRight: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', width: '15%', textAlign: 'left' }}>Status</th>
+                                    <th style={{ padding: '7px 10px', borderLeft: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', width: '20%', textAlign: 'center' }}>Mark</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {visibleStudents.map((s: any, i: number) => {
                                     const rawSt = selectedDate
-                                        ? (adminDb[s.id]?.[selectedDate] ?? 'pending')
+                                        ? (pendingChanges[s.id] || (adminDb[s.id]?.[selectedDate] ?? 'pending'))
                                         : 'pending';
                                     const actSt = rawSt.toLowerCase() as StatusType;
                                     const meta  = STATUS_META[actSt] ?? STATUS_META.pending;
                                     const name  = s.fullname ?? s.name ?? 'Unknown';
+                                    const rowNum = i + 1;
 
                                     return (
                                         <tr
                                             key={s.id}
-                                            style={{ transition:'background 0.1s' }}
-                                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
-                                            onMouseLeave={e => (e.currentTarget.style.background  = 'transparent')}
+                                            onClick={() => toggleSelectStudent(s.id, !selectedStudents.includes(s.id))}
+                                            style={{ cursor: 'pointer', borderBottom: '1px solid var(--border)', background: selectedStudents.includes(s.id) ? 'rgba(99,102,241,0.1)' : (i % 2 === 0 ? 'var(--card)' : 'var(--bg3)') }}
+                                            onMouseEnter={e => { if (!selectedStudents.includes(s.id)) e.currentTarget.style.background = 'rgba(255,255,255,0.02)' }}
+                                            onMouseLeave={e => { if (!selectedStudents.includes(s.id)) e.currentTarget.style.background = i % 2 === 0 ? 'var(--card)' : 'var(--bg3)' }}
                                         >
+                                            {/* Checkbox */}
+                                            <td style={{ padding: '5px 10px', borderRight: '1px solid var(--border)', textAlign: 'center' }}>
+                                                <input type="checkbox" 
+                                                    checked={selectedStudents.includes(s.id)} 
+                                                    onChange={e => toggleSelectStudent(s.id, e.target.checked)} 
+                                                    onClick={e => e.stopPropagation()} 
+                                                    style={{ cursor: 'pointer' }}
+                                                />
+                                            </td>
+
                                             {/* # */}
-                                            <td style={{ ...TD, textAlign:'center', color:'var(--text2)', fontWeight:500 }}>
-                                                {i + 1}
+                                            <td style={{ padding: '5px 10px', borderRight: '1px solid var(--border)', textAlign: 'center', fontSize: 11, color: 'var(--text2)' }}>
+                                                {rowNum}
                                             </td>
 
                                             {/* Name, Father & Class combined */}
-                                            <td style={TD}>
-                                                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                                            <td style={{ padding: '5px 10px', borderRight: '1px solid var(--border)' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                     <div style={{
-                                                        width:26, height:26, borderRadius:7,
-                                                        background:meta.bg, color:meta.color,
-                                                        display:'flex', alignItems:'center', justifyContent:'center',
-                                                        fontWeight:700, fontSize:11, flexShrink:0,
+                                                        width: 26, height: 26, fontSize: 12, flexShrink: 0, borderRadius: '50%',
+                                                        background: meta.bg, color: meta.color,
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700
                                                     }}>
                                                         {name[0]?.toUpperCase() ?? '?'}
                                                     </div>
-                                                    <div style={{ display:'flex', flexDirection:'column' }}>
-                                                        <span style={{ fontWeight:600, fontSize:12, color:'var(--text)' }}>
-                                                            {name}
-                                                        </span>
-                                                        <span style={{ fontSize:10, color:'var(--text2)', marginTop:1 }}>
-                                                            S/o {s.fatherName || s.fathername || '—'} • Class {s.class || s.grade || s.studentClass || '—'}
-                                                        </span>
+                                                    <div>
+                                                        <div style={{ fontWeight: 600, fontSize: 12, color: 'var(--text)' }}>{name}</div>
+                                                        <div style={{ fontSize: 10, color: 'var(--text2)' }}>
+                                                            S/o {s.fatherName || s.fathername || '—'}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
 
                                             {/* Roll No */}
-                                            <td style={TDm}>{s.rollno ?? '—'}</td>
+                                            <td style={{ padding: '5px 10px', borderRight: '1px solid var(--border)', fontFamily: 'monospace', color: 'var(--primary-light)', fontSize: 12 }}>
+                                                {s.rollno ?? '—'}
+                                            </td>
 
                                             {/* Class badge */}
-                                            <td style={TDm}>
+                                            <td style={{ padding: '5px 10px', borderRight: '1px solid var(--border)', fontSize: 12 }}>
                                                 {(s.class || s.grade || s.studentClass) ? (
                                                     <span style={{
                                                         display:'inline-block', padding:'1px 7px',
@@ -767,7 +890,7 @@ export default function AttendancePage() {
                                             </td>
 
                                             {/* Status badge */}
-                                            <td style={TD}>
+                                            <td style={{ padding: '5px 10px', borderRight: '1px solid var(--border)' }}>
                                                 <span style={{
                                                     display:'inline-flex', alignItems:'center',
                                                     padding:'2px 8px', borderRadius:20,
@@ -781,11 +904,10 @@ export default function AttendancePage() {
                                             </td>
 
                                             {/* Action buttons */}
-                                            <td style={{ ...TD, textAlign:'center' }}>
+                                            <td style={{ padding: '5px 10px', textAlign: 'center', borderLeft: '1px solid var(--border)' }}>
                                                 <div style={{ display:'flex', gap:4, justifyContent:'center' }}>
                                                     {(['present','late','absent','pending'] as StatusType[]).map(action => {
                                                         const m = STATUS_META[action];
-                                                        // Override the short display icon for 'pending' to render as a distinct cross icon
                                                         const icon = action === 'pending' ? <span style={{ fontSize:14 }}>&times;</span> : m.short;
                                                         return (
                                                             <button
@@ -806,6 +928,7 @@ export default function AttendancePage() {
                                 })}
                             </tbody>
                         </table>
+                        </div>
 
                         {/* ── Infinite-scroll sentinel ── */}
                         {hasMore && (
@@ -847,6 +970,7 @@ export default function AttendancePage() {
                         </div>
                     </>
                 )}
+            </div>
             </div>
         </div>
     );

@@ -4,11 +4,9 @@ import ChatPortal from '../../components/chat/ChatPortal';
 export default function ChatPage() {
   return (
     <div className="page" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <div className="page-header">
-        <div>
-          <div className="page-title">Academy Chat</div>
-          <div className="page-sub">Communicate with students and staff instantly</div>
-        </div>
+      <div className="page-header" style={{ marginBottom: 12, display: 'flex', alignItems: 'baseline', gap: 12 }}>
+        <div className="page-title" style={{ fontSize: 20 }}>Academic Chat</div>
+        <div className="page-sub" style={{ margin: 0 }}>Communicate with students and staff instantly</div>
       </div>
 
       <div style={{

@@ -189,6 +189,154 @@ export default function TeachersPage() {
     const [viewTeacher, setViewTeacher] = useState<Teacher | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [profileCreating, setProfileCreating] = useState(false);
+    const [importModalOpen, setImportModalOpen] = useState(false);
+    
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const [uploadingProgress, setUploadingProgress] = useState<{current: number, total: number} | null>(null);
+
+    const downloadTemplate = async () => {
+        try {
+            const XLSX = await import('xlsx');
+            const ws = XLSX.utils.json_to_sheet([{
+                Name: 'Dr. Sarah Smith',
+                'Father Name': 'Muhammad Ali',
+                Gender: 'Female',
+                Role: 'Teacher',
+                Subject: 'Mathematics',
+                Qualification: 'PhD',
+                Experience: '5 Years',
+                Phone: '03001234567'
+            }]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Staff");
+            XLSX.writeFile(wb, "Staff_Import_Template.xlsx");
+        } catch (error) {
+            alert('Failed to generate template.');
+        }
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const XLSX = await import('xlsx');
+            const reader = new FileReader();
+            reader.onload = async (evt) => {
+                try {
+                    const bstr = evt.target?.result;
+                    const wb = XLSX.read(bstr, { type: 'binary' });
+                    const wsname = wb.SheetNames[0];
+                    const ws = wb.Sheets[wsname];
+                    const data: any[] = XLSX.utils.sheet_to_json(ws);
+
+                    if (data.length === 0) {
+                        alert("No data found in the file.");
+                        return;
+                    }
+
+                    // Normalize keys to lower case and trim to handle spaces in Excel headers
+                    const normalizedData = data.map(row => {
+                        const newRow: any = {};
+                        for (const key in row) {
+                            newRow[key.trim().toLowerCase()] = row[key];
+                        }
+                        return newRow;
+                    });
+
+                    if (!confirm(`Are you sure you want to import ${normalizedData.length} staff members?`)) {
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                        return;
+                    }
+
+                    setUploadingProgress({ current: 0, total: normalizedData.length });
+
+                    let successCount = 0;
+                    let skippedCount = 0;
+                    for (let i = 0; i < normalizedData.length; i++) {
+                        const row = normalizedData[i];
+                        const name = row['name'] || row['fullname'] || row['full name'] || row['teacher name'] || '';
+                        
+                        if (!name) {
+                            skippedCount++;
+                            setUploadingProgress({ current: i + 1, total: normalizedData.length });
+                            continue;
+                        }
+
+                        const subject = row['subject'] || row['class'] || '';
+                        const fatherName = row['fathername'] || row['father name'] || '';
+                        const gender = row['gender'] || '';
+                        const qualification = row['qualification'] || row['degree'] || '';
+                        const experience = row['experience'] || '';
+                        const phone = row['phone'] || row['contact'] || '';
+                        const role = row['role'] || row['position'] || 'Teacher';
+
+                        try {
+                            const newTeacherId = await getNextTeacherId();
+                            const newEmail = `${newTeacherId.toLowerCase()}@theseeksacademy.edu.pk`;
+                            const newPassword = generatePassword();
+
+                            const authData = {
+                                name: String(name),
+                                fatherName: String(fatherName),
+                                gender: String(gender),
+                                role: String(role),
+                                qualification: String(qualification),
+                                experience: String(experience),
+                                phone: String(phone),
+                                subject: String(subject),
+                                image: '',
+                                teacherId: newTeacherId,
+                            };
+
+                            const uid = await createTeacherAuthAccount(newEmail, newPassword, authData);
+
+                            const payload = {
+                                name: String(name),
+                                fatherName: String(fatherName),
+                                gender: String(gender),
+                                role: String(role),
+                                subject: String(subject),
+                                qualification: String(qualification),
+                                experience: String(experience),
+                                phone: String(phone),
+                                email: newEmail,
+                                password: newPassword,
+                                image: '',
+                                teacherId: newTeacherId,
+                                uid: uid || '',
+                                type: 'Teacher',
+                                status: 'Active',
+                            };
+
+                            await setDoc(doc(db, 'staff', newTeacherId), { ...payload, updatedAt: serverTimestamp() });
+                            dispatch(addOrUpdateTeacher({ id: newTeacherId, ...payload } as any));
+
+                            successCount++;
+                        } catch (rowError) {
+                            console.error(`Failed to import row ${i} (Name: ${name}):`, rowError);
+                            skippedCount++;
+                        }
+                        
+                        setUploadingProgress({ current: i + 1, total: normalizedData.length });
+                    }
+
+                    alert(`Import completed!\n✅ Successfully imported: ${successCount}\n⚠️ Skipped/Failed: ${skippedCount}`);
+                } catch (err: any) {
+                    alert('Error parsing file: ' + err.message);
+                } finally {
+                    setUploadingProgress(null);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                }
+            };
+            reader.readAsBinaryString(file);
+        } catch (err: any) {
+            alert('Failed to load xlsx parser: ' + err.message);
+            setUploadingProgress(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
     // Load books/subjects from Redux
     const subjectsList = useAppSelector((s: any) => s.appSettings.books);
     const booksStatus = useAppSelector((s: any) => s.appSettings.booksStatus);
@@ -375,12 +523,28 @@ export default function TeachersPage() {
     };
 
 
-    const remove = async (id: string) => {
+    const remove = async (t: any) => {
         if (!confirm('Delete this staff member?')) return;
-        setDeleting(id);
-        dispatch(removeTeacher(id));
-        await deleteDoc(doc(db, 'staff', id));
-        setDeleting(null);
+        setDeleting(t.id);
+        
+        try {
+            dispatch(removeTeacher(t.id));
+            await deleteDoc(doc(db, 'staff', t.id));
+            
+            if (t.uid) {
+                await deleteDoc(doc(db, 'studentsprofile', t.uid));
+                await deleteDoc(doc(db, 'profile', t.uid));
+            }
+            if (t.teacherId) {
+                await deleteDoc(doc(db, 'studentsprofile', t.teacherId));
+                await deleteDoc(doc(db, 'profile', t.teacherId));
+            }
+        } catch (error) {
+            console.error('Error deleting staff member:', error);
+            alert('Failed to completely delete the record from Firebase.');
+        } finally {
+            setDeleting(null);
+        }
     };
 
     return (
@@ -398,7 +562,10 @@ export default function TeachersPage() {
                             <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--primary)' }}>{filtered.length}</span>
                             <span style={{ fontSize: 10, color: 'var(--text2)' }}>{(filterSubject || search) ? 'found' : 'staff'}</span>
                         </div>
-                        <button className="btn btn-primary" onClick={openAdd} style={{ padding: '5px 12px', fontSize: 12, height: 30 }}>
+                        <button className="btn btn-ghost" onClick={() => setImportModalOpen(true)} style={{ padding: '5px 12px', fontSize: 12, height: 30, border: '1px solid var(--border)', background: 'var(--card)' }}>
+                            📤 Import
+                        </button>
+                        <button className="btn btn-primary" onClick={openAdd} style={{ padding: '5px 12px', fontSize: 12, height: 30 }} disabled={!!uploadingProgress}>
                             ➕ Add
                         </button>
                     </div>
@@ -453,7 +620,7 @@ export default function TeachersPage() {
                                     ) : paginatedTeachers.map((t: any, i: number) => {
                                         const rowNum = startIdx + i + 1;
                                         return (
-                                            <tr key={t.id} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--card)' : 'var(--bg3)' }}>
+                                            <tr key={t.id} onClick={() => setViewTeacher(t as Teacher)} style={{ cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--card)' : 'var(--bg3)' }}>
                                                 <td style={{ padding: '5px 10px', borderRight: '1px solid var(--border)', textAlign: 'center', fontSize: 11, color: 'var(--text2)' }}>{rowNum}</td>
                                                 <td style={{ padding: '5px 10px', borderRight: '1px solid var(--border)' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -475,7 +642,7 @@ export default function TeachersPage() {
                                                     <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
                                                         <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 11, height: 26 }} onClick={(e) => { e.stopPropagation(); setViewTeacher(t as Teacher); }}>View</button>
                                                         <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 11, height: 26 }} onClick={(e) => { e.stopPropagation(); openEdit(t as Teacher); }}>Edit</button>
-                                                        <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 11, height: 26, color: '#ef4444' }} disabled={deleting === t.id} onClick={(e) => { e.stopPropagation(); remove(t.id); }}>🗑</button>
+                                                        <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 11, height: 26, color: '#ef4444' }} disabled={deleting === t.id} onClick={(e) => { e.stopPropagation(); remove(t); }}>🗑</button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -498,6 +665,44 @@ export default function TeachersPage() {
                             <button className="btn btn-ghost" style={{ padding: '5px 14px', fontSize: 12, height: 30 }} disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}>Next →</button>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* ── Import Modal ────────────────────────────────────────────────────── */}
+            {importModalOpen && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setImportModalOpen(false)}>
+                    <div className="modal" style={{ maxWidth: 450 }}>
+                        <div className="modal-header">
+                            <div className="modal-title">Bulk Import Staff</div>
+                            <button className="modal-close" onClick={() => setImportModalOpen(false)}>✕</button>
+                        </div>
+                        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            <div style={{ background: 'rgba(59,130,246,0.08)', padding: 16, borderRadius: 10, border: '1px solid rgba(59,130,246,0.2)' }}>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span style={{ fontSize: 16 }}>1️⃣</span> Download Template
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 14, lineHeight: 1.5 }}>
+                                    Download the exact Excel template required for importing. Fill it with your staff data without modifying the column headers.
+                                </div>
+                                <button className="btn btn-ghost" style={{ background: '#fff', border: '1px solid var(--primary)', color: 'var(--primary)', fontSize: 12, padding: '8px 14px', borderRadius: 6, fontWeight: 700, boxShadow: '0 2px 4px rgba(59,130,246,0.1)' }} onClick={downloadTemplate}>
+                                    ⬇️ Download .xlsx Template
+                                </button>
+                            </div>
+
+                            <div style={{ background: 'var(--bg3)', padding: 16, borderRadius: 10, border: '1px solid var(--border)' }}>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span style={{ fontSize: 16 }}>2️⃣</span> Upload Data
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 14, lineHeight: 1.5 }}>
+                                    Select your filled template to automatically create staff accounts and profiles.
+                                </div>
+                                <input type="file" ref={fileInputRef} hidden accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onChange={async (e) => { await handleFileUpload(e); setImportModalOpen(false); }} />
+                                <button className="btn btn-primary" style={{ width: '100%', padding: '12px 0', fontSize: 13, fontWeight: 700, borderRadius: 8, boxShadow: '0 4px 12px rgba(59,130,246,0.3)' }} onClick={() => fileInputRef.current?.click()} disabled={!!uploadingProgress}>
+                                    {uploadingProgress ? `Importing ${uploadingProgress.current}/${uploadingProgress.total}...` : '📤 Select File & Import'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 

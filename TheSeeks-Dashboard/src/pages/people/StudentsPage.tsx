@@ -191,6 +191,161 @@ export default function StudentsPage() {
     const [viewStudent, setViewStudent] = useState<Student | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const PAGE_SIZE = 12;
+    const [importModalOpen, setImportModalOpen] = useState(false);
+    const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+    const [promoteModalOpen, setPromoteModalOpen] = useState(false);
+    const [targetClass, setTargetClass] = useState('');
+    const [isPromoting, setIsPromoting] = useState(false);
+
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const [uploadingProgress, setUploadingProgress] = useState<{current: number, total: number} | null>(null);
+
+    const downloadTemplate = async () => {
+        try {
+            const XLSX = await import('xlsx');
+            const ws = XLSX.utils.json_to_sheet([{
+                'Name': 'Ali Khan',
+                'Student ID': 'STD-2024-001',
+                'Class': '10th',
+                'Father Name': 'Ahmed Khan',
+                'Gender': 'Male',
+                'Section': 'A',
+                'Session': '2024-2025',
+                'Phone': '03001234567',
+                'Email': 'STD-2024-001@theseeksacademy.edu.pk',
+                'Password': 'password123',
+                'Roll No': '101'
+            }]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Students");
+            XLSX.writeFile(wb, "Students_Import_Template.xlsx");
+        } catch (error) {
+            alert('Failed to generate template.');
+        }
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        try {
+            const XLSX = await import('xlsx');
+            const reader = new FileReader();
+            reader.onload = async (evt) => {
+                try {
+                    const bstr = evt.target?.result;
+                    const wb = XLSX.read(bstr, { type: 'binary' });
+                    const wsname = wb.SheetNames[0];
+                    const ws = wb.Sheets[wsname];
+                    const data: any[] = XLSX.utils.sheet_to_json(ws);
+
+                    if (data.length === 0) {
+                        alert("No data found in the file.");
+                        return;
+                    }
+
+                    // Normalize keys to lower case and trim to handle spaces in Excel headers
+                    const normalizedData = data.map(row => {
+                        const newRow: any = {};
+                        for (const key in row) {
+                            newRow[key.trim().toLowerCase()] = row[key];
+                        }
+                        return newRow;
+                    });
+
+                    if (!confirm(`Are you sure you want to import ${normalizedData.length} students?`)) {
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                        return;
+                    }
+
+                    setUploadingProgress({ current: 0, total: normalizedData.length });
+
+                    let successCount = 0;
+                    let skippedCount = 0;
+                    for (let i = 0; i < normalizedData.length; i++) {
+                        const row = normalizedData[i];
+                        const name = row['name'] || row['fullname'] || row['full name'] || row['student name'] || '';
+                        
+                        if (!name) {
+                            skippedCount++;
+                            setUploadingProgress({ current: i + 1, total: normalizedData.length });
+                            continue;
+                        }
+
+                        const fatherName = row['fathername'] || row['father name'] || '';
+                        const grade = row['class'] || row['grade'] || '';
+                        const gender = row['gender'] || '';
+                        const section = row['section'] || '';
+                        const session = row['session'] || '';
+                        const phone = row['phone'] || row['contact'] || '';
+                        const rollno = row['rollno'] || row['roll no'] || '';
+                        const inputStudentId = row['student id'] || row['studentid'] || '';
+                        const inputEmail = row['email'] || '';
+                        const inputPassword = row['password'] || '';
+
+                        try {
+                            const newStudentId = inputStudentId || await getNextStudentId();
+                            const newEmail = inputEmail || `${newStudentId}@theseeksacademy.edu.pk`;
+                            const newPassword = inputPassword || generatePassword();
+
+                            const authData = {
+                                name: String(name),
+                                fatherName: String(fatherName),
+                                grade: String(grade),
+                                profileImage: '',
+                                gender: String(gender),
+                                section: String(section),
+                                session: String(session),
+                                phone: String(phone),
+                                rollno: String(rollno),
+                                studentId: newStudentId,
+                            };
+
+                            const uid = await createStudentAuthAccount(newEmail, newPassword, authData);
+
+                            const payload = {
+                                name: String(name),
+                                fatherName: String(fatherName),
+                                studentId: newStudentId,
+                                email: newEmail,
+                                password: newPassword,
+                                grade: String(grade),
+                                gender: String(gender),
+                                section: String(section),
+                                session: String(session),
+                                phone: String(phone),
+                                rollno: String(rollno),
+                                profileImage: '',
+                                uid: uid || '',
+                            };
+
+                            await setDoc(doc(db, 'students', newStudentId), { ...payload, updatedAt: serverTimestamp() });
+                            dispatch(addOrUpdateStudent({ id: newStudentId, ...payload } as Student));
+
+                            successCount++;
+                        } catch (rowError) {
+                            console.error(`Failed to import row ${i} (Name: ${name}):`, rowError);
+                            skippedCount++;
+                        }
+                        
+                        setUploadingProgress({ current: i + 1, total: normalizedData.length });
+                    }
+
+                    alert(`Import completed!\n✅ Successfully imported: ${successCount}\n⚠️ Skipped/Failed: ${skippedCount}`);
+                } catch (err: any) {
+                    alert('Error parsing file: ' + err.message);
+                } finally {
+                    setUploadingProgress(null);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                }
+            };
+            reader.readAsBinaryString(file);
+        } catch (err: any) {
+            alert('Failed to load xlsx parser: ' + err.message);
+            setUploadingProgress(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
 
     useEffect(() => { 
         if (studentsStatus === 'idle') {
@@ -218,7 +373,82 @@ export default function StudentsPage() {
     });
 
     // Reset to page 1 when filters change
-    useEffect(() => { setCurrentPage(1); }, [activeSearch, filterClass, filterGender]);
+    useEffect(() => { 
+        setCurrentPage(1); 
+        setSelectedStudents([]); 
+    }, [activeSearch, filterClass, filterGender]);
+
+    const toggleSelectAll = (checked: boolean) => {
+        if (checked) setSelectedStudents(filtered.map((s: any) => s.id));
+        else setSelectedStudents([]);
+    };
+
+    const toggleSelectStudent = (id: string, checked: boolean) => {
+        if (checked) setSelectedStudents(prev => [...prev, id]);
+        else setSelectedStudents(prev => prev.filter(sId => sId !== id));
+    };
+
+    const handlePromote = async () => {
+        if (!targetClass) { alert('Please select a target class.'); return; }
+        if (!confirm(`Are you sure you want to promote ${selectedStudents.length} students to ${targetClass}?`)) return;
+        
+        setIsPromoting(true);
+        try {
+            for (const sId of selectedStudents) {
+                const student = students.find((s: any) => s.id === sId);
+                if (!student) continue;
+
+                await setDoc(doc(db, 'students', sId), { grade: targetClass, updatedAt: serverTimestamp() }, { merge: true });
+                
+                if (student.uid) {
+                    await setDoc(doc(db, 'studentsprofile', student.uid), { class: targetClass, updatedAt: serverTimestamp() }, { merge: true });
+                } else if (student.studentId) {
+                    await setDoc(doc(db, 'studentsprofile', student.studentId), { class: targetClass, updatedAt: serverTimestamp() }, { merge: true });
+                }
+
+                dispatch(addOrUpdateStudent({ ...student, grade: targetClass }));
+            }
+            alert('Students promoted successfully!');
+            setSelectedStudents([]);
+            setPromoteModalOpen(false);
+            setTargetClass('');
+        } catch (err) {
+            console.error('Promotion error:', err);
+            alert('Failed to promote some students.');
+        } finally {
+            setIsPromoting(false);
+        }
+    };
+
+    const exportSelected = async () => {
+        try {
+            const XLSX = await import('xlsx');
+            const dataToExport = selectedStudents.map(id => {
+                const s = students.find((st: any) => st.id === id);
+                if (!s) return null;
+                return {
+                    'Name': s.name || '',
+                    'Student ID': s.studentId || '',
+                    'Class': s.grade || '',
+                    'Father Name': s.fatherName || '',
+                    'Gender': s.gender || '',
+                    'Section': s.section || '',
+                    'Session': s.session || '',
+                    'Phone': s.phone || '',
+                    'Email': s.email || '',
+                    'Password': s.password || '',
+                    'Roll No': s.rollno || '',
+                };
+            }).filter(Boolean);
+
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Students");
+            XLSX.writeFile(wb, "Selected_Students_Export.xlsx");
+        } catch (error) {
+            alert('Failed to export data.');
+        }
+    };
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const startIdx = (currentPage - 1) * PAGE_SIZE;
@@ -328,16 +558,32 @@ export default function StudentsPage() {
         setSaving(false);
     };
 
-    const remove = async (id: string) => {
+    const remove = async (s: any) => {
         if (!confirm('Delete this student record?')) return;
-        setDeleting(id);
+        setDeleting(s.id);
         
-        // Optimistic UI update
-        dispatch(removeStudent(id));
-        
-        // Finalize backend
-        await deleteDoc(doc(db, 'students', id));
-        setDeleting(null);
+        try {
+            // Optimistic UI update
+            dispatch(removeStudent(s.id));
+            
+            // Finalize backend
+            await deleteDoc(doc(db, 'students', s.id));
+            
+            // Delete associated profile documents if they exist
+            if (s.uid) {
+                await deleteDoc(doc(db, 'studentsprofile', s.uid));
+                await deleteDoc(doc(db, 'profile', s.uid));
+            }
+            if (s.studentId) {
+                await deleteDoc(doc(db, 'studentsprofile', s.studentId));
+                await deleteDoc(doc(db, 'profile', s.studentId));
+            }
+        } catch (error) {
+            console.error('Error deleting student:', error);
+            alert('Failed to completely delete the record from Firebase.');
+        } finally {
+            setDeleting(null);
+        }
     };
 
     return (
@@ -350,12 +596,25 @@ export default function StudentsPage() {
                         <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>Manage and view enrolled students</div>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        {selectedStudents.length > 0 && (
+                            <>
+                                <button className="btn btn-ghost" onClick={exportSelected} style={{ padding: '5px 12px', fontSize: 12, height: 30, border: '1px solid var(--border)', background: 'var(--card)' }}>
+                                    ⬇️ Export ({selectedStudents.length})
+                                </button>
+                                <button className="btn btn-primary" onClick={() => setPromoteModalOpen(true)} style={{ padding: '5px 12px', fontSize: 12, height: 30, background: '#10b981', borderColor: '#10b981' }}>
+                                    🎓 Promote ({selectedStudents.length})
+                                </button>
+                            </>
+                        )}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 10px' }}>
                             <span style={{ fontSize: 11, color: 'var(--text2)' }}>Total</span>
                             <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--primary)' }}>{filtered.length}</span>
                             <span style={{ fontSize: 10, color: 'var(--text2)' }}>{(filterClass || filterGender || search) ? 'found' : 'students'}</span>
                         </div>
-                        <button className="btn btn-primary" onClick={openAdd} style={{ padding: '5px 12px', fontSize: 12, height: 30 }}>
+                        <button className="btn btn-ghost" onClick={() => setImportModalOpen(true)} style={{ padding: '5px 12px', fontSize: 12, height: 30, border: '1px solid var(--border)', background: 'var(--card)' }}>
+                            📤 Import
+                        </button>
+                        <button className="btn btn-primary" onClick={openAdd} style={{ padding: '5px 12px', fontSize: 12, height: 30 }} disabled={!!uploadingProgress}>
                             ➕ Add
                         </button>
                     </div>
@@ -373,7 +632,7 @@ export default function StudentsPage() {
                         style={{ background: 'transparent', fontSize: 12, border: 'none', outline: 'none', flex: 1, color: 'var(--text)' }}
                     />
                 </div>
-                <select className="form-input" style={{ height: 30, fontSize: 12, padding: '0 8px', flex: 1 }} value={filterClass} onChange={e => setFilterClass(e.target.value)}>
+                <select className="form-input" style={{ height: 30, fontSize: 12, padding: '0 8px', maxWidth: 160 }} value={filterClass} onChange={e => setFilterClass(e.target.value)}>
                     <option value="">All Classes</option>
                     {classes.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -400,6 +659,13 @@ export default function StudentsPage() {
                             <table style={{ background: 'var(--card)', minWidth: '100%', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
                                 <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                                     <tr style={{ background: 'linear-gradient(90deg, #1e3a8a 0%, #1d4ed8 100%)', color: '#ffffff', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                        <th style={{ padding: '7px 10px', borderRight: '1px solid rgba(255,255,255,0.15)', width: 30, textAlign: 'center' }}>
+                                            <input type="checkbox" 
+                                                checked={selectedStudents.length === filtered.length && filtered.length > 0} 
+                                                onChange={e => toggleSelectAll(e.target.checked)} 
+                                                style={{ cursor: 'pointer' }}
+                                            />
+                                        </th>
                                         <th style={{ padding: '7px 10px', borderRight: '1px solid rgba(255,255,255,0.15)', width: 40, textAlign: 'center', color: '#ffffff' }}>#</th>
                                         <th style={{ padding: '7px 10px', borderRight: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', minWidth: 150 }}>Name</th>
                                         <th style={{ padding: '7px 10px', borderRight: '1px solid rgba(255,255,255,0.15)', color: '#ffffff', minWidth: 100 }}>Student ID</th>
@@ -413,12 +679,20 @@ export default function StudentsPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filtered.length === 0 ? <tr><td colSpan={10} className="empty" style={{ padding: '30px', fontSize: 12 }}>No students found matching filters</td></tr>
+                                    {filtered.length === 0 ? <tr><td colSpan={11} className="empty" style={{ padding: '30px', fontSize: 12 }}>No students found matching filters</td></tr>
                                         : paginatedStudents.map((s: any, i: number) => {
                                             const sGender = String(s.gender || '').toLowerCase();
                                             const rowNum = startIdx + i + 1;
                                             return (
-                                                <tr key={s.id} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--card)' : 'var(--bg3)' }}>
+                                                <tr key={s.id} onClick={() => setViewStudent(s)} style={{ cursor: 'pointer', borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--card)' : 'var(--bg3)' }}>
+                                                    <td style={{ padding: '5px 10px', borderRight: '1px solid var(--border)', textAlign: 'center' }}>
+                                                        <input type="checkbox" 
+                                                            checked={selectedStudents.includes(s.id)} 
+                                                            onChange={e => toggleSelectStudent(s.id, e.target.checked)} 
+                                                            onClick={e => e.stopPropagation()} 
+                                                            style={{ cursor: 'pointer' }}
+                                                        />
+                                                    </td>
                                                     <td style={{ padding: '5px 10px', borderRight: '1px solid var(--border)', textAlign: 'center', fontSize: 11, color: 'var(--text2)' }}>{rowNum}</td>
                                                     <td style={{ padding: '5px 10px', borderRight: '1px solid var(--border)' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -446,7 +720,7 @@ export default function StudentsPage() {
                                                         <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
                                                             <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 11, height: 26 }} onClick={(e) => { e.stopPropagation(); setViewStudent(s); }}>View</button>
                                                             <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 11, height: 26 }} onClick={(e) => { e.stopPropagation(); openEdit(s); }}>Edit</button>
-                                                            <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 11, height: 26, color: '#ef4444' }} disabled={deleting === s.id} onClick={(e) => { e.stopPropagation(); remove(s.id); }}>🗑</button>
+                                                            <button className="btn btn-ghost" style={{ padding: '3px 8px', fontSize: 11, height: 26, color: '#ef4444' }} disabled={deleting === s.id} onClick={(e) => { e.stopPropagation(); remove(s); }}>🗑</button>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -487,6 +761,73 @@ export default function StudentsPage() {
                             </button>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* ── Import Modal ────────────────────────────────────────────────────── */}
+            {importModalOpen && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setImportModalOpen(false)}>
+                    <div className="modal" style={{ maxWidth: 450 }}>
+                        <div className="modal-header">
+                            <div className="modal-title">Bulk Import Students</div>
+                            <button className="modal-close" onClick={() => setImportModalOpen(false)}>✕</button>
+                        </div>
+                        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            <div style={{ background: 'rgba(59,130,246,0.08)', padding: 16, borderRadius: 10, border: '1px solid rgba(59,130,246,0.2)' }}>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span style={{ fontSize: 16 }}>1️⃣</span> Download Template
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 14, lineHeight: 1.5 }}>
+                                    Download the exact Excel template required for importing. Fill it with your students data without modifying the column headers.
+                                </div>
+                                <button className="btn btn-ghost" style={{ background: '#fff', border: '1px solid var(--primary)', color: 'var(--primary)', fontSize: 12, padding: '8px 14px', borderRadius: 6, fontWeight: 700, boxShadow: '0 2px 4px rgba(59,130,246,0.1)' }} onClick={downloadTemplate}>
+                                    ⬇️ Download .xlsx Template
+                                </button>
+                            </div>
+
+                            <div style={{ background: 'var(--bg3)', padding: 16, borderRadius: 10, border: '1px solid var(--border)' }}>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span style={{ fontSize: 16 }}>2️⃣</span> Upload Data
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 14, lineHeight: 1.5 }}>
+                                    Select your filled template to automatically create student accounts and profiles.
+                                </div>
+                                <input type="file" ref={fileInputRef} hidden accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onChange={async (e) => { await handleFileUpload(e); setImportModalOpen(false); }} />
+                                <button className="btn btn-primary" style={{ width: '100%', padding: '12px 0', fontSize: 13, fontWeight: 700, borderRadius: 8, boxShadow: '0 4px 12px rgba(59,130,246,0.3)' }} onClick={() => fileInputRef.current?.click()} disabled={!!uploadingProgress}>
+                                    {uploadingProgress ? `Importing ${uploadingProgress.current}/${uploadingProgress.total}...` : '📤 Select File & Import'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Promote Modal */}
+            {promoteModalOpen && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setPromoteModalOpen(false)}>
+                    <div className="modal" style={{ maxWidth: 400 }}>
+                        <div className="modal-header">
+                            <div className="modal-title">Promote Students</div>
+                            <button className="modal-close" onClick={() => setPromoteModalOpen(false)}>✕</button>
+                        </div>
+                        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+                                You are about to promote <strong>{selectedStudents.length}</strong> selected student(s).
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <label style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 600 }}>Target Class</label>
+                                <select className="form-input" value={targetClass} onChange={e => setTargetClass(e.target.value)}>
+                                    <option value="">Select Class</option>
+                                    {classes.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+                                <button className="btn btn-ghost" onClick={() => setPromoteModalOpen(false)}>Cancel</button>
+                                <button className="btn btn-primary" style={{ background: '#10b981', borderColor: '#10b981' }} onClick={handlePromote} disabled={isPromoting || !targetClass}>
+                                    {isPromoting ? 'Promoting...' : 'Confirm Promote'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 

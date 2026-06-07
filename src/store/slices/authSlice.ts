@@ -203,19 +203,27 @@ export default authSlice.reducer;
  * Returns the unsubscribe function.
  */
 export const initAuthListener = (dispatch: ThunkDispatch<any, any, UnknownAction>) => {
-    return onAuthStateChanged(auth, (firebaseUser: User | null) => {
+    return onAuthStateChanged(auth, async (firebaseUser: User | null) => {
         if (firebaseUser) {
-            const serializable: SerializableUser = {
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                displayName: firebaseUser.displayName,
-                photoURL: firebaseUser.photoURL,
-            };
-            dispatch(setUser(serializable));
-            dispatch(fetchUserProfile({ uid: firebaseUser.uid, email: firebaseUser.email }));
-            // Load liked teachers so StaffInfoScreen has instant access
-            const { fetchLikedTeacherIds } = require('./teachersSlice');
-            dispatch(fetchLikedTeacherIds(firebaseUser.uid));
+            const actionResult = await dispatch(fetchUserProfile({ uid: firebaseUser.uid, email: firebaseUser.email }));
+            if (fetchUserProfile.fulfilled.match(actionResult)) {
+                const serializable: SerializableUser = {
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email,
+                    displayName: firebaseUser.displayName,
+                    photoURL: firebaseUser.photoURL,
+                };
+                dispatch(setUser(serializable));
+                // Load liked teachers so StaffInfoScreen has instant access
+                const { fetchLikedTeacherIds } = require('./teachersSlice');
+                dispatch(fetchLikedTeacherIds(firebaseUser.uid));
+            } else {
+                // Profile not found - User was likely deleted from dashboard
+                const { signOut } = require('firebase/auth');
+                await signOut(auth);
+                dispatch(setUser(null));
+                dispatch(clearAuth());
+            }
         } else {
             dispatch(setUser(null));
             dispatch(clearAuth());

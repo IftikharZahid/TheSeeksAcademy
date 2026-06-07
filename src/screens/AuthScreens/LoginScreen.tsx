@@ -18,9 +18,9 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useTheme } from '../../context/ThemeContext';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
 import { auth, db } from '../../api/firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, or } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -64,17 +64,17 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleLogin = async () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email');
+      Alert.alert('Authentication Failed', 'Email is required.');
       return;
     }
     if (!password.trim()) {
-      Alert.alert('Error', 'Please enter your password');
+      Alert.alert('Authentication Failed', 'Password is required.');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      Alert.alert('Error', 'Please enter a valid email address (e.g., name@gmail.com)');
+      Alert.alert('Authentication Failed', 'Invalid email format.');
       return;
     }
 
@@ -90,39 +90,61 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       // Step 2: Fetch user profile data from Firestore
       try {
         console.log('📥 Fetching user profile from Firestore...');
+        let profileFound = false;
+        let userName = 'User';
+        let userImage = '';
+
         let userDocSnap = await getDoc(doc(db, 'studentsprofile', userCredential.user.uid));
-        let profileSource = 'studentsprofile';
-
-        if (!userDocSnap.exists()) {
-          userDocSnap = await getDoc(doc(db, 'profile', userCredential.user.uid));
-          profileSource = 'profile';
-        }
-
         if (userDocSnap.exists()) {
-          const userData = userDocSnap.data();
-
-          const userName = userData.fullname || userData.name || userData.displayName || userData.fullName || userCredential.user.displayName || 'User';
-          console.log(`👤 Student profile fetched from ${profileSource}/`, userCredential.user.uid, '- name:', userName);
-
-          // Store user data in storage for app-wide access
-          await AsyncStorage.setItem('user_data', JSON.stringify({
-            uid: userCredential.user.uid,
-            email: userData.email || userCredential.user.email,
-            name: userName,
-            image: userData.image || userData.photoURL || '',
-          }));
-          console.log('💾 User data saved to storage');
+            profileFound = true;
+            userName = userDocSnap.data().fullname || userDocSnap.data().name || 'User';
+            userImage = userDocSnap.data().image || '';
         } else {
-          console.warn('⚠️ No user profile found in Firestore for UID:', userCredential.user.uid);
-          // Store basic info from auth
-          await AsyncStorage.setItem('user_data', JSON.stringify({
-            uid: userCredential.user.uid,
-            email: userCredential.user.email,
-            name: userCredential.user.displayName || 'User',
-            image: '',
-          }));
+            userDocSnap = await getDoc(doc(db, 'profile', userCredential.user.uid));
+            if (userDocSnap.exists()) {
+                profileFound = true;
+                userName = userDocSnap.data().fullname || userDocSnap.data().name || 'User';
+                userImage = userDocSnap.data().image || '';
+            } else {
+                userDocSnap = await getDoc(doc(db, 'users', userCredential.user.uid));
+                if (userDocSnap.exists()) {
+                    profileFound = true;
+                    userName = userDocSnap.data().fullname || userDocSnap.data().name || 'User';
+                    userImage = userDocSnap.data().image || '';
+                } else {
+                    const emailLower = email.trim().toLowerCase();
+                    const emailParts = emailLower.split('@');
+                    const emailMixed = emailParts.length === 2 ? `${emailParts[0].toUpperCase()}@TheSeeksAcademy.edu.pk` : emailLower;
+                    const sq = emailMixed !== emailLower
+                        ? query(collection(db, 'students'), or(where('email', '==', emailLower), where('email', '==', emailMixed)))
+                        : query(collection(db, 'students'), where('email', '==', emailLower));
+                    const sSnapshot = await getDocs(sq);
+                    if (!sSnapshot.empty) {
+                        profileFound = true;
+                        userName = sSnapshot.docs[0].data().name || 'User';
+                        userImage = sSnapshot.docs[0].data().profileImage || '';
+                    }
+                }
+            }
         }
-      } catch (firestoreError) {
+
+        if (profileFound) {
+            await AsyncStorage.setItem('user_data', JSON.stringify({
+                uid: userCredential.user.uid,
+                email: userCredential.user.email,
+                name: userName,
+                image: userImage,
+            }));
+            console.log('💾 User data saved to storage');
+        } else {
+            console.warn('⚠️ No user profile found in Firestore for UID:', userCredential.user.uid);
+            await signOut(auth);
+            throw new Error('auth/deleted-account');
+        }
+      } catch (firestoreError: any) {
+        if (firestoreError.message === 'auth/deleted-account') {
+            throw firestoreError; // Re-throw to main catch block
+        }
         console.error('❌ Error fetching Firestore data:', firestoreError);
         // Continue with login even if Firestore fetch fails
       }
@@ -147,22 +169,21 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       console.error('Error code:', error.code);
       console.error('Error message:', error.message);
 
-      let errorMessage = 'Something went wrong';
-      if (error.code === 'auth/invalid-email') errorMessage = 'Invalid email address';
-      if (error.code === 'auth/user-disabled') errorMessage = 'User account disabled';
-      if (error.code === 'auth/user-not-found') errorMessage = 'User not found';
-      if (error.code === 'auth/wrong-password') errorMessage = 'Incorrect password';
-      if (error.code === 'auth/invalid-credential') errorMessage = 'Invalid credentials';
-      if (error.code === 'auth/network-request-failed') errorMessage = 'Network error. Please check your connection';
-      if (error.code === 'auth/too-many-requests') errorMessage = 'Too many failed attempts. Please try again later';
+      let errorMessage = 'An unexpected error occurred.';
+      if (error.message === 'auth/deleted-account') errorMessage = 'Account deactivated by administration.';
+      if (error.code === 'auth/invalid-email') errorMessage = 'Invalid email format.';
+      if (error.code === 'auth/user-disabled') errorMessage = 'Account disabled.';
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') errorMessage = 'Invalid credentials.';
+      if (error.code === 'auth/network-request-failed') errorMessage = 'Network error. Check connection.';
+      if (error.code === 'auth/too-many-requests') errorMessage = 'Too many attempts. Try again later.';
 
       // Check for Firebase configuration issues
       if (error.message && error.message.includes('API key')) {
-        errorMessage = 'Firebase configuration error. Please contact support.';
+        errorMessage = 'System error. Contact support.';
         console.error('🔥 FIREBASE CONFIG ERROR: Check firebaseConfig.ts credentials');
       }
 
-      Alert.alert('Login Failed', errorMessage);
+      Alert.alert('Authentication Failed', errorMessage);
     }
   };
 
@@ -186,26 +207,17 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Academic Shield / Crest Logo Section */}
+        {/* Logo and Stars Section */}
         <View style={styles.logoOuterContainer}>
-          {/* Authentically shaped Academic Shield, floating with premium shadow */}
-          <View style={[styles.crestInnerShield, { backgroundColor: theme.card, borderColor: '#d4af37' }]}>
-            {/* Translucent Gold Honor Sash */}
-            <View style={styles.diagonalRibbon} />
-            
-            {/* Logo Image centered */}
-            <Image
-              source={require('../../../assets/icon.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-
-            {/* Stars of Academic Excellence inside shield tip */}
-            <View style={styles.crestStarRow}>
-              <Ionicons name="star" size={8} color="#d4af37" />
-              <Ionicons name="star" size={8} color="#d4af37" style={{ marginHorizontal: 2 }} />
-              <Ionicons name="star" size={8} color="#d4af37" />
-            </View>
+          <Image
+            source={require('../../../assets/icon.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <View style={styles.crestStarRow}>
+            <Ionicons name="star" size={12} color="#d4af37" />
+            <Ionicons name="star" size={12} color="#d4af37" style={{ marginHorizontal: 4 }} />
+            <Ionicons name="star" size={12} color="#d4af37" />
           </View>
         </View>
 
@@ -377,57 +389,21 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
   },
 
-  /* ── Academic Crest Shield ── */
+  /* ── Logo Section ── */
   logoOuterContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
-  },
-  crestInnerShield: {
-    width: 76,
-    height: 86,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-    borderBottomLeftRadius: 38,
-    borderBottomRightRadius: 38,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  diagonalRibbon: {
-    position: 'absolute',
-    width: '150%',
-    height: 14,
-    backgroundColor: '#d4af37',
-    transform: [{ rotate: '-45deg' }],
-    opacity: 0.15,
+    marginBottom: 16,
   },
   logoImage: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    zIndex: 2,
+    width: 100,
+    height: 100,
+    marginBottom: 8,
   },
   crestStarRow: {
-    position: 'absolute',
-    bottom: 4,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 2,
   },
 
   /* ── Academic Header ── */
@@ -444,7 +420,7 @@ const styles = StyleSheet.create({
   academyMotto: {
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 3,
+    letterSpacing: 8,
     marginTop: 2,
     textAlign: 'center',
     textTransform: 'uppercase',

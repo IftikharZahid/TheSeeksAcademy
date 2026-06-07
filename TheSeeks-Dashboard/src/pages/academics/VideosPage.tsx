@@ -62,11 +62,7 @@ export default function VideosPage() {
         if (classesStatus === 'idle') dispatch(fetchClasses());
     }, [dispatch, status, classesStatus]);
 
-    useEffect(() => {
-        if (classes.length > 0 && !selectedClass) {
-            setSelectedClass(classes[0]); // Default to first class instead of 'All' for better UX per requirements
-        }
-    }, [classes]);
+    // Default class effect removed to keep 'All Classes' as default
 
     const selectedGallery = useMemo(() => galleries.find((g: Gallery) => g.id === selectedGalleryId), [galleries, selectedGalleryId]);
 

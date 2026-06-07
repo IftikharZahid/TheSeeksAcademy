@@ -761,7 +761,7 @@ export const MessagesScreen: React.FC = () => {
         </View>
         <ScrollView
           style={styles.contentContainerNoticeStyle}
-          contentContainerStyle={styles.listContentNoticeStyle}
+          contentContainerStyle={{ paddingVertical: scale(16), paddingBottom: scale(100) }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
           }
@@ -775,75 +775,75 @@ export const MessagesScreen: React.FC = () => {
           ) : (
             <>
               {filteredGroups.filter(g => g.gender === 'girl').length > 0 && (
-                <>
-                  <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Girls Sections</Text>
-                  {filteredGroups.filter(g => g.gender === 'girl').map(g => {
-                    const lastMsg = lastMessages[g.id] || null;
-                    return (
-                      <TouchableOpacity
-                        key={g.id}
-                        style={[styles.noticeCardStyle, { backgroundColor: theme.card, shadowColor: theme.shadow, borderLeftColor: '#b83060' }]}
-                        onPress={() => setActiveGroup(g.id)}
-                        activeOpacity={0.9}
-                      >
-                        <View style={[styles.groupIcon, { backgroundColor: 'rgba(184,48,96,0.1)' }]}>
-                          <Ionicons name="chatbubbles" size={scale(20)} color="#b83060" />
-                        </View>
-                        <View style={styles.groupInfo}>
-                          <View style={styles.titleRowNoticeStyle}>
-                            <Text style={[styles.noticeTitleStyle, { color: '#b83060' }]} numberOfLines={1}>{g.name}</Text>
+                <View style={{ marginBottom: scale(16) }}>
+                  <Text style={[styles.sectionLabel, { color: theme.textSecondary, marginLeft: scale(16) }]}>Girls Sections</Text>
+                  <View style={{ backgroundColor: theme.card, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: theme.border }}>
+                    {filteredGroups.filter(g => g.gender === 'girl').map((g, index, arr) => {
+                      const lastMsg = lastMessages[g.id] || null;
+                      const unread = Math.max(0, (groupMsgCounts[g.id] || 0) - (readCounts[g.id] || 0));
+                      return (
+                        <TouchableOpacity
+                          key={g.id}
+                          style={[
+                            styles.chatRow,
+                            index < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }
+                          ]}
+                          onPress={() => setActiveGroup(g.id)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.chatRowAvatar, { backgroundColor: 'rgba(184,48,96,0.1)' }]}>
+                            <Ionicons name="chatbubbles" size={scale(20)} color="#b83060" />
                           </View>
-                          <View style={styles.cardBodyNoticeStyle}>
-                            <Text style={[styles.noticeMessageStyle, { color: theme.textSecondary }]} numberOfLines={1}>
+                          <View style={styles.chatRowInfo}>
+                            <Text style={[styles.chatRowTitle, { color: theme.text }]} numberOfLines={1}>{g.name}</Text>
+                            <Text style={[styles.chatRowMessage, { color: theme.textSecondary }]} numberOfLines={1}>
                               {lastMsg ? `${lastMsg.sender}: ${lastMsg.text}` : 'No messages yet...'}
                             </Text>
                           </View>
-                        </View>
-                        {(() => {
-                          const unread = Math.max(0, (groupMsgCounts[g.id] || 0) - (readCounts[g.id] || 0));
-                          return unread > 0 ? <BlinkingDot count={unread} /> : null;
-                        })()}
-                        <Ionicons name="chevron-forward" size={scale(18)} color={theme.textTertiary} />
-                      </TouchableOpacity>
-                    );
-                  })}
-                </>
+                          <View style={styles.chatRowRight}>
+                            {unread > 0 ? <BlinkingDot count={unread} /> : <Ionicons name="chevron-forward" size={scale(16)} color={theme.textTertiary} />}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
               )}
 
               {filteredGroups.filter(g => g.gender === 'boy').length > 0 && (
-                <>
-                  <Text style={[styles.sectionLabel, { color: theme.textSecondary, marginTop: 16 }]}>Boys Sections</Text>
-                  {filteredGroups.filter(g => g.gender === 'boy').map(g => {
-                    const lastMsg = lastMessages[g.id] || null;
-                    return (
-                      <TouchableOpacity
-                        key={g.id}
-                        style={[styles.noticeCardStyle, { backgroundColor: theme.card, shadowColor: theme.shadow, borderLeftColor: theme.primary }]}
-                        onPress={() => setActiveGroup(g.id)}
-                        activeOpacity={0.9}
-                      >
-                        <View style={[styles.groupIcon, { backgroundColor: isDark ? theme.backgroundTertiary : '#e0e7ff' }]}>
-                          <Ionicons name="chatbubbles" size={scale(20)} color={theme.primary} />
-                        </View>
-                        <View style={styles.groupInfo}>
-                          <View style={styles.titleRowNoticeStyle}>
-                            <Text style={[styles.noticeTitleStyle, { color: theme.primary }]} numberOfLines={1}>{g.name}</Text>
+                <View style={{ marginBottom: scale(16) }}>
+                  <Text style={[styles.sectionLabel, { color: theme.textSecondary, marginLeft: scale(16) }]}>Boys Sections</Text>
+                  <View style={{ backgroundColor: theme.card, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: theme.border }}>
+                    {filteredGroups.filter(g => g.gender === 'boy').map((g, index, arr) => {
+                      const lastMsg = lastMessages[g.id] || null;
+                      const unread = Math.max(0, (groupMsgCounts[g.id] || 0) - (readCounts[g.id] || 0));
+                      return (
+                        <TouchableOpacity
+                          key={g.id}
+                          style={[
+                            styles.chatRow,
+                            index < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border }
+                          ]}
+                          onPress={() => setActiveGroup(g.id)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.chatRowAvatar, { backgroundColor: isDark ? theme.backgroundTertiary : '#e0e7ff' }]}>
+                            <Ionicons name="chatbubbles" size={scale(20)} color={theme.primary} />
                           </View>
-                          <View style={styles.cardBodyNoticeStyle}>
-                            <Text style={[styles.noticeMessageStyle, { color: theme.textSecondary }]} numberOfLines={1}>
+                          <View style={styles.chatRowInfo}>
+                            <Text style={[styles.chatRowTitle, { color: theme.text }]} numberOfLines={1}>{g.name}</Text>
+                            <Text style={[styles.chatRowMessage, { color: theme.textSecondary }]} numberOfLines={1}>
                               {lastMsg ? `${lastMsg.sender}: ${lastMsg.text}` : 'No messages yet...'}
                             </Text>
                           </View>
-                        </View>
-                        {(() => {
-                          const unread = Math.max(0, (groupMsgCounts[g.id] || 0) - (readCounts[g.id] || 0));
-                          return unread > 0 ? <BlinkingDot count={unread} /> : null;
-                        })()}
-                        <Ionicons name="chevron-forward" size={scale(18)} color={theme.textTertiary} />
-                      </TouchableOpacity>
-                    );
-                  })}
-                </>
+                          <View style={styles.chatRowRight}>
+                            {unread > 0 ? <BlinkingDot count={unread} /> : <Ionicons name="chevron-forward" size={scale(16)} color={theme.textTertiary} />}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
               )}
             </>
           )}
@@ -1487,51 +1487,41 @@ const styles = StyleSheet.create({
     padding: scale(16),
     paddingBottom: scale(100),
   },
-  noticeCardStyle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: scale(12),
-    padding: scale(14),
-    marginBottom: scale(12),
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-    borderLeftWidth: 3,
-  },
-  titleRowNoticeStyle: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  noticeTitleStyle: {
-    fontSize: scale(15),
-    fontWeight: '700',
-    letterSpacing: -0.2,
-    flex: 1,
-    marginRight: scale(8),
-  },
-  cardBodyNoticeStyle: {
-    marginTop: scale(2),
-  },
-  noticeMessageStyle: {
-    fontSize: scale(13),
-    lineHeight: scale(19),
-    opacity: 0.8,
-  },
 
-  // Group list items
-  groupIcon: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: scale(22),
+  // Professional Compact Group List Items
+  chatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: scale(12),
+    paddingHorizontal: scale(16),
+  },
+  chatRowAvatar: {
+    width: scale(42),
+    height: scale(42),
+    borderRadius: scale(21),
     justifyContent: 'center',
     alignItems: 'center',
   },
-  groupInfo: {
+  chatRowInfo: {
     flex: 1,
     marginLeft: scale(12),
-    marginRight: scale(8),
+    justifyContent: 'center',
+  },
+  chatRowTitle: {
+    fontSize: scale(15),
+    fontWeight: '700',
+    marginBottom: scale(2),
+    letterSpacing: -0.2,
+  },
+  chatRowMessage: {
+    fontSize: scale(13),
+    opacity: 0.7,
+  },
+  chatRowRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    marginLeft: scale(8),
+    minWidth: scale(24),
   },
   sectionLabel: {
     fontSize: scale(11),

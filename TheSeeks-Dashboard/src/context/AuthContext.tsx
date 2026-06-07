@@ -4,10 +4,13 @@ import {
     signInWithEmailAndPassword,
     signOut,
     sendPasswordResetEmail,
+    fetchSignInMethodsForEmail,
     User,
 } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+
+const ADMIN_EMAILS = ['theseeksacademyfta@gmail.com', 'iftikharzahid@outlook.com'];
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 export interface AdminProfile {
@@ -42,8 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     // Mirror the same profile-fetch logic as mobile authSlice.fetchUserProfile
-    const fetchProfile = async (firebaseUser: User) => {
-        const email = firebaseUser.email;
+    const fetchProfile = async (firebaseUser: User): Promise<boolean> => {
+        const email = firebaseUser.email?.toLowerCase() || '';
+        let isAdmin = ADMIN_EMAILS.includes(email);
+
         try {
             // 1️⃣ 'profile' collection by email (admin/teacher path used by mobile)
             if (email) {
@@ -51,26 +56,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const snap = await getDocs(q);
                 if (!snap.empty) {
                     const data = snap.docs[0].data() as AdminProfile;
-                    setProfile(data);
-                    return;
+                    if (data.role?.toLowerCase() === 'admin') {
+                        isAdmin = true;
+                    }
+                    if (isAdmin) {
+                        setProfile(data);
+                        return true;
+                    }
                 }
             }
-            // Fallback: just use Firebase Auth display name
-            setProfile({
-                fullname: firebaseUser.displayName || email || 'Admin',
-                email: email || '',
-            });
+            // Fallback: just use Firebase Auth display name if admin via email
+            if (isAdmin) {
+                setProfile({
+                    fullname: firebaseUser.displayName || email || 'Admin',
+                    email: email || '',
+                });
+                return true;
+            }
         } catch {
-            setProfile({ fullname: email || 'Admin', email: email || '' });
+            if (isAdmin) {
+                setProfile({ fullname: email || 'Admin', email: email || '' });
+                return true;
+            }
         }
+        return false;
     };
 
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-            setUser(firebaseUser);
             if (firebaseUser) {
-                await fetchProfile(firebaseUser);
+                const isAdmin = await fetchProfile(firebaseUser);
+                if (isAdmin) {
+                    setUser(firebaseUser);
+                } else {
+                    await signOut(auth);
+                    setUser(null);
+                    setProfile(null);
+                }
             } else {
+                setUser(null);
                 setProfile(null);
             }
             setLoading(false);
@@ -79,8 +103,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const login = async (email: string, password: string) => {
-        await signInWithEmailAndPassword(auth, email.trim(), password);
-        // profile set automatically by onAuthStateChanged above
+        const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+        const userEmail = userCredential.user.email?.toLowerCase() || '';
+
+        let isAdmin = ADMIN_EMAILS.includes(userEmail);
+
+        if (!isAdmin) {
+            try {
+                const q = query(collection(db, 'profile'), where('email', '==', userEmail));
+                const snap = await getDocs(q);
+                if (!snap.empty) {
+                    const data = snap.docs[0].data() as AdminProfile;
+                    if (data.role?.toLowerCase() === 'admin') {
+                        isAdmin = true;
+                    }
+                }
+            } catch (e) {
+                console.error('Error verifying admin role:', e);
+            }
+        }
+
+        if (!isAdmin) {
+            await signOut(auth);
+            throw { code: 'auth/not-admin', message: 'Access denied: This dashboard is for administrators only.' };
+        }
     };
 
     const logout = async () => {
@@ -88,6 +134,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const resetPassword = async (email: string) => {
+        const methods = await fetchSignInMethodsForEmail(auth, email.trim());
+        if (methods.length === 0) {
+            throw { code: 'auth/user-not-found' };
+        }
         await sendPasswordResetEmail(auth, email.trim());
     };
 

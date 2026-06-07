@@ -108,15 +108,40 @@ export default function ComplaintsPage() {
             </div>
 
             {/* Summary */}
-            <div className="responsive-grid-3" style={{ marginBottom: 20 }}>
+            <div className="responsive-grid-3" style={{ marginBottom: 20, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                 {[
-                    { label: 'Total', val: complaints.length, color: '#818cf8', bg: 'rgba(99,102,241,0.1)' },
-                    { label: 'Pending / In Progress', val: pendingCount, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-                    { label: 'Resolved', val: resolvedCount, color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
-                ].map(s => (
-                    <div key={s.label} style={{ background: s.bg, border: `1px solid ${s.color}33`, borderRadius: 'var(--radius)', padding: '14px 18px' }}>
-                        <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.val}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600, marginTop: 2 }}>{s.label}</div>
+                    { label: 'Total', val: complaints.length, color: '#818cf8', bg: 'rgba(129,140,248,0.12)', icon: '📝' },
+                    { label: 'Pending / In Progress', val: pendingCount, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', icon: '⏳' },
+                    { label: 'Resolved', val: resolvedCount, color: '#10b981', bg: 'rgba(16,185,129,0.12)', icon: '✓' },
+                ].map(item => (
+                    <div key={item.label} style={{
+                        background:'var(--bg2,#1e293b)',
+                        border:'1px solid var(--border,rgba(255,255,255,0.07))',
+                        borderRadius:10, padding:'10px 14px',
+                        display:'flex', alignItems:'center', gap:10,
+                        position:'relative', overflow:'hidden',
+                    }}>
+                        <div style={{
+                            position:'absolute', left:0, top:0, bottom:0, width:3,
+                            background:item.color, borderRadius:'10px 0 0 10px',
+                        }} />
+                        <div style={{
+                            width:30, height:30, borderRadius:8,
+                            background:item.bg, color:item.color,
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                            fontSize:14, flexShrink:0,
+                        }}>{item.icon}</div>
+                        <div>
+                            <div style={{ fontSize:20, fontWeight:700, color:item.color, lineHeight:1 }}>
+                                {item.val}
+                            </div>
+                            <div style={{
+                                fontSize:10, color:'var(--text2)', marginTop:2,
+                                textTransform:'uppercase', letterSpacing:'0.4px', fontWeight:500,
+                            }}>
+                                {item.label}
+                            </div>
+                        </div>
                     </div>
                 ))}
             </div>

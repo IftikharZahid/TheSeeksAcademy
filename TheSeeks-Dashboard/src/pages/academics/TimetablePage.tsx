@@ -25,6 +25,23 @@ const FORM_DAYS = ['All', ...DISPLAY_DAYS];
 
 const emptyForm = (): Partial<TimetableEntry> => ({ day: '', period: '', subject: '', class: '', teacher: '', room: '', startTime: '', endTime: '', gender: 'All' });
 
+const formatTime12Hour = (time24: string) => {
+    if (!time24 || time24 === '--:--') return time24;
+    const [hStr, mStr] = time24.split(':');
+    let h = parseInt(hStr, 10);
+    if (isNaN(h)) return time24;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    h = h ? h : 12;
+    return `${h.toString().padStart(2, '0')}:${mStr || '00'} ${ampm}`;
+};
+
+const formatTimeRange12Hour = (timeRange24: string) => {
+    if (!timeRange24 || !timeRange24.includes(' - ')) return formatTime12Hour(timeRange24);
+    const [start, end] = timeRange24.split(' - ');
+    return `${formatTime12Hour(start)} - ${formatTime12Hour(end)}`;
+};
+
 export default function TimetablePage() {
     const dispatch = useAppDispatch();
     const { timetable: entries, timetableStatus: status } = useAppSelector((s: RootState) => s.general);
@@ -83,15 +100,20 @@ export default function TimetablePage() {
         return () => { unsub(); unsubRef.current = null; };
     }, [dispatch, teachersStatus, booksStatus]);
 
-    const filtered = entries.filter((e: TimetableEntry) => {
+    // UI only needs one day's data since all days are identical in a weekly timetable
+    const uniqueEntries = entries.filter((e: TimetableEntry) => e.day === 'Monday');
+
+    const filtered = uniqueEntries.filter((e: TimetableEntry) => {
         const matchClass = filterClass === 'All' || e.class === filterClass;
         const q = search.toLowerCase();
-        return matchClass && (!q || e.subject.toLowerCase().includes(q) || e.teacher.toLowerCase().includes(q) || e.day.toLowerCase().includes(q));
-    });
+        return matchClass && (!q || e.subject.toLowerCase().includes(q) || e.teacher.toLowerCase().includes(q));
+    }).sort((a, b) => (a.startTime || '').localeCompare(b.startTime || ''));
 
-    // Group by day for display
-    const byDay = DISPLAY_DAYS.map(day => ({ day, entries: filtered.filter((e: TimetableEntry) => e.day === day) })).filter(g => g.entries.length > 0);
-    const otherEntries = filtered.filter((e: TimetableEntry) => !DISPLAY_DAYS.includes(e.day));
+    const timeSlots = Array.from(new Set(
+        filtered.map((e: TimetableEntry) => `${e.startTime || '--:--'} - ${e.endTime || '--:--'}`)
+    )).sort();
+
+    const otherEntries = uniqueEntries.filter((e: TimetableEntry) => !DISPLAY_DAYS.includes(e.day) && e.day !== 'Monday');
 
     const openAdd = () => { setEditing(null); setForm(emptyForm()); setTeacherAutoFilled(false); setModalOpen(true); };
     const openEdit = (e: TimetableEntry) => { 
@@ -132,10 +154,11 @@ export default function TimetablePage() {
     };
 
     const save = async () => {
-        if (!form.day || !form.subject) { alert('Day and Subject are required.'); return; }
+        if (!form.subject) { alert('Subject is required.'); return; }
         setSaving(true);
         try {
-            const daysToSave = form.day === 'All' ? DISPLAY_DAYS : [form.day];
+            const daysToSave = DISPLAY_DAYS;
+            form.day = 'All';
             const daysToSync = new Set(daysToSave);
 
             if (editing && editing.day !== form.day && form.day !== 'All') {
@@ -241,11 +264,8 @@ export default function TimetablePage() {
                 <div>
                     <div className="page-title" style={{ fontSize: 18 }}>Timetable</div>
                     <div className="page-sub" style={{ fontSize: 11 }}>
-                        {DISPLAY_DAYS.map(d => {
-                            const cnt = entries.filter((e: TimetableEntry) => e.day === d).length;
-                            return cnt > 0 ? <span key={d} style={{ marginRight: 8, color: 'var(--text2)' }}><b style={{ color: 'var(--primary-light)' }}>{d.slice(0,3)}</b> {cnt}</span> : null;
-                        })}
-                        <span style={{ color: 'var(--text3)', marginLeft: 4 }}>· {entries.length} total</span>
+                        <span style={{ color: 'var(--text3)' }}>Weekly Schedule</span>
+                        <span style={{ color: 'var(--text3)', marginLeft: 4 }}>· {uniqueEntries.length} total periods</span>
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -273,256 +293,206 @@ export default function TimetablePage() {
                 ? <div className="table-wrap"><div className="empty">No timetable entries found</div></div>
                 : filterClass === 'All'
                 ? (
-                    // ── CLASS-WISE VIEW ──────────────────────────────────────────────────
-                    <>
-                        {/* Derive which classes actually have data */}
-                        {Array.from(new Set(filtered.map((e: TimetableEntry) => e.class).filter(Boolean))).sort().map((cls: string) => {
-                            const clsEntries = filtered.filter((e: TimetableEntry) => e.class === cls);
-                            const cardKey = `cls_${cls}`;
-                            return (
-                                <div key={cardKey} style={{ marginBottom: 14, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                                    {/* Class Header */}
-                                    <div
-                                        onClick={() => toggleDay(cardKey)}
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px',
-                                            background: 'linear-gradient(90deg, rgba(99,102,241,0.12), transparent)',
-                                            borderBottom: collapsedDays[cardKey] ? 'none' : '1px solid var(--border)',
-                                            cursor: 'pointer', userSelect: 'none',
-                                        }}
-                                    >
-                                        <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary-light)' }}>🎓 {cls}</span>
-                                        <span style={{ fontSize: 10, background: 'rgba(99,102,241,0.14)', color: '#818cf8', borderRadius: 10, padding: '2px 8px', fontWeight: 700 }}>
-                                            {clsEntries.length} period{clsEntries.length !== 1 ? 's' : ''}
-                                        </span>
-                                        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text3)' }}>{collapsedDays[cardKey] ? '▸' : '▾'}</span>
-                                    </div>
+                    // ── MASTER EXCEL-LIKE VIEW ───────────────────────────────────────────
+                    <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: 'calc(100vh - 200px)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                        <style>{`
+                            .excel-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11px; table-layout: fixed; }
+                            .excel-table th, .excel-table td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
+                            .excel-table th:last-child, .excel-table td:last-child { border-right: none; }
+                            .excel-table thead th { position: sticky; top: 0; background: #1e3a8a; color: #ffffff; z-index: 10; border-right: 1px solid rgba(255,255,255,0.15); border-bottom: none; }
+                            .excel-table thead th:first-child { z-index: 11; left: 0; background: #1e3a8a; }
+                            .excel-table tbody td:first-child { position: sticky; left: 0; background: var(--surface); z-index: 5; box-shadow: 1px 0 0 var(--border); }
+                            .timetable-cell-entry { transition: all 0.2s ease; border: 1px solid transparent; }
+                            .timetable-cell-entry:hover { border-color: var(--primary-light); background: rgba(99,102,241,0.05) !important; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+                        `}</style>
+                        <table className="excel-table">
+                            <thead>
+                                <tr>
+                                    <th style={{ padding: '8px 10px', fontWeight: 700, fontSize: 10, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left', width: '90px' }}>
+                                        Class
+                                    </th>
+                                    {timeSlots.map(timeLabel => (
+                                        <th key={timeLabel} style={{ padding: '8px 10px', fontWeight: 700, fontSize: 10, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                            {formatTimeRange12Hour(timeLabel)}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {Array.from(new Set(filtered.map((e: TimetableEntry) => e.class).filter(Boolean))).sort().map((cls, rowIdx) => {
+                                    const clsEntries = filtered.filter((e: TimetableEntry) => e.class === cls);
+                                    return (
+                                        <tr key={cls as string}>
+                                            <td style={{ padding: '8px', fontWeight: 800, color: 'var(--text1)', verticalAlign: 'top', background: 'var(--surface)' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    <span style={{ fontSize: 14 }}>🎓</span>
+                                                    <span style={{ fontSize: 11 }}>{cls as string}</span>
+                                                </div>
+                                                <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4, fontWeight: 600, background: 'var(--surface2)', padding: '2px 6px', borderRadius: 10, display: 'inline-block' }}>
+                                                    {clsEntries.length} per.
+                                                </div>
+                                            </td>
+                                            {timeSlots.map(timeLabel => {
+                                                const timeEntries = clsEntries.filter((e: TimetableEntry) => `${e.startTime || '--:--'} - ${e.endTime || '--:--'}` === timeLabel)
+                                                    .sort((a, b) => DISPLAY_DAYS.indexOf(a.day) - DISPLAY_DAYS.indexOf(b.day));
 
-                                    {!collapsedDays[cardKey] && (() => {
-                                        // Build day columns — only days that have entries
-                                        const activeDays = DISPLAY_DAYS.filter(d => clsEntries.some((e: TimetableEntry) => e.day === d));
-                                        // All unique periods across this class, sorted
-                                        const periods = Array.from(new Set(clsEntries.map((e: TimetableEntry) => e.period).filter(Boolean)))
-                                            .sort((a, b) => {
-                                                const na = parseInt(a) || 0, nb = parseInt(b) || 0;
-                                                return na !== nb ? na - nb : a.localeCompare(b);
-                                            });
-                                        // Fallback: if no period numbers, use time-ordered entries
-                                        const hasPeriods = periods.length > 0;
-
-                                        if (!hasPeriods) {
-                                            // Simple day-grouped table fallback
-                                            return (
-                                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                                                    <thead>
-                                                        <tr style={{ background: 'var(--surface)' }}>
-                                                            {['Day', 'Subject', 'Teacher', 'Room', 'Time', ''].map(h => (
-                                                                <th key={h} style={{ padding: '5px 10px', textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.4px', borderBottom: '1px solid var(--border)' }}>{h}</th>
-                                                            ))}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {clsEntries.sort((a: TimetableEntry, b: TimetableEntry) => DISPLAY_DAYS.indexOf(a.day) - DISPLAY_DAYS.indexOf(b.day)).map((e: TimetableEntry, idx: number) => (
-                                                            <tr key={e.id} style={{ background: idx % 2 === 0 ? 'transparent' : 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-                                                                <td style={{ padding: '5px 10px', color: 'var(--text2)', fontWeight: 600, whiteSpace: 'nowrap' }}>{e.day}</td>
-                                                                <td style={{ padding: '5px 10px', fontWeight: 600, color: 'var(--text1)' }}>
-                                                         {e.subject}
-                                                         {e.gender && e.gender !== 'All' && (
-                                                             <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, background: e.gender === 'Boys' ? 'rgba(37,99,235,0.12)' : 'rgba(219,39,119,0.12)', color: e.gender === 'Boys' ? '#2563eb' : '#db2777', borderRadius: 3, padding: '1px 5px' }}>
-                                                                 {e.gender === 'Boys' ? 'Boys' : 'Girls'}
-                                                             </span>
-                                                         )}
-                                                     </td>
-                                                                <td style={{ padding: '5px 10px', color: 'var(--text2)' }}>{e.teacher || '—'}</td>
-                                                                <td style={{ padding: '5px 10px', color: 'var(--text3)' }}>{e.room || '—'}</td>
-                                                                <td style={{ padding: '5px 10px', color: 'var(--text2)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{e.startTime}{e.endTime ? `–${e.endTime}` : ''}</td>
-                                                                <td style={{ padding: '5px 8px' }}>
-                                                                    <div style={{ display: 'flex', gap: 4 }}>
-                                                                        <button className="btn btn-ghost" style={{ padding: '3px 9px', fontSize: 11 }} onClick={() => openEdit(e)}>Edit</button>
-                                                                        <button className="btn btn-ghost" style={{ padding: '3px 7px', fontSize: 11, color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)' }} disabled={deleting === e.id} onClick={() => remove(e.id, e.day)}>✕</button>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            );
-                                        }
-
-                                        // ── Period × Day grid ─────────────────────────
-                                        return (
-                                            <div style={{ overflowX: 'auto' }}>
-                                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, minWidth: activeDays.length * 140 + 60 }}>
-                                                    <thead>
-                                                        <tr style={{ background: 'var(--surface)' }}>
-                                                            <th style={{ padding: '6px 10px', fontWeight: 700, fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.4px', borderBottom: '1px solid var(--border)', borderRight: '1px solid var(--border)', whiteSpace: 'nowrap', minWidth: 52, textAlign: 'center' }}>Period</th>
-                                                            {activeDays.map(d => (
-                                                                <th key={d} style={{ padding: '6px 10px', fontWeight: 700, fontSize: 10, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.4px', borderBottom: '1px solid var(--border)', borderRight: '1px solid var(--border)', whiteSpace: 'nowrap', textAlign: 'center' }}>{d.slice(0, 3)}</th>
-                                                            ))}
-                                                            <th style={{ padding: '6px 8px', fontWeight: 600, fontSize: 10, color: 'var(--text3)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', textAlign: 'center', minWidth: 80 }}>Actions</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {periods.map((period, rowIdx) => {
-                                                            // Find entry for each day at this period
-                                                            const rowEntries: Record<string, TimetableEntry | undefined> = {};
-                                                            activeDays.forEach(d => {
-                                                                rowEntries[d] = clsEntries.find((e: TimetableEntry) => e.day === d && e.period === period);
-                                                            });
-                                                            // Collect all entries in this row for inline actions
-                                                            const allRowEntries = Object.values(rowEntries).filter((e): e is TimetableEntry => !!e);
-                                                            return (
-                                                                <tr key={period} style={{ background: rowIdx % 2 === 0 ? 'transparent' : 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-                                                                    {/* Period label */}
-                                                                    <td style={{ padding: '6px 10px', textAlign: 'center', borderRight: '1px solid var(--border)', background: 'rgba(99,102,241,0.06)' }}>
-                                                                        <span style={{ background: 'rgba(99,102,241,0.14)', color: '#818cf8', borderRadius: 4, padding: '2px 8px', fontWeight: 800, fontSize: 11 }}>{period}</span>
-                                                                    </td>
-                                                                    {/* Each day's cell */}
-                                                                    {activeDays.map(d => {
-                                                                        const e = rowEntries[d];
-                                                                        return (
-                                                                            <td key={d} style={{ padding: '6px 10px', borderRight: '1px solid var(--border)', verticalAlign: 'top', minWidth: 130 }}>
-                                                                                {e ? (
-                                                                                    <div>
-                                                                                        <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text1)', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                                                                                            {e.subject}
-                                                                                            {e.gender && e.gender !== 'All' && (
-                                                                                                <span style={{ fontSize: 9, fontWeight: 700, background: e.gender === 'Boys' ? 'rgba(37,99,235,0.12)' : 'rgba(219,39,119,0.12)', color: e.gender === 'Boys' ? '#2563eb' : '#db2777', borderRadius: 3, padding: '0 5px' }}>
-                                                                                                    {e.gender === 'Boys' ? '♂ Boys' : '♀ Girls'}
-                                                                                                </span>
-                                                                                            )}
-                                                                                        </div>
-                                                                                        <div style={{ fontSize: 10, color: 'var(--text2)' }}>{e.teacher || '—'}</div>
-                                                                                        {(e.startTime || e.room) && (
-                                                                                            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 1, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                                                                                {e.startTime && <span>{e.startTime}{e.endTime ? `–${e.endTime}` : ''}</span>}
-                                                                                                {e.room && <span style={{ background: 'rgba(99,102,241,0.08)', color: '#818cf8', borderRadius: 3, padding: '0 4px' }}>{e.room}</span>}
-                                                                                            </div>
-                                                                                        )}
-                                                                                    </div>
-                                                                                ) : (
-                                                                                    <span style={{ color: 'var(--text3)', fontSize: 11 }}>—</span>
+                                                return (
+                                                    <td key={timeLabel} style={{ padding: '4px', verticalAlign: 'top', background: rowIdx % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.015)' }}>
+                                                        {timeEntries.length > 0 ? (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                                {timeEntries.map((e: TimetableEntry) => (
+                                                                    <div key={e.id} className="timetable-cell-entry" onClick={() => openEdit(e)} style={{ 
+                                                                        display: 'flex', alignItems: 'flex-start', gap: 6, 
+                                                                        padding: '4px 6px', background: 'var(--surface)', 
+                                                                        border: '1px solid var(--border)', borderRadius: 6,
+                                                                        cursor: 'pointer'
+                                                                    }}>
+                                                                        <div style={{ 
+                                                                            background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(99,102,241,0.05))', 
+                                                                            color: 'var(--primary-light)', 
+                                                                            borderRadius: 4, padding: '2px 4px', fontSize: 10, fontWeight: 800,
+                                                                            minWidth: 20, textAlign: 'center', border: '1px solid rgba(99,102,241,0.2)'
+                                                                        }}>
+                                                                            {e.period || '-'}
+                                                                        </div>
+                                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: 3 }}>
+                                                                                {e.subject}
+                                                                                {e.gender && e.gender !== 'All' && (
+                                                                                    <span style={{ fontSize: 8, background: e.gender === 'Boys' ? 'rgba(37,99,235,0.1)' : 'rgba(219,39,119,0.1)', color: e.gender === 'Boys' ? '#3b82f6' : '#ec4899', padding: '1px 3px', borderRadius: 3, fontWeight: 800 }}>
+                                                                                        {e.gender === 'Boys' ? 'B' : 'G'}
+                                                                                    </span>
                                                                                 )}
-                                                                            </td>
-                                                                        );
-                                                                    })}
-                                                                    {/* Actions: edit/delete first entry in row (representative) */}
-                                                                    <td style={{ padding: '6px 8px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                                                                        {allRowEntries.length > 0 && (
-                                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'center' }}>
-                                                                                <button className="btn btn-ghost" style={{ padding: '2px 8px', fontSize: 10 }} onClick={() => openEdit(allRowEntries[0])}>Edit</button>
-                                                                                <button className="btn btn-ghost" style={{ padding: '2px 6px', fontSize: 10, color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)' }} disabled={deleting === allRowEntries[0].id} onClick={() => remove(allRowEntries[0].id, allRowEntries[0].day)}>✕</button>
                                                                             </div>
-                                                                        )}
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-                            );
-                        })}
-                        {/* Entries with no class assigned */}
-                        {filtered.filter((e: TimetableEntry) => !e.class).length > 0 && (
-                            <div style={{ marginBottom: 14, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                                <div onClick={() => toggleDay('_unassigned')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: 'var(--surface2)', cursor: 'pointer', borderBottom: collapsedDays['_unassigned'] ? 'none' : '1px solid var(--border)' }}>
-                                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)' }}>⚠️ Unassigned Class</span>
-                                    <span style={{ fontSize: 10, background: 'rgba(245,158,11,0.12)', color: '#f59e0b', borderRadius: 10, padding: '2px 8px', fontWeight: 700 }}>{filtered.filter((e: TimetableEntry) => !e.class).length}</span>
-                                    <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text3)' }}>{collapsedDays['_unassigned'] ? '▸' : '▾'}</span>
-                                </div>
-                                {!collapsedDays['_unassigned'] && (
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                                        <thead><tr style={{ background: 'var(--surface)' }}>
-                                            {['Day', '#', 'Subject', 'Teacher', 'Room', 'Time', ''].map(h => (
-                                                <th key={h} style={{ padding: '5px 10px', textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.4px', borderBottom: '1px solid var(--border)' }}>{h}</th>
-                                            ))}
-                                        </tr></thead>
-                                        <tbody>
-                                            {filtered.filter((e: TimetableEntry) => !e.class).map((e: TimetableEntry, idx: number) => (
-                                                <tr key={e.id} style={{ background: idx % 2 === 0 ? 'transparent' : 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-                                                    <td style={{ padding: '5px 10px', color: 'var(--text2)' }}>{e.day}</td>
-                                                    <td style={{ padding: '5px 10px' }}><span style={{ background: 'rgba(99,102,241,0.12)', color: '#818cf8', borderRadius: 4, padding: '2px 7px', fontWeight: 700, fontSize: 11 }}>{e.period || '—'}</span></td>
-                                                    <td style={{ padding: '5px 10px', fontWeight: 600 }}>{e.subject}</td>
-                                                    <td style={{ padding: '5px 10px', color: 'var(--text2)' }}>{e.teacher || '—'}</td>
-                                                    <td style={{ padding: '5px 10px', color: 'var(--text3)' }}>{e.room || '—'}</td>
-                                                    <td style={{ padding: '5px 10px', color: 'var(--text2)', whiteSpace: 'nowrap' }}>{e.startTime}{e.endTime ? `–${e.endTime}` : ''}</td>
-                                                    <td style={{ padding: '5px 8px' }}>
-                                                        <div style={{ display: 'flex', gap: 4 }}>
-                                                            <button className="btn btn-ghost" style={{ padding: '3px 9px', fontSize: 11 }} onClick={() => openEdit(e)}>Edit</button>
-                                                            <button className="btn btn-ghost" style={{ padding: '3px 7px', fontSize: 11, color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)' }} disabled={deleting === e.id} onClick={() => remove(e.id, e.day)}>✕</button>
-                                                        </div>
+                                                                            <div style={{ fontSize: 9, color: 'var(--text2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+                                                                                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 60, display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                                                    <span style={{ opacity: 0.7 }}>👤</span> {e.teacher?.split(' ')[0] || '—'}
+                                                                                </span>
+                                                                                {/* Removed Day Badge */}
+                                                                            </div>
+                                                                            {e.room && (
+                                                                                <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                                                    <span style={{ opacity: 0.7 }}>📍</span> {e.room}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <div style={{ textAlign: 'center', padding: '10px 0', color: 'var(--text4)', fontSize: 10, fontStyle: 'italic' }}>—</div>
+                                                        )}
                                                     </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                                );
+                                            })}
+                                        </tr>
+                                    );
+                                })}
+                                {/* Unassigned Classes */}
+                                {filtered.filter((e: TimetableEntry) => !e.class).length > 0 && (
+                                    <tr>
+                                        <td style={{ padding: '8px', fontWeight: 800, color: 'var(--text2)', verticalAlign: 'top', background: 'var(--surface)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                <span style={{ fontSize: 14 }}>⚠️</span>
+                                                <span style={{ fontSize: 11 }}>Unassigned</span>
+                                            </div>
+                                            <div style={{ fontSize: 9, color: '#f59e0b', marginTop: 4, fontWeight: 600, background: 'rgba(245,158,11,0.1)', padding: '2px 6px', borderRadius: 10, display: 'inline-block' }}>
+                                                {filtered.filter((e: TimetableEntry) => !e.class).length} per.
+                                            </div>
+                                        </td>
+                                        {timeSlots.map(timeLabel => {
+                                            const timeEntries = filtered.filter((e: TimetableEntry) => !e.class && `${e.startTime || '--:--'} - ${e.endTime || '--:--'}` === timeLabel)
+                                                .sort((a, b) => DISPLAY_DAYS.indexOf(a.day) - DISPLAY_DAYS.indexOf(b.day));
+
+                                            return (
+                                                <td key={`unassigned-${timeLabel}`} style={{ padding: '4px', verticalAlign: 'top', background: 'rgba(245,158,11,0.02)' }}>
+                                                    {timeEntries.length > 0 ? (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                            {timeEntries.map((e: TimetableEntry) => (
+                                                                <div key={e.id} className="timetable-cell-entry" onClick={() => openEdit(e)} style={{ 
+                                                                    display: 'flex', alignItems: 'flex-start', gap: 6, 
+                                                                    padding: '4px 6px', background: 'var(--surface)', 
+                                                                    border: '1px solid rgba(245,158,11,0.3)', borderRadius: 6,
+                                                                    cursor: 'pointer'
+                                                                }}>
+                                                                    <div style={{ 
+                                                                        background: 'rgba(245,158,11,0.1)', 
+                                                                        color: '#f59e0b', 
+                                                                        borderRadius: 4, padding: '2px 4px', fontSize: 10, fontWeight: 800,
+                                                                        minWidth: 20, textAlign: 'center'
+                                                                    }}>
+                                                                        {e.period || '-'}
+                                                                    </div>
+                                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                                        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                            {e.subject}
+                                                                        </div>
+                                                                        <div style={{ fontSize: 9, color: 'var(--text2)', marginTop: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                            <span>{e.teacher?.split(' ')[0] || '—'}</span>
+                                                                            {/* Removed Day Badge */}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <div style={{ textAlign: 'center', padding: '10px 0', color: 'var(--text4)', fontSize: 10, fontStyle: 'italic' }}>—</div>
+                                                    )}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
                                 )}
-                            </div>
-                        )}
-                    </>
+                            </tbody>
+                        </table>
+                    </div>
                 )
                 : (
                     // ── SINGLE CLASS FILTERED VIEW (grouped by day) ──────────────────────
                     <>
-                        {byDay.map(({ day, entries: dayEntries }) => (
-                            <div key={day} style={{ marginBottom: 10, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                                <div
-                                    onClick={() => toggleDay(day)}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px',
-                                        background: 'var(--surface2)', cursor: 'pointer', userSelect: 'none',
-                                        borderBottom: collapsedDays[day] ? 'none' : '1px solid var(--border)'
-                                    }}
-                                >
-                                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{day}</span>
-                                    <span style={{ fontSize: 10, background: 'rgba(99,102,241,0.12)', color: '#818cf8', borderRadius: 10, padding: '1px 7px', fontWeight: 600 }}>{dayEntries.length}</span>
-                                    <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text3)' }}>{collapsedDays[day] ? '▸' : '▾'}</span>
-                                </div>
-                                {!collapsedDays[day] && (
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                                        <thead>
-                                            <tr style={{ background: 'var(--surface)' }}>
-                                                {['#', 'Subject', 'Teacher', 'Room', 'Time', ''].map(h => (
-                                                    <th key={h} style={{ padding: '5px 10px', textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.4px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {dayEntries.map((e: TimetableEntry, idx: number) => (
-                                                <tr key={e.id} style={{ background: idx % 2 === 0 ? 'transparent' : 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-                                                    <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>
-                                                        <span style={{ background: 'rgba(99,102,241,0.12)', color: '#818cf8', borderRadius: 4, padding: '2px 7px', fontWeight: 700, fontSize: 11 }}>{e.period || '—'}</span>
-                                                    </td>
-                                                     <td style={{ padding: '5px 10px', fontWeight: 600, color: 'var(--text1)' }}>
-                                                         {e.subject}
-                                                         {e.gender && e.gender !== 'All' && (
-                                                             <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, background: e.gender === 'Boys' ? 'rgba(37,99,235,0.12)' : 'rgba(219,39,119,0.12)', color: e.gender === 'Boys' ? '#2563eb' : '#db2777', borderRadius: 3, padding: '1px 5px' }}>
-                                                                 {e.gender === 'Boys' ? 'Boys' : 'Girls'}
-                                                             </span>
-                                                         )}
-                                                     </td>
-                                                    <td style={{ padding: '5px 10px', color: 'var(--text2)', whiteSpace: 'nowrap' }}>{e.teacher || '—'}</td>
-                                                    <td style={{ padding: '5px 10px', color: 'var(--text3)' }}>{e.room || '—'}</td>
-                                                    <td style={{ padding: '5px 10px', color: 'var(--text2)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-                                                        {e.startTime || ''}{e.endTime ? `–${e.endTime}` : ''}
-                                                    </td>
-                                                    <td style={{ padding: '5px 8px', whiteSpace: 'nowrap' }}>
-                                                        <div style={{ display: 'flex', gap: 4 }}>
-                                                            <button className="btn btn-ghost" style={{ padding: '3px 9px', fontSize: 11 }} onClick={() => openEdit(e)}>Edit</button>
-                                                            <button className="btn btn-ghost" style={{ padding: '3px 7px', fontSize: 11, color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)' }} disabled={deleting === e.id} onClick={() => remove(e.id, e.day)}>✕</button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
+                        <div style={{ marginBottom: 10, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: 'var(--surface2)', borderBottom: '1px solid var(--border)' }}>
+                                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary-light)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>Weekly Schedule</span>
+                                <span style={{ fontSize: 10, background: 'rgba(99,102,241,0.12)', color: '#818cf8', borderRadius: 10, padding: '1px 7px', fontWeight: 600 }}>{filtered.length}</span>
                             </div>
-                        ))}
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                                <thead>
+                                    <tr style={{ background: 'var(--surface)' }}>
+                                        {['#', 'Subject', 'Teacher', 'Room', 'Time', ''].map(h => (
+                                            <th key={h} style={{ padding: '5px 10px', textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.4px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filtered.map((e: TimetableEntry, idx: number) => (
+                                        <tr key={e.id} style={{ background: idx % 2 === 0 ? 'transparent' : 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+                                            <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>
+                                                <span style={{ background: 'rgba(99,102,241,0.12)', color: '#818cf8', borderRadius: 4, padding: '2px 7px', fontWeight: 700, fontSize: 11 }}>{e.period || '—'}</span>
+                                            </td>
+                                            <td style={{ padding: '5px 10px', fontWeight: 600, color: 'var(--text1)' }}>
+                                                {e.subject}
+                                                {e.gender && e.gender !== 'All' && (
+                                                    <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, background: e.gender === 'Boys' ? 'rgba(37,99,235,0.12)' : 'rgba(219,39,119,0.12)', color: e.gender === 'Boys' ? '#2563eb' : '#db2777', borderRadius: 3, padding: '1px 5px' }}>
+                                                        {e.gender === 'Boys' ? 'Boys' : 'Girls'}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td style={{ padding: '5px 10px', color: 'var(--text2)', whiteSpace: 'nowrap' }}>{e.teacher || '—'}</td>
+                                            <td style={{ padding: '5px 10px', color: 'var(--text3)' }}>{e.room || '—'}</td>
+                                            <td style={{ padding: '5px 10px', color: 'var(--text2)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                                                {formatTime12Hour(e.startTime)}{e.endTime ? ` – ${formatTime12Hour(e.endTime)}` : ''}
+                                            </td>
+                                            <td style={{ padding: '5px 8px', whiteSpace: 'nowrap' }}>
+                                                <div style={{ display: 'flex', gap: 4 }}>
+                                                    <button className="btn btn-ghost" style={{ padding: '3px 9px', fontSize: 11 }} onClick={() => openEdit(e)}>Edit</button>
+                                                    <button className="btn btn-ghost" style={{ padding: '3px 7px', fontSize: 11, color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)' }} disabled={deleting === e.id} onClick={() => remove(e.id, e.day)}>✕</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                         {otherEntries.length > 0 && (
                             <div style={{ marginBottom: 10, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
                                 <div onClick={() => toggleDay('Other')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: 'var(--surface2)', cursor: 'pointer', borderBottom: collapsedDays['Other'] ? 'none' : '1px solid var(--border)' }}>
@@ -603,14 +573,7 @@ export default function TimetablePage() {
                                 <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 8, paddingBottom: 5, borderBottom: '1px solid var(--border)' }}>
                                     📅 Schedule
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px 12px' }}>
-                                    <div className="form-group" style={{ margin: 0 }}>
-                                        <label className="form-label" style={{ fontSize: 10, marginBottom: 3 }}>Day *</label>
-                                        <select className="form-input" style={{ fontSize: 12, padding: '7px 8px', width: '100%' }} value={form.day || ''} onChange={field('day')}>
-                                            <option value="">Select Day</option>
-                                            {FORM_DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-                                        </select>
-                                    </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px 12px' }}>
                                     <div className="form-group" style={{ margin: 0 }}>
                                         <label className="form-label" style={{ fontSize: 10, marginBottom: 3 }}>Period No.</label>
                                         <input className="form-input" style={{ fontSize: 12, padding: '7px 8px', width: '100%' }} placeholder="e.g. 1" value={form.period || ''} onChange={field('period')} />

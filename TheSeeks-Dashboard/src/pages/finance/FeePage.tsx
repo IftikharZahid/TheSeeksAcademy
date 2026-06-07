@@ -4,7 +4,7 @@ import { db } from '../../firebase';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchFees, addOrUpdateFee } from '../../store/slices/feesSlice';
 import { fetchStudents } from '../../store/slices/studentsSlice';
-import { fetchClasses } from '../../store/slices/appSettingsSlice';
+import { fetchClasses, fetchDefaultFees } from '../../store/slices/appSettingsSlice';
 import { RootState } from '../../store/store';
 
 interface Student {
@@ -52,7 +52,9 @@ export default function FeePage() {
     const { data: studentsData, status: studentsStatus } = useAppSelector((s: RootState) => s.students);
     const classes = useAppSelector((s: any) => s.appSettings.classes as string[]);
     const classesStatus = useAppSelector((s: any) => s.appSettings.classesStatus);
-    const loading = feesStatus === 'loading' || feesStatus === 'idle' || studentsStatus === 'loading';
+    const defaultFees = useAppSelector((s: any) => s.appSettings.defaultFees);
+    const defaultFeesStatus = useAppSelector((s: any) => s.appSettings.defaultFeesStatus);
+    const loading = feesStatus === 'loading' || feesStatus === 'idle' || studentsStatus === 'loading' || defaultFeesStatus === 'loading';
 
     // UI STATE
     const [search, setSearch] = useState('');
@@ -81,17 +83,12 @@ export default function FeePage() {
         if (feesStatus === 'idle') dispatch(fetchFees());
         if (studentsStatus === 'idle') dispatch(fetchStudents());
         if (classesStatus === 'idle') dispatch(fetchClasses());
-    }, [dispatch, feesStatus, studentsStatus, classesStatus]);
+        if (defaultFeesStatus === 'idle') dispatch(fetchDefaultFees());
+    }, [dispatch, feesStatus, studentsStatus, classesStatus, defaultFeesStatus]);
 
     const records = useMemo(() => {
         const feesMap: Record<string, any> = {};
         feesData.forEach((d: any) => { feesMap[d.id] = d; });
-
-        const getDefaultFee = (grade: string) => {
-            if (grade === '9th' || grade === '10th') return 2500;
-            if (grade === '1st Year' || grade === '2nd Year') return 4500;
-            return 0;
-        };
 
         return studentsData.map((s: any) => {
             const fee = feesMap[s.id];
@@ -99,7 +96,7 @@ export default function FeePage() {
             const rollno = String(s.rollno || s.studentId || s.id || '');
             const fatherName = s.fatherName || s.fathername || '';
             const name = s.name || s.fullname || 'Unknown';
-            const defaultFee = getDefaultFee(grade);
+            const defaultFee = defaultFees[grade] || 0;
 
             if (fee) {
                 const total = fee.totalFee || defaultFee;
@@ -118,7 +115,7 @@ export default function FeePage() {
                 totalFee: defaultFee, paidAmount: 0, pendingAmount: defaultFee, status: 'pending', month: '', amount: 0, datePaid: '', months: [], history: []
             } as FeeRecord;
         });
-    }, [studentsData, feesData]);
+    }, [studentsData, feesData, defaultFees]);
 
     const globalSearchQuery = useAppSelector((s: RootState) => s.general.globalSearchQuery);
     const activeSearch = search || globalSearchQuery;
@@ -170,6 +167,35 @@ export default function FeePage() {
     const pendingCount = records.filter((r: any) => r.status === 'pending').length;
     const partialCount = records.filter((r: any) => r.status === 'partial').length;
 
+    const handleExportFees = async () => {
+        try {
+            const XLSX = await import('xlsx');
+            
+            const exportData = filtered.map((r, i) => ({
+                'S.No': i + 1,
+                'Student Name': r.studentName,
+                'Father Name': r.fatherName || '',
+                'Class/Grade': r.grade || '',
+                'Roll No': r.rollno || '',
+                'Total Fee (PKR)': r.totalFee,
+                'Paid Amount (PKR)': r.paidAmount,
+                'Pending Amount (PKR)': r.pendingAmount,
+                'Status': r.status.toUpperCase(),
+                'Billing Months': r.months?.join(', ') || 'None',
+                'Recent Payment Date': r.datePaid ? new Date(r.datePaid).toLocaleString() : 'N/A'
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Fee Records");
+            
+            const dateStr = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(wb, `TheSeeks_Fees_Backup_${dateStr}.xlsx`);
+        } catch (err: any) {
+            alert('Failed to export fees: ' + err.message);
+        }
+    };
+
     const openEdit = (r: FeeRecord) => {
         setEditRecord(r);
         const months = r.month ? r.month.split(',').map(m => m.trim()).filter(Boolean) : [];
@@ -209,7 +235,7 @@ export default function FeePage() {
                     delete updated[m];
                 } else {
                     const grade = editRecord?.grade || '';
-                    const defaultFee = grade === '9th' || grade === '10th' ? 2500 : (grade === '1st Year' || grade === '2nd Year' ? 4500 : 2500);
+                    const defaultFee = defaultFees[grade] || 0;
                     updated[m] = { total: defaultFee, paid: 0 };
                 }
                 return updated;
@@ -369,14 +395,39 @@ export default function FeePage() {
             {/* Summary strip */}
             <div className="responsive-grid-4 no-print" style={{ marginBottom: 20 }}>
                 {[
-                    { label: 'Total', val: records.length, color: '#818cf8', bg: 'rgba(99,102,241,0.1)' },
-                    { label: 'Paid', val: paidCount, color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
-                    { label: 'Pending', val: pendingCount, color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
-                    { label: 'Partial', val: partialCount, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-                ].map(s => (
-                    <div key={s.label} style={{ background: s.bg, border: `1px solid ${s.color}33`, borderRadius: 'var(--radius)', padding: '14px 18px' }}>
-                        <div style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.val}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>{s.label}</div>
+                    { label: 'Total', val: records.length, color: '#818cf8', bg: 'rgba(129,140,248,0.12)', icon: '👥' },
+                    { label: 'Paid', val: paidCount, color: '#10b981', bg: 'rgba(16,185,129,0.12)', icon: '✓' },
+                    { label: 'Pending', val: pendingCount, color: '#ef4444', bg: 'rgba(239,68,68,0.12)', icon: '⏳' },
+                    { label: 'Partial', val: partialCount, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', icon: '⏱' },
+                ].map(item => (
+                    <div key={item.label} style={{
+                        background:'var(--bg2,#1e293b)',
+                        border:'1px solid var(--border,rgba(255,255,255,0.07))',
+                        borderRadius:10, padding:'10px 14px',
+                        display:'flex', alignItems:'center', gap:10,
+                        position:'relative', overflow:'hidden',
+                    }}>
+                        <div style={{
+                            position:'absolute', left:0, top:0, bottom:0, width:3,
+                            background:item.color, borderRadius:'10px 0 0 10px',
+                        }} />
+                        <div style={{
+                            width:30, height:30, borderRadius:8,
+                            background:item.bg, color:item.color,
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                            fontSize:14, flexShrink:0,
+                        }}>{item.icon}</div>
+                        <div>
+                            <div style={{ fontSize:20, fontWeight:700, color:item.color, lineHeight:1 }}>
+                                {item.val}
+                            </div>
+                            <div style={{
+                                fontSize:10, color:'var(--text2)', marginTop:2,
+                                textTransform:'uppercase', letterSpacing:'0.4px', fontWeight:500,
+                            }}>
+                                {item.label}
+                            </div>
+                        </div>
                     </div>
                 ))}
             </div>
@@ -421,6 +472,13 @@ export default function FeePage() {
                             style={{ background: 'var(--primary)', color: '#fff', fontSize: 12, gap: 6, display: 'flex', alignItems: 'center', padding: '6px 12px' }}
                         >
                             <span>🕒</span> All History
+                        </button>
+                        <button
+                            onClick={handleExportFees}
+                            className="btn btn-primary"
+                            style={{ background: '#10b981', border: 'none', color: '#fff', fontSize: 12, gap: 6, display: 'flex', alignItems: 'center', padding: '6px 12px', marginLeft: 8 }}
+                        >
+                            <span>⬇️</span> Backup (Excel)
                         </button>
                         <span style={{ marginLeft: 10, fontSize: 12, color: 'var(--text2)' }}>{filtered.length} records</span>
                     </div>

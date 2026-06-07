@@ -3,12 +3,13 @@ import { useAuth } from '../../context/AuthContext';
 
 const ERR: Record<string, string> = {
     'auth/invalid-email': 'Invalid email address.',
-    'auth/user-not-found': 'No account found with this email.',
+    'auth/user-not-found': 'This email is not registered in our database.',
     'auth/wrong-password': 'Incorrect password.',
     'auth/invalid-credential': 'Invalid email or password.',
     'auth/user-disabled': 'This account has been disabled.',
     'auth/too-many-requests': 'Too many attempts. Please try again later.',
     'auth/network-request-failed': 'Network error. Check your connection.',
+    'auth/not-admin': 'Access denied: This dashboard is strictly for administrators only.',
 };
 
 export default function LoginPage() {

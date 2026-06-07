@@ -9,10 +9,10 @@ import { db, auth } from "../../firebase";
 
 /* ── Groups ────────────────────────────────────────────────────────────────── */
 const GROUPS = [
-  { id:"g1", name:"9th Grade — Boys",   short:"9B",  grade:"9th Grade",  gender:"Boys",  type:"boys",  members:31 },
-  { id:"g2", name:"9th Grade — Girls",  short:"9G",  grade:"9th Grade",  gender:"Girls", type:"girls", members:28 },
-  { id:"g3", name:"10th Grade — Boys",  short:"10B", grade:"10th Grade", gender:"Boys",  type:"boys",  members:29 },
-  { id:"g4", name:"10th Grade — Girls", short:"10G", grade:"10th Grade", gender:"Girls", type:"girls", members:25 },
+  { id:"g1", name:"9th — Boys",   short:"9B",  grade:"9th",  gender:"Boys",  type:"boys",  members:31 },
+  { id:"g2", name:"9th — Girls",  short:"9G",  grade:"9th",  gender:"Girls", type:"girls", members:28 },
+  { id:"g3", name:"10th — Boys",  short:"10B", grade:"10th", gender:"Boys",  type:"boys",  members:29 },
+  { id:"g4", name:"10th — Girls", short:"10G", grade:"10th", gender:"Girls", type:"girls", members:25 },
   { id:"g5", name:"1st Year — Boys",    short:"1YB", grade:"1st Year",   gender:"Boys",  type:"boys",  members:27 },
   { id:"g6", name:"1st Year — Girls",   short:"1YG", grade:"1st Year",   gender:"Girls", type:"girls", members:22 },
   { id:"g7", name:"2nd Year — Boys",    short:"2YB", grade:"2nd Year",   gender:"Boys",  type:"boys",  members:24 },
@@ -214,85 +214,61 @@ function GroupRow({ group, isActive, peek, badge, onClick }: any) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   SIDEBAR
+   TOP MENU BAR (Replacing Sidebar)
 ══════════════════════════════════════════════════════════════════════════════ */
-function Sidebar({ activeGroup, messages, onSelect }: any) {
-  const [q, setQ] = useState("");
-
-  const filtered  = GROUPS.filter(g => g.name.toLowerCase().includes(q.toLowerCase()));
-  const girls     = filtered.filter(g => g.type === "girls");
-  const boys      = filtered.filter(g => g.type === "boys");
-
-  const peek = (gid: string) => {
-    const msgs = messages[gid];
-    if (!msgs?.length) return "";
-    const last = msgs[msgs.length - 1];
-    if (last.isAnnouncement) return "📢 Announcement";
-    return (last.text?.slice(0, 28) || "") + (last.text?.length > 28 ? "…" : "");
-  };
-
+function TopMenuBar({ activeGroup, messages, lastReadTimes, onSelect }: any) {
   return (
-    <aside className="cp-side">
-      {/* Search */}
-      <div className="cp-side-search">
-        <div className="cp-search-box">
-          <Ico.Search/>
-          <input
-            placeholder="Search groups…"
-            value={q}
-            onChange={e => setQ(e.target.value)}
-          />
-        </div>
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      background: 'var(--n2)',
+      padding: '10px 14px',
+      gap: '12px',
+      overflowX: 'auto',
+      borderBottom: '1px solid var(--bdrw)',
+      flexShrink: 0
+    }} className="hide-scrollbar">
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1, marginRight: 4 }}>
+        Groups
       </div>
-
-      {/* List */}
-      <div className="cp-side-list">
-        {girls.length > 0 && (
-          <>
-            <div className="cp-sec-lbl">Girls</div>
-            {girls.map(g => (
-              <GroupRow
-                key={g.id}
-                group={g}
-                isActive={activeGroup?.id === g.id}
-                peek={peek(g.id)}
-                badge={messages[g.id]?.length || 0}
-                onClick={() => onSelect(g)}
-              />
-            ))}
-          </>
-        )}
-        {boys.length > 0 && (
-          <>
-            <div className="cp-sec-lbl" style={{ marginTop:4 }}>Boys</div>
-            {boys.map(g => (
-              <GroupRow
-                key={g.id}
-                group={g}
-                isActive={activeGroup?.id === g.id}
-                peek={peek(g.id)}
-                badge={messages[g.id]?.length || 0}
-                onClick={() => onSelect(g)}
-              />
-            ))}
-          </>
-        )}
-        {filtered.length === 0 && (
-          <div style={{ textAlign:"center", padding:"20px 12px", fontSize:11, color:"rgba(255,255,255,0.2)" }}>
-            No groups found
+      {GROUPS.map(g => {
+        const isActive = activeGroup?.id === g.id;
+        const lastRead = lastReadTimes?.[g.id] || 0;
+        const unreadCount = messages[g.id]?.filter((m: any) => m.rawTime > lastRead && !m.isMine).length || 0;
+        
+        return (
+          <div
+            key={g.id}
+            onClick={() => onSelect(g)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '6px 14px', borderRadius: '20px',
+              background: isActive ? 'rgba(201,168,76,0.15)' : 'rgba(255,255,255,0.03)',
+              border: isActive ? '1px solid rgba(201,168,76,0.4)' : '1px solid rgba(255,255,255,0.08)',
+              cursor: 'pointer', flexShrink: 0,
+              transition: 'all 0.2s',
+              color: isActive ? '#fff' : 'rgba(255,255,255,0.75)',
+              boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.15)' : 'none'
+            }}
+          >
+            <div className={`cp-gav cp-gav-${g.type === "girls" ? "g" : "b"}`} style={{ width: 22, height: 22, fontSize: 9 }}>
+              {g.short}
+            </div>
+            <span style={{ fontSize: '12px', fontWeight: isActive ? 600 : 500, whiteSpace: 'nowrap' }}>
+              {g.name}
+            </span>
+            {unreadCount > 0 && !isActive && (
+              <div style={{
+                background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: 800,
+                padding: '2px 6px', borderRadius: '10px', marginLeft: 2
+              }}>
+                {Math.min(unreadCount, 99)}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="cp-side-foot">
-        <span className="cp-foot-stat">{GROUPS.length} Groups</span>
-        <span className="cp-foot-online">
-          <span style={{ width:4, height:4, borderRadius:"50%", background:"#22c55e", display:"inline-block" }}/>
-          Active
-        </span>
-      </div>
-    </aside>
+        );
+      })}
+    </div>
   );
 }
 
@@ -1268,6 +1244,23 @@ export default function ChatPortal({
   const [activeGroup, setActiveGroup] = useState<any>(null);
   const [messages, setMessages]       = useState<Record<string, any[]>>({});
   const [loading, setLoading]         = useState(false);
+  const [lastReadTimes, setLastReadTimes] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const stored: Record<string, number> = {};
+    GROUPS.forEach(g => {
+      stored[g.id] = parseInt(localStorage.getItem(`chat_last_read_${g.id}`) || '0', 10);
+    });
+    setLastReadTimes(stored);
+  }, []);
+
+  useEffect(() => {
+    if (activeGroup) {
+      const now = Date.now();
+      localStorage.setItem(`chat_last_read_${activeGroup.id}`, now.toString());
+      setLastReadTimes(prev => ({ ...prev, [activeGroup.id]: now }));
+    }
+  }, [activeGroup, messages]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1280,53 +1273,58 @@ export default function ChatPortal({
 
   /* Firestore real-time listener */
   useEffect(() => {
-    if (!activeGroup) return;
     setLoading(true);
+    let loadedCount = 0;
 
-    const ref = collection(db, "chatGroups", activeGroup.id, "messages");
-    const q   = query(ref, orderBy("timestamp", "asc"));
+    const unsubs = GROUPS.map(g => {
+      const ref = collection(db, "chatGroups", g.id, "messages");
+      const q   = query(ref, orderBy("timestamp", "asc"));
 
-    const unsub = onSnapshot(q, snap => {
-      const uid = auth.currentUser?.uid;
-      const fetched = snap.docs.map(d => {
-        const data = d.data();
-        const time = data.timestamp
-          ? data.timestamp.toDate().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })
-          : nowTime();
-        return {
-          id:             d.id,
-          text:           data.text,
-          sender:         data.sender,
-          senderId:       data.senderId,
-          avatar:         data.avatar || null,
-          role:           data.role || "student",
-          time,
-          isMine:         data.senderId === uid,
-          isAnnouncement: data.isAnnouncement || false,
-          isEdited:       data.isEdited || false,
-          reactions: (() => {
-            // Normalize: support both old string[] and new {uid,name}[] formats
-            const raw: Record<string, any[]> = data.reactions || {};
-            const out: Record<string, { uid: string; name: string }[]> = {};
-            Object.keys(raw).forEach(e => {
-              const arr = (raw[e] || []).map((r: any) =>
-                typeof r === 'string' ? { uid: r, name: 'Unknown' } : r
-              ).filter((r: any) => r.uid);
-              if (arr.length > 0) out[e] = arr;
-            });
-            return out;
-          })(),
-        };
+      return onSnapshot(q, snap => {
+        const uid = auth.currentUser?.uid;
+        const fetched = snap.docs.map(d => {
+          const data = d.data();
+          const time = data.timestamp
+            ? data.timestamp.toDate().toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" })
+            : nowTime();
+          const rawTime = data.timestamp ? data.timestamp.toMillis() : Date.now();
+          return {
+            id:             d.id,
+            rawTime,
+            text:           data.text,
+            sender:         data.sender,
+            senderId:       data.senderId,
+            avatar:         data.avatar || null,
+            role:           data.role || "student",
+            time,
+            isMine:         data.senderId === uid,
+            isAnnouncement: data.isAnnouncement || false,
+            isEdited:       data.isEdited || false,
+            reactions: (() => {
+              // Normalize: support both old string[] and new {uid,name}[] formats
+              const raw: Record<string, any[]> = data.reactions || {};
+              const out: Record<string, { uid: string; name: string }[]> = {};
+              Object.keys(raw).forEach(e => {
+                const arr = (raw[e] || []).map((r: any) =>
+                  typeof r === 'string' ? { uid: r, name: 'Unknown' } : r
+                ).filter((r: any) => r.uid);
+                if (arr.length > 0) out[e] = arr;
+              });
+              return out;
+            })(),
+          };
+        });
+        setMessages(prev => ({ ...prev, [g.id]: fetched }));
+        
+        loadedCount++;
+        if (loadedCount >= GROUPS.length) setLoading(false);
+      }, err => {
+        console.error("Firestore error:", err);
       });
-      setMessages(prev => ({ ...prev, [activeGroup.id]: fetched }));
-      setLoading(false);
-    }, err => {
-      console.error("Firestore error:", err);
-      setLoading(false);
     });
 
-    return () => unsub();
-  }, [activeGroup?.id]);
+    return () => unsubs.forEach(u => u());
+  }, []);
 
   const handleSend = async (text: string, editingId?: string) => {
     if (!activeGroup || !auth.currentUser) return;
@@ -1434,27 +1432,30 @@ export default function ChatPortal({
   const content = (
     <div className={`cp ${inPage ? 'in-page' : ''}`} style={{ height: inPage ? '100%' : '80vh', maxWidth: inPage ? 'none' : 900, margin: inPage ? 0 : 'auto', borderRadius: inPage ? 0 : undefined }}>
         {!inPage && <TopBar onClose={onClose || (() => {})} hideClose={inPage}/>}
-      <div className="cp-body">
-        <Sidebar
+      <div className="cp-body" style={{ flexDirection: 'column' }}>
+        <TopMenuBar
           activeGroup={activeGroup}
           messages={messages}
+          lastReadTimes={lastReadTimes}
           onSelect={(g: any) => setActiveGroup(g)}
         />
-        {activeGroup ? (
-          <ChatWindow
-            group={activeGroup}
-            messages={messages[activeGroup.id] || []}
-            onSend={handleSend}
-            loading={loading}
-            onDeleteMsg={handleDelete}
-            onClearAll={handleClear}
-            onSendAnnouncement={handleSendAnnouncement}
-            onReact={handleReaction}
-            currentUid={auth.currentUser?.uid || ''}
-          />
-        ) : (
-          <EmptyState/>
-        )}
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+          {activeGroup ? (
+            <ChatWindow
+              group={activeGroup}
+              messages={messages[activeGroup.id] || []}
+              onSend={handleSend}
+              loading={loading}
+              onDeleteMsg={handleDelete}
+              onClearAll={handleClear}
+              onSendAnnouncement={handleSendAnnouncement}
+              onReact={handleReaction}
+              currentUid={auth.currentUser?.uid || ''}
+            />
+          ) : (
+            <EmptyState/>
+          )}
+        </div>
       </div>
     </div>
   );

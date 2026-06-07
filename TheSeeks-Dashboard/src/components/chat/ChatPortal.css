@@ -261,7 +261,7 @@
 .cp-pane {
   flex: 1; display: flex; flex-direction: column;
   overflow: hidden; min-width: 0;
-  background: #e9eaf0;
+  background: var(--bg);
 }
 
 /* Chat header · 46px */
@@ -336,7 +336,7 @@
   display: flex; flex-direction: column;
   background-image: radial-gradient(circle, rgba(0,0,0,0.033) 1px, transparent 1px);
   background-size: 20px 20px;
-  background-color: #e9eaf0;
+  background-color: var(--bg);
 }
 
 /* Day divider */
@@ -766,7 +766,7 @@
 .cp-empty {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  background: #e9eaf0; padding: 40px;
+  background: var(--bg); padding: 40px;
   position: relative; overflow: hidden;
   text-align: center;
 }
@@ -1186,4 +1186,57 @@
   padding-top: 5px;
   border-top: 1px solid var(--bdr);
   opacity: 0.7;
+}
+
+/* ══════ DARK MODE SUPPORT ══════ */
+:root[data-theme="dark"] .cp {
+  --bg: #0f172a;
+  --bg1: #1e293b;
+  --bg2: #334155;
+  --sur: #1e293b;
+  
+  --t0: #f8fafc;
+  --t1: #e2e8f0;
+  --t2: #94a3b8;
+  --t3: #64748b;
+  --t4: #334155;
+  
+  --bdr: rgba(255, 255, 255, 0.1);
+  --bdrw: rgba(255, 255, 255, 0.05);
+  
+  --s1: 0 1px 2px rgba(0,0,0,0.5);
+  --s2: 0 2px 8px rgba(0,0,0,0.5),0 1px 3px rgba(0,0,0,0.4);
+  --s3: 0 6px 20px rgba(0,0,0,0.5),0 2px 6px rgba(0,0,0,0.3);
+}
+
+:root[data-theme="dark"] .cp-msgs {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+}
+
+:root[data-theme="dark"] .cp-empty::before {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+}
+
+:root[data-theme="dark"] .cp-search-bar,
+:root[data-theme="dark"] .cp-members-panel,
+:root[data-theme="dark"] .cp-announce-field,
+:root[data-theme="dark"] .cp-emoji-panel {
+  background: var(--sur);
+  color: var(--t0);
+}
+
+:root[data-theme="dark"] .cp-msg.in .cp-bubble {
+  background: var(--sur);
+  color: var(--t0);
+}
+
+:root[data-theme="dark"] .cp-m-name,
+:root[data-theme="dark"] .cp-members-title,
+:root[data-theme="dark"] .cp-members-name,
+:root[data-theme="dark"] .cp-members-stat-val,
+:root[data-theme="dark"] .cp-member-av,
+:root[data-theme="dark"] .cp-head-name,
+:root[data-theme="dark"] .cp-np-name,
+:root[data-theme="dark"] .cp-confirm-msg {
+  color: var(--t0);
 }

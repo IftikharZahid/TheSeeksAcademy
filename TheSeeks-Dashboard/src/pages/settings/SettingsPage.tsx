@@ -4,9 +4,11 @@ import {
     sendPasswordResetEmail,
     EmailAuthProvider,
     reauthenticateWithCredential,
-    updateProfile
+    updateProfile,
+    signInWithEmailAndPassword
 } from 'firebase/auth';
-import { doc, updateDoc, collection, query, where, getDocs, setDoc, getDoc, addDoc } from 'firebase/firestore';
+import { initializeApp } from 'firebase/app';
+import { doc, updateDoc, collection, query, where, getDocs, setDoc, getDoc, addDoc, getFirestore } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -15,6 +17,7 @@ import {
     setBooks, setClasses, resetStatus, fetchDefaultFees, persistDefaultFees,
 } from '../../store/slices/appSettingsSlice';
 import * as XLSX from 'xlsx';
+import Card_Generator from './Card_Generator';
 
 const ADMIN_EMAILS = ['theseeksacademyfta@gmail.com', 'iftikharzahid@outlook.com'];
 
@@ -88,7 +91,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
     );
 }
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
     return (
         <div style={{
             position: 'fixed', inset: 0, zIndex: 9999,
@@ -127,6 +130,7 @@ export default function SettingsPage() {
     const classes = useAppSelector((s: any) => s.appSettings.classes);
     const classesStatus = useAppSelector((s: any) => s.appSettings.classesStatus);
     const defaultFees = useAppSelector((s: any) => s.appSettings.defaultFees);
+    const defaultFeesStatus = useAppSelector((s: any) => s.appSettings.defaultFeesStatus);
 
     // Always fetch fresh Books & Classes from Firestore on mount
     useEffect(() => {
@@ -135,13 +139,70 @@ export default function SettingsPage() {
         dispatch(fetchDefaultFees());
     }, [dispatch]);
 
-    // Initial state loading
-    const [darkMode, setDarkMode] = useState(true);
-    const [compactLayout, setCompactLayout] = useState(true);
+    // Initial state loading synchronously to prevent UI flicker
+    const [darkMode, setDarkMode] = useState(() => document.documentElement.getAttribute('data-theme') !== 'light');
+    const [compactLayout, setCompactLayout] = useState(() => document.documentElement.getAttribute('data-layout') === 'compact');
     const [notifEmail, setNotifEmail] = useState(true);
     const [notifBrowser, setNotifBrowser] = useState(false);
     const [autoSync, setAutoSync] = useState(true);
-    const [modal, setModal] = useState<'changePassword' | 'profile' | 'privacy' | 'help' | 'books' | 'classes' | 'backup' | 'defaultFees' | 'upload' | null>(null);
+    const [autoSyncLoading, setAutoSyncLoading] = useState(true);
+    const [sysIntUnlocked, setSysIntUnlocked] = useState(false);
+    const [sysIntEmail, setSysIntEmail] = useState('');
+    const [sysIntPassword, setSysIntPassword] = useState('');
+    const [sysIntError, setSysIntError] = useState('');
+
+    useEffect(() => {
+        const loadSyncSettings = async () => {
+            try {
+                const docSnap = await getDoc(doc(db, 'appSettings', 'sync'));
+                if (docSnap.exists()) {
+                    setAutoSync(docSnap.data().realTimeSyncEnabled ?? true);
+                }
+            } catch (err) {
+                console.error('Failed to load sync settings', err);
+            } finally {
+                setAutoSyncLoading(false);
+            }
+        };
+        loadSyncSettings();
+    }, []);
+
+    const handleAutoSyncToggle = async (val: boolean) => {
+        setAutoSync(val);
+        try {
+            await setDoc(doc(db, 'appSettings', 'sync'), {
+                realTimeSyncEnabled: val,
+                updatedAt: new Date(),
+                updatedBy: user?.email || 'unknown',
+            }, { merge: true });
+        } catch (err) {
+            console.error('Failed to save sync settings', err);
+        }
+    };
+    const handleUnlockSysInt = async () => {
+        setSysIntError('');
+        if (!sysIntEmail || !sysIntPassword) {
+            setSysIntError('Please enter both email and password.');
+            return;
+        }
+        try {
+            await signInWithEmailAndPassword(auth, sysIntEmail, sysIntPassword);
+            setSysIntUnlocked(true);
+            setModal(null);
+            setSysIntPassword('');
+        } catch (err: any) {
+            console.error('Failed to unlock System Integration:', err);
+            setSysIntError('Invalid credentials or authentication failed.');
+        }
+    };
+
+    const [modal, setModal] = useState<'changePassword' | 'profile' | 'privacy' | 'help' | 'books' | 'classes' | 'backup' | 'defaultFees' | 'upload' | 'idCard' | 'firebaseConfig' | 'unlockSysInt' | null>(null);
+
+    // Firebase Config UI state
+    const [fbConfig, setFbConfig] = useState({
+        apiKey: '', authDomain: '', projectId: '', storageBucket: '', messagingSenderId: '', appId: '', measurementId: ''
+    });
+    const [fbConfigMsg, setFbConfigMsg] = useState('');
 
     // Local UI state for Books inline editing
     const [newBookName, setNewBookName] = useState('');
@@ -232,17 +293,43 @@ export default function SettingsPage() {
                 const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 
                 // Flatten nested objects/arrays for Excel rows
-                const flatData = data.map((item: Record<string, any>) => {
-                    const flat: any = {};
-                    for (const key in item) {
-                        if (typeof item[key] === 'object' && item[key] !== null) {
-                            flat[key] = JSON.stringify(item[key]);
-                        } else {
-                            flat[key] = item[key];
+                let flatData: any[] = [];
+
+                if (data.length === 0) {
+                    flatData = [{ "Status": "No data found for this collection." }];
+                } else {
+                    flatData = data.map((item: Record<string, any>) => {
+                        const flat: any = {};
+                        for (const key in item) {
+                            const val = item[key];
+                            if (val && typeof val === 'object') {
+                                // Handle Firestore Timestamp
+                                if (val.toDate && typeof val.toDate === 'function') {
+                                    flat[key] = val.toDate().toLocaleString();
+                                } 
+                                // Handle Serialized Timestamp
+                                else if (val.seconds !== undefined && val.nanoseconds !== undefined) {
+                                    flat[key] = new Date(val.seconds * 1000).toLocaleString();
+                                } 
+                                // Handle Arrays
+                                else if (Array.isArray(val)) {
+                                    if (val.every(v => typeof v !== 'object')) {
+                                        flat[key] = val.join(', ');
+                                    } else {
+                                        flat[key] = JSON.stringify(val);
+                                    }
+                                } 
+                                // Handle Generic Objects
+                                else {
+                                    flat[key] = JSON.stringify(val);
+                                }
+                            } else {
+                                flat[key] = val;
+                            }
                         }
-                    }
-                    return flat;
-                });
+                        return flat;
+                    });
+                }
 
                 const worksheet = XLSX.utils.json_to_sheet(flatData);
                 XLSX.utils.book_append_sheet(workbook, worksheet, colName);
@@ -257,74 +344,6 @@ export default function SettingsPage() {
             alert("Failed to export backup. Check console for details.");
         } finally {
             setBackupLoading(false);
-        }
-    };
-
-    // Upload logic
-    const [uploadType, setUploadType] = useState('students');
-    const [uploadFile, setUploadFile] = useState<File | null>(null);
-    const [uploadLoading, setUploadLoading] = useState(false);
-
-    const UPLOAD_COLLECTIONS = [
-        { id: 'students', label: 'Students', headers: ['name', 'fatherName', 'class', 'rollNo', 'phone', 'address'] },
-        { id: 'teachers', label: 'Faculty', headers: ['name', 'subject', 'phone', 'email', 'qualification'] },
-        { id: 'exams', label: 'Exams', headers: ['examName', 'class', 'date', 'totalMarks'] },
-        { id: 'timetable', label: 'Timetable', headers: ['class', 'subject', 'day', 'time', 'teacher'] },
-        { id: 'attendance', label: 'Attendance', headers: ['studentId', 'date', 'status'] },
-        { id: 'fees', label: 'Fees Management', headers: ['studentId', 'month', 'year', 'amount', 'status'] },
-        { id: 'assignments', label: 'Notices / Assignments', headers: ['title', 'description', 'date', 'targetClass'] },
-        { id: 'videoGalleries', label: 'Videos', headers: ['title', 'url', 'class', 'subject'] },
-        { id: 'gallery', label: 'Gallery', headers: ['title', 'imageUrl', 'date'] }
-    ];
-
-    const handleDownloadTemplate = () => {
-        const col = UPLOAD_COLLECTIONS.find(c => c.id === uploadType);
-        if (!col) return;
-        const worksheet = XLSX.utils.json_to_sheet([
-            col.headers.reduce((acc, header) => ({ ...acc, [header]: '' }), {})
-        ]);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, col.label);
-        XLSX.writeFile(workbook, `${col.label}_Template.xlsx`);
-    };
-
-    const handleUploadData = async () => {
-        if (!uploadFile) return;
-        setUploadLoading(true);
-        try {
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                try {
-                    const data = new Uint8Array(e.target?.result as ArrayBuffer);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const sheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
-
-                    if (jsonData.length === 0) {
-                        alert('No data found in the Excel file.');
-                        setUploadLoading(false);
-                        return;
-                    }
-
-                    const colRef = collection(db, uploadType);
-                    const promises = jsonData.map((row: any) => addDoc(colRef, { ...row, createdAt: new Date().toISOString() }));
-                    await Promise.all(promises);
-
-                    alert(`Successfully uploaded ${jsonData.length} records to ${uploadType}.`);
-                    setModal(null);
-                    setUploadFile(null);
-                } catch (err) {
-                    console.error('Error parsing/uploading Excel', err);
-                    alert('Failed to process Excel file.');
-                } finally {
-                    setUploadLoading(false);
-                }
-            };
-            reader.readAsArrayBuffer(uploadFile);
-        } catch (err) {
-            console.error('Upload error', err);
-            setUploadLoading(false);
         }
     };
 
@@ -510,8 +529,140 @@ export default function SettingsPage() {
         }
     };
 
+    useEffect(() => {
+        if (modal === 'firebaseConfig') {
+            setFbConfigMsg('');
+            try {
+                const stored = localStorage.getItem('custom_firebase_config');
+                if (stored) {
+                    setFbConfig(JSON.parse(stored));
+                } else {
+                    import('../../firebase').then(m => {
+                        setFbConfig(m.firebaseConfig);
+                    });
+                }
+            } catch {
+                // Ignore parsing error
+            }
+        }
+    }, [modal]);
+
+    const handleSaveFbConfig = async () => {
+        if (!fbConfig.apiKey || !fbConfig.projectId) {
+            setFbConfigMsg('❌ API Key and Project ID are required.');
+            return;
+        }
+
+        setFbConfigMsg('⏳ Initializing Modules...');
+        
+        try {
+            // Initialize secondary app
+            const tempApp = initializeApp(fbConfig, 'TempApp_' + Date.now());
+            const tempDb = getFirestore(tempApp);
+
+            // Initialize basic system settings (required for app structure)
+            // We do NOT create dummy documents in 'students', 'faculty', etc. 
+            // so that the UI remains completely clean and professional for the new project.
+            await setDoc(doc(tempDb, 'appSettings', 'sync'), {
+                realTimeSyncEnabled: true,
+                updatedAt: new Date()
+            }, { merge: true });
+
+            await setDoc(doc(tempDb, 'appSettings', 'messaging'), {
+                dailyLimit: 0,
+                updatedAt: new Date()
+            }, { merge: true });
+
+            localStorage.setItem('custom_firebase_config', JSON.stringify(fbConfig));
+            setFbConfigMsg('✅ Initialized & saved! Reloading...');
+            setTimeout(() => window.location.reload(), 1500);
+
+        } catch (err: any) {
+            console.error("Initialization failed:", err);
+            setFbConfigMsg(`❌ Failed: ${err.message}`);
+        }
+    };
+
+    const handleResetFbConfig = () => {
+        localStorage.removeItem('custom_firebase_config');
+        setFbConfigMsg('✅ Configuration reset. Reloading...');
+        setTimeout(() => window.location.reload(), 1500);
+    };
+
+    const handleDownloadBackup = () => {
+        const content = `=========================================
+      FIREBASE CONFIGURATION BACKUP      
+=========================================
+Date: ${new Date().toLocaleString()}
+
+API Key:
+${fbConfig.apiKey}
+
+Auth Domain:
+${fbConfig.authDomain}
+
+Project ID:
+${fbConfig.projectId}
+
+Storage Bucket:
+${fbConfig.storageBucket}
+
+Messaging Sender ID:
+${fbConfig.messagingSenderId}
+
+App ID:
+${fbConfig.appId}
+
+Measurement ID:
+${fbConfig.measurementId}
+
+=========================================
+Keep this file secure. Do not share it.
+=========================================
+
+-----------------------------------------
+Developer & Support Information
+-----------------------------------------
+If you encounter any issues or need further
+customizations, please contact the developer:
+
+Name:       Iftikhar Zahid
+Role:       Full Stack Developer
+Portfolio:  https://zahid.codes
+GitHub:     https://github.com/iftikharzahid
+LinkedIn:   https://linkedin.com/in/iftikharzahid
+WhatsApp:   https://wa.link/330h0s
+-----------------------------------------`;
+
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `firebase-config-backup-${Date.now()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    const isPageLoading = booksStatus === 'idle' || booksStatus === 'loading' ||
+                          classesStatus === 'idle' || classesStatus === 'loading' ||
+                          defaultFeesStatus === 'idle' || defaultFeesStatus === 'loading' ||
+                          messagingLoading || autoSyncLoading;
+
+    if (isPageLoading) {
+        return (
+            <div className="page" style={{ maxWidth: 1400, margin: '0 auto', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+                <div className="loading" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                    <div className="spinner" style={{ width: 40, height: 40, borderWidth: 3, borderColor: 'var(--border)', borderTopColor: 'var(--primary)' }} />
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text2)', letterSpacing: 0.5 }}>Loading Settings...</div>
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className="page" style={{ maxWidth: 860, paddingTop: 20 }}>
+        <div className="page" style={{ maxWidth: 1400, margin: '0 auto', padding: '16px 32px', animation: 'fadeIn 0.3s ease-out forwards' }}>
             {/* Header */}
             <div className="page-header" style={{ marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
                 <div>
@@ -605,8 +756,9 @@ export default function SettingsPage() {
                         <SectionLabel label="Data Management" />
                         <Card>
                             <SettingRow icon="💾" color="#3b82f6" label="Backup Database" desc="Download records as a secure Excel file" onClick={() => setModal('backup')} />
+
                             <div style={{ height: 1, background: 'var(--border)', margin: '0 16px' }} />
-                            <SettingRow icon="📤" color="#8b5cf6" label="Upload Data" desc="Bulk upload records using Excel templates" onClick={() => setModal('upload')} />
+                            <SettingRow icon="🪪" color="#10b981" label="Generate ID Cards" desc="Create professional ID cards for Students and Staff" onClick={() => setModal('idCard')} />
                         </Card>
                     </section>
                 </div>
@@ -614,23 +766,7 @@ export default function SettingsPage() {
                 {/* ── RIGHT COLUMN ────────────────────────────────────── */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-                    {/* Experience Module */}
-                    <section>
-                        <SectionLabel label="App Preferences" />
-                        <Card>
-                            <SettingRow icon={darkMode ? '🌙' : '☀️'} color="#f59e0b" label="Dark Theme" desc="Toggle dark/light interface colors"
-                                right={<Toggle value={darkMode} onChange={handleDarkMode} />}
-                            />
-                            <div style={{ height: 1, background: 'var(--border)', margin: '0 16px' }} />
-                            <SettingRow icon="🖥️" color="#0ea5e9" label="Compact Layout" desc="Reduce spacing to show more data in tables"
-                                right={<Toggle value={compactLayout} onChange={handleCompactLayout} />}
-                            />
-                            <div style={{ height: 1, background: 'var(--border)', margin: '0 16px' }} />
-                            <SettingRow icon="⚡" color="#10b981" label="Firebase Real-time Sync" desc="Keep dashboard constantly updated with mobile app"
-                                right={<Toggle value={autoSync} onChange={setAutoSync} />}
-                            />
-                        </Card>
-                    </section>
+                    {/* App Preferences section removed as per user request */}
 
                     {/* Group Messaging Controls & Notifications */}
                     <section>
@@ -710,6 +846,39 @@ export default function SettingsPage() {
                             />
                         </Card>
                     </section>
+
+                    {/* System Integration */}
+                    {isAdmin && (
+                        <section>
+                            <SectionLabel label="System Integration" />
+                            <Card>
+                                {!sysIntUnlocked ? (
+                                    <div style={{ padding: '24px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                                        <div style={{ fontSize: 32 }}>🔒</div>
+                                        <div style={{ fontSize: 13, color: 'var(--text2)', textAlign: 'center', lineHeight: 1.5 }}>
+                                            System Integration settings are restricted.<br/>Please authenticate as Super Admin to continue.
+                                        </div>
+                                        <button className="btn btn-primary" onClick={() => setModal('unlockSysInt')} style={{ marginTop: 8 }}>
+                                            Unlock Settings
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <SettingRow icon="⚡" color="#10b981" label="Firebase Real-time Sync" desc="Keep dashboard constantly updated with mobile app"
+                                            right={<Toggle value={autoSync} onChange={handleAutoSyncToggle} />}
+                                        />
+                                        <div style={{ height: 1, background: 'var(--border)', margin: '0 16px' }} />
+                                        <SettingRow 
+                                            icon="🔥" color="#f59e0b" 
+                                            label="Firebase Configuration" 
+                                            desc="Update API keys to deploy for a new institution" 
+                                            onClick={() => setModal('firebaseConfig')} 
+                                        />
+                                    </>
+                                )}
+                            </Card>
+                        </section>
+                    )}
 
                     {/* Platform Info */}
                     <section>
@@ -895,56 +1064,6 @@ export default function SettingsPage() {
                 </Modal>
             )}
 
-            {/* Upload Data Modal */}
-            {modal === 'upload' && (
-                <Modal title="Upload Data" onClose={() => { setModal(null); setUploadFile(null); }}>
-                    <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20, lineHeight: 1.5 }}>
-                        Select the collection you want to upload data into. You can download the Excel template, fill it with your records, and upload it back.
-                    </div>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: 12 }}>1. Select Collection</label>
-                            <select 
-                                className="form-input" 
-                                style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer' }}
-                                value={uploadType}
-                                onChange={(e) => setUploadType(e.target.value)}
-                            >
-                                {UPLOAD_COLLECTIONS.map(col => (
-                                    <option key={col.id} value={col.id}>{col.label}</option>
-                                ))}
-                            </select>
-                        </div>
-                        
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: 12 }}>2. Download Template</label>
-                            <button className="btn btn-secondary" style={{ padding: '8px 12px', fontSize: 13, textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={handleDownloadTemplate}>
-                                <span>Download Excel Template</span>
-                                <span>📥</span>
-                            </button>
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: 12 }}>3. Upload Filled File</label>
-                            <input 
-                                type="file" 
-                                accept=".xlsx, .xls"
-                                onChange={(e) => setUploadFile(e.target.files ? e.target.files[0] : null)}
-                                className="form-input" 
-                                style={{ padding: '8px 12px', fontSize: 13 }}
-                            />
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: 12 }}>
-                        <button className="btn btn-secondary" style={{ flex: 1, padding: '10px' }} onClick={() => { setModal(null); setUploadFile(null); }}>Cancel</button>
-                        <button className="btn btn-primary" style={{ flex: 1, padding: '10px', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none' }} onClick={handleUploadData} disabled={uploadLoading || !uploadFile}>
-                            {uploadLoading ? 'Uploading...' : 'Upload Data'}
-                        </button>
-                    </div>
-                </Modal>
-            )}
 
             {/* Classes Modal */}
             {modal === 'classes' && (
@@ -1092,6 +1211,100 @@ export default function SettingsPage() {
                     <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
                         <button className="btn btn-secondary" style={{ flex: 1, padding: 10 }} onClick={() => setModal(null)}>Cancel</button>
                         <button className="btn btn-primary" style={{ flex: 1, padding: 10 }} onClick={handleSaveDefaultFees}>Save Fees</button>
+                    </div>
+                </Modal>
+            )}
+
+            {/* ID Card Generator Modal */}
+            {modal === 'idCard' && (
+                <Card_Generator onClose={() => setModal(null)} />
+            )}
+            {/* Firebase Config Modal */}
+            {modal === 'firebaseConfig' && (
+                <Modal title="Firebase Configuration" onClose={() => setModal(null)}>
+                    <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 16, lineHeight: 1.5 }}>
+                        Update the API keys below to connect this dashboard to a new institution's database. This configuration is saved locally in your browser.
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
+                        {Object.keys(fbConfig).map(key => (
+                            <div className="form-group" key={key}>
+                                <label className="form-label" style={{ fontSize: 12, textTransform: 'capitalize' }}>
+                                    {key.replace(/([A-Z])/g, ' $1').trim()}
+                                </label>
+                                <input 
+                                    className="form-input" 
+                                    value={(fbConfig as any)[key]} 
+                                    onChange={e => setFbConfig({...fbConfig, [key]: e.target.value})} 
+                                    placeholder={`Enter ${key}`} 
+                                    style={{ padding: '8px 12px', fontSize: 13 }} 
+                                />
+                            </div>
+                        ))}
+                    </div>
+
+                    {fbConfigMsg && (
+                        <div style={{ 
+                            marginTop: 16, 
+                            background: fbConfigMsg.startsWith('✅') ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', 
+                            border: `1px solid ${fbConfigMsg.startsWith('✅') ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`, 
+                            color: fbConfigMsg.startsWith('✅') ? '#34d399' : '#f87171', 
+                            borderRadius: 8, padding: '10px 14px', fontSize: 13 
+                        }}>
+                            {fbConfigMsg}
+                        </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                        <button className="btn btn-secondary" style={{ padding: 10, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }} onClick={handleDownloadBackup} title="Download Backup Text File">
+                            <span>📥</span> Backup
+                        </button>
+                        <button className="btn btn-secondary" style={{ flex: 1, padding: 10, color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }} onClick={handleResetFbConfig}>Reset Default</button>
+                        <button className="btn btn-primary" style={{ flex: 1, padding: 10 }} onClick={handleSaveFbConfig}>Save & Apply</button>
+                    </div>
+                </Modal>
+            )}
+
+            {/* Unlock System Integration Modal */}
+            {modal === 'unlockSysInt' && (
+                <Modal title="Authentication Required" onClose={() => setModal(null)}>
+                    <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20, lineHeight: 1.5 }}>
+                        Please authenticate as Super Admin to unlock the System Integration section.
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: 12 }}>Email</label>
+                            <input 
+                                type="email" 
+                                className="form-input" 
+                                value={sysIntEmail} 
+                                onChange={e => { setSysIntEmail(e.target.value); setSysIntError(''); }} 
+                                placeholder="Enter super admin email" 
+                                style={{ padding: '8px 12px', fontSize: 13 }} 
+                                autoFocus
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: 12 }}>Password</label>
+                            <input 
+                                type="password" 
+                                className="form-input" 
+                                value={sysIntPassword} 
+                                onChange={e => { setSysIntPassword(e.target.value); setSysIntError(''); }} 
+                                placeholder="Enter super admin password" 
+                                style={{ padding: '8px 12px', fontSize: 13 }} 
+                                onKeyDown={e => { if (e.key === 'Enter') handleUnlockSysInt(); }}
+                            />
+                        </div>
+                    </div>
+                    {sysIntError && (
+                        <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', borderRadius: 8, padding: '10px 14px', fontSize: 13, display: 'flex', gap: 8, marginBottom: 20 }}>
+                            <span>⚠️</span> {sysIntError}
+                        </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 10 }}>
+                        <button className="btn btn-secondary" style={{ flex: 1, padding: 10 }} onClick={() => setModal(null)}>Cancel</button>
+                        <button className="btn btn-primary" style={{ flex: 1, padding: 10 }} onClick={handleUnlockSysInt}>Verify & Unlock</button>
                     </div>
                 </Modal>
             )}
