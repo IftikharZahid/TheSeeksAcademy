@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Modal, TouchableWithoutFeedback } from 'react-native';
-import { Image } from 'expo-image';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Modal, TouchableWithoutFeedback, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useAppSelector } from '../store/hooks';
 import { selectUnreadMessagesCount } from '../store/slices/messagesSlice';
+import { selectUnreadDiariesCount } from '../store/slices/notificationsSlice';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { scale } from '../utils/responsive';
@@ -34,7 +34,11 @@ export const TopHeader: React.FC = () => {
   const profile = useAppSelector((state) => state.auth.profile);
 
   const notices = useAppSelector((state) => state.notifications.notices);
+  const diaries = useAppSelector((state) => state.notifications.diaries);
+  const readDiaryIds = useAppSelector((state) => state.notifications.readDiaryIds);
+  const unreadDiariesCount = useAppSelector((state) => selectUnreadDiariesCount(state.notifications.diaries, state.notifications.readDiaryIds));
   const messages = useAppSelector((state) => state.messages.list);
+  const totalUnreadCount = notificationCount + unreadMessagesCount + unreadDiariesCount;
 
   // Combine & Sort Recent Updates
   const recentUpdates: any[] = [];
@@ -47,6 +51,11 @@ export const TopHeader: React.FC = () => {
   if (notices && notices.length > 0) {
     notices.forEach(n => {
       recentUpdates.push({ id: `notice-${n.id}`, type: 'notice', item: n, timeMs: getNoticeTime(n) });
+    });
+  }
+  if (diaries && diaries.length > 0) {
+    diaries.forEach(d => {
+      recentUpdates.push({ id: `diary-${d.id}`, type: 'diary', item: d, timeMs: getNoticeTime(d) });
     });
   }
   if (messages && messages.length > 0) {
@@ -145,6 +154,15 @@ export const TopHeader: React.FC = () => {
     prevMsgCount.current = unreadMessagesCount;
   }, [unreadMessagesCount]);
 
+  // Trigger ring when unread diaries count goes UP
+  const prevDiariesCount = useRef(unreadDiariesCount);
+  useEffect(() => {
+    if (unreadDiariesCount > prevDiariesCount.current) {
+      ringBell();
+    }
+    prevDiariesCount.current = unreadDiariesCount;
+  }, [unreadDiariesCount]);
+
   const bellRotateInterpolated = bellRotate.interpolate({
     inputRange: [-1, 0, 1],
     outputRange: ['-25deg', '0deg', '25deg'],
@@ -160,6 +178,15 @@ export const TopHeader: React.FC = () => {
           <Text style={[styles.greetingText, { color: theme.primary }]}>{getGreeting()}</Text>
         </View>
 
+        {/* Middle Section - Logo */}
+        <View style={styles.middleSection}>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+        </View>
+
         {/* Right Section - Notification Bell + Avatar */}
         <View style={styles.rightSection}>
           <TouchableOpacity
@@ -170,17 +197,17 @@ export const TopHeader: React.FC = () => {
             {/* Animated bell icon — pivots from top centre */}
             <Animated.View style={{ transform: [{ rotate: bellRotateInterpolated }], transformOrigin: 'top' }}>
               <Ionicons
-                name={notificationCount > 0 || unreadMessagesCount > 0 ? 'notifications' : 'notifications-outline'}
+                name={totalUnreadCount > 0 ? 'notifications' : 'notifications-outline'}
                 size={scale(22)}
-                color={notificationCount > 0 || unreadMessagesCount > 0 ? '#F59E0B' : theme.text}
+                color={totalUnreadCount > 0 ? '#F59E0B' : theme.text}
               />
             </Animated.View>
 
             {/* Badge — shows combined unread count */}
-            {(notificationCount + unreadMessagesCount) > 0 && (
+            {totalUnreadCount > 0 && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>
-                  {(notificationCount + unreadMessagesCount) > 9 ? '9+' : (notificationCount + unreadMessagesCount)}
+                  {totalUnreadCount > 9 ? '9+' : totalUnreadCount}
                 </Text>
               </View>
             )}
@@ -190,10 +217,9 @@ export const TopHeader: React.FC = () => {
             <View style={styles.avatar}>
               <Image
                 source={displayImage ? { uri: displayImage } : require('../assets/default-profile.png')}
-                placeholder={require('../assets/default-profile.png')}
+                defaultSource={require('../assets/default-profile.png')}
                 style={[styles.avatarImage, (!displayImage && isDark) ? { tintColor: '#fff' } : null]}
-                contentFit="cover"
-                transition={200}
+                resizeMode="cover"
               />
             </View>
           </TouchableOpacity>
@@ -237,6 +263,29 @@ export const TopHeader: React.FC = () => {
                           </View>
                         </TouchableOpacity>
                       );
+                    } else if (update.type === 'diary') {
+                      const d = update.item;
+                      const isUnread = !readDiaryIds.includes(d.id);
+                      return (
+                        <TouchableOpacity
+                          key={update.id}
+                          style={[styles.dropdownItem, { borderBottomColor: theme.border, backgroundColor: isUnread ? theme.primary + '0A' : 'transparent' }]}
+                          onPress={() => { setShowDropdown(false); navigation.navigate('Home', { screen: 'DiaryScreen' }) }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.iconBox, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
+                            <Ionicons name="book" size={18} color="#F59E0B" />
+                          </View>
+                          <View style={styles.dropdownContent}>
+                            <View style={styles.itemTitleRow}>
+                              <Text style={[styles.itemTitle, { color: theme.text, fontWeight: isUnread ? '700' : '600' }]} numberOfLines={1}>Diary: {d.subject}</Text>
+                              <Text style={[styles.itemTime, { color: theme.textTertiary }]}>{formatRelativeTime(update.timeMs)}</Text>
+                            </View>
+                            <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={1}>{d.title}</Text>
+                          </View>
+                          {isUnread && <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} />}
+                        </TouchableOpacity>
+                      );
                     } else {
                       const m = update.item;
                       return (
@@ -262,7 +311,7 @@ export const TopHeader: React.FC = () => {
                   })
                 ) : (
                   <View style={styles.emptyDropdown}>
-                    <Text style={{ color: theme.textSecondary, fontSize: 13 }}>No recent updates</Text>
+                    <Text style={{ color: theme.textSecondary, fontSize: scale(13) }}>No recent updates</Text>
                   </View>
                 )}
               </View>
@@ -283,36 +332,42 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: scale(16),
-    paddingVertical: scale(8),
+    paddingVertical: scale(4),
   },
   leftSection: {
     flexDirection: 'column',
   },
+  middleSection: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoImage: {
+    width: scale(55),
+    height: scale(55),
+  },
   helloText: {
-    fontSize: scale(12),
-    fontWeight: '500',
-    letterSpacing: 0.4,
+    fontSize: scale(10),
+    fontWeight: '600',
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
     color: '#6b7280',
-    // marginBottom: scale(2),
-    // alignSelf: 'center',
   },
   userName: {
-    fontSize: scale(20),
-    fontWeight: '700',
+    fontSize: scale(16),
+    fontWeight: '800',
     color: '#1f2937',
-    marginTop: scale(2),
+    marginTop: 0,
   },
   greetingText: {
-    fontSize: scale(13),
-    fontWeight: '500',
-    marginTop: scale(2),
+    fontSize: scale(10.5),
+    fontWeight: '600',
+    marginTop: 0,
     letterSpacing: 0.2,
   },
   avatar: {
-    width: scale(50),
-    height: scale(50),
-    borderRadius: scale(25),
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: '#e5e7eb',
@@ -327,9 +382,9 @@ const styles = StyleSheet.create({
     gap: scale(12),
   },
   notificationButton: {
-    width: scale(40),
-    height: scale(40),
-    borderRadius: scale(20),
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -362,15 +417,15 @@ const styles = StyleSheet.create({
   },
   dropdownContainer: {
     position: 'absolute',
-    top: scale(60), // Just below header
-    right: scale(16),
-    width: scale(290), // Slightly wider for layout polish
-    borderRadius: 16,
+    top: scale(55), // Just below header
+    right: scale(10), // moved closer to corner
+    width: scale(260), // more compact
+    borderRadius: scale(12),
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: scale(4) },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
     elevation: 8,
     overflow: 'hidden',
   },
@@ -378,32 +433,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(10),
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   dropdownTitle: {
-    fontSize: 13,
+    fontSize: scale(13),
     fontWeight: '700',
   },
   viewAllText: {
-    fontSize: 11,
+    fontSize: scale(11),
     fontWeight: '600',
   },
   dropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: scale(10),
+    paddingHorizontal: scale(14),
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: scale(10),
   },
   dropdownContent: {
     flex: 1,
@@ -415,20 +470,26 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   itemTitle: {
-    fontSize: 12,
+    fontSize: scale(12),
     fontWeight: '600',
     flex: 1,
-    marginRight: 6,
+    marginRight: scale(6),
   },
   itemTime: {
-    fontSize: 9,
+    fontSize: scale(9),
     fontWeight: '500',
   },
   itemText: {
-    fontSize: 11,
+    fontSize: scale(11),
   },
   emptyDropdown: {
-    padding: 20,
+    padding: scale(20),
     alignItems: 'center',
+  },
+  unreadDot: {
+    width: scale(8),
+    height: scale(8),
+    borderRadius: scale(4),
+    marginLeft: scale(8),
   },
 });

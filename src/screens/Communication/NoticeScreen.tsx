@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
     paddingBottom: scale(16),
     elevation: 5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: scale(4) },
     shadowOpacity: 0.1,
     shadowRadius: 10,
   },

@@ -218,32 +218,32 @@ export const MessagesScreen: React.FC = () => {
 
           // Base block style
           let blockStyle: any = {
-            fontSize: 14,
+            fontSize: scale(14),
             lineHeight: 20,
             color: isMine ? '#fff' : theme.text,
           };
 
           if (blockType === 'h1') {
             blockStyle = {
-              fontSize: 18,
+              fontSize: scale(18),
               lineHeight: 24,
               fontWeight: '800',
-              marginTop: 6,
-              marginBottom: 4,
+              marginTop: scale(6),
+              marginBottom: scale(4),
               color: isMine ? '#fff' : theme.text,
             };
           } else if (blockType === 'h2') {
             blockStyle = {
-              fontSize: 16,
+              fontSize: scale(16),
               lineHeight: 22,
               fontWeight: '700',
-              marginTop: 4,
+              marginTop: scale(4),
               marginBottom: 2,
               color: isMine ? '#fff' : theme.text,
             };
           } else if (blockType === 'h3') {
             blockStyle = {
-              fontSize: 15,
+              fontSize: scale(15),
               lineHeight: 20,
               fontWeight: '700',
               marginTop: 3,
@@ -252,9 +252,9 @@ export const MessagesScreen: React.FC = () => {
             };
           } else if (blockType === 'list') {
             blockStyle = {
-              fontSize: 14,
+              fontSize: scale(14),
               lineHeight: 20,
-              marginLeft: 12,
+              marginLeft: scale(12),
               color: isMine ? '#fff' : theme.text,
             };
           }
@@ -741,12 +741,16 @@ export const MessagesScreen: React.FC = () => {
     }
   };
 
-  // ── FIX: Compute bottom padding for the input bar ──────────────────────
+  // ── Header height tracking for correct KAV offset ─────────────────────
+  const [headerHeight, setHeaderHeight] = useState(56);
+
   // When keyboard is visible, the keyboard itself covers the bottom — no inset needed.
-  // When keyboard is hidden, respect the device's home indicator / safe area.
-  const inputBarPaddingBottom = keyboardVisible
-    ? 8
-    : Math.max(8, insets.bottom + 4);
+  // When keyboard is hidden, respect the device's home indicator / safe area on all platforms.
+  const inputBarPaddingBottom = showEmojiModal 
+    ? 0
+    : keyboardVisible 
+      ? 8 
+      : Math.max(8, insets.bottom + 4);
 
   // ── Render: Groups List ────────────────────────────────────────────────
   if (!activeGroup) {
@@ -767,7 +771,7 @@ export const MessagesScreen: React.FC = () => {
           }
         >
           {filteredGroups.length === 0 ? (
-            <View style={{ padding: 20, alignItems: 'center', marginTop: 40 }}>
+            <View style={{ padding: scale(20), alignItems: 'center', marginTop: scale(40) }}>
               <Text style={{ color: theme.textSecondary, textAlign: 'center' }}>
                 No chat groups available for your class and gender.
               </Text>
@@ -893,7 +897,7 @@ export const MessagesScreen: React.FC = () => {
           )
         )}
 
-        <View style={[styles.msgContentWrapper, item.isMine ? { alignItems: 'flex-end', marginRight: 8 } : { alignItems: 'flex-start' }]}>
+        <View style={[styles.msgContentWrapper, item.isMine ? { alignItems: 'flex-end', marginRight: scale(8) } : { alignItems: 'flex-start' }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 3 }}>
             <Text style={[styles.msgSender, { color: theme.textSecondary }]}>{item.sender}</Text>
             {item.role && (
@@ -933,7 +937,7 @@ export const MessagesScreen: React.FC = () => {
             {renderMessageText(item.text, item.isMine)}
             <View style={{ flexDirection: 'row', alignSelf: 'flex-end', alignItems: 'center', gap: 3, marginTop: 2 }}>
               {item.isEdited && (
-                <Text style={{ fontSize: 8, fontStyle: 'italic', color: item.isMine ? 'rgba(255,255,255,0.6)' : theme.textTertiary }}>
+                <Text style={{ fontSize: scale(8), fontStyle: 'italic', color: item.isMine ? 'rgba(255,255,255,0.6)' : theme.textTertiary }}>
                   (edited)
                 </Text>
               )}
@@ -947,7 +951,7 @@ export const MessagesScreen: React.FC = () => {
           {item.reactions && Object.keys(item.reactions).length > 0 && (
             <View style={[
               styles.reactionRow,
-              item.isMine ? { alignSelf: 'flex-end', marginRight: 4 } : { alignSelf: 'flex-start', marginLeft: 4 }
+              item.isMine ? { alignSelf: 'flex-end', marginRight: scale(4) } : { alignSelf: 'flex-start', marginLeft: scale(4) }
             ]}>
               {Object.entries(item.reactions as Record<string, { uid: string; name: string }[]>)
                 .filter(([, users]) => users.length > 0)
@@ -978,7 +982,7 @@ export const MessagesScreen: React.FC = () => {
                 onPress={() => handleDoubleTapMessage(item)}
                 style={[
                   styles.reactionPill,
-                  { borderColor: theme.border, paddingHorizontal: 7 }
+                  { borderColor: theme.border, paddingHorizontal: scale(7) }
                 ]}
               >
                 <Text style={{ fontSize: scale(13), opacity: 0.5 }}>+😊</Text>
@@ -989,9 +993,9 @@ export const MessagesScreen: React.FC = () => {
 
         {item.isMine && (
           item.avatar ? (
-            <Image source={{ uri: item.avatar }} style={[styles.avatar, { backgroundColor: theme.border, marginRight: 0, marginLeft: 8 }]} />
+            <Image source={{ uri: item.avatar }} style={[styles.avatar, { backgroundColor: theme.border, marginRight: 0, marginLeft: scale(8) }]} />
           ) : (
-            <View style={[styles.avatar, { backgroundColor: theme.primary, marginRight: 0, marginLeft: 8 }]}>
+            <View style={[styles.avatar, { backgroundColor: theme.primary, marginRight: 0, marginLeft: scale(8) }]}>
               <Text style={styles.avatarText}>{item.sender ? item.sender[0] : 'U'}</Text>
             </View>
           )
@@ -1002,26 +1006,24 @@ export const MessagesScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundSecondary }]} edges={['top', 'left', 'right']}>
-      {/* Header */}
-      <View style={[styles.headerNoticeStyle, { backgroundColor: theme.card }]}>
-        <TouchableOpacity
-          onPress={() => {
-            setActiveGroup(null);
-          }}
-          style={styles.backButtonNoticeStyle}
-        >
-          <Ionicons name="arrow-back" size={scale(22)} color={theme.text} />
-        </TouchableOpacity>
-        <View style={{ flex: 1, marginLeft: scale(8) }}>
-          <Text style={{ fontSize: scale(16), fontWeight: '700', color: theme.text }} numberOfLines={1}>
+      {/* Header — onLayout tracks real height so KAV offset is exact */}
+      <View
+        style={[styles.headerNoticeStyle, { backgroundColor: theme.card, justifyContent: 'center' }]}
+        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+      >
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ fontSize: scale(16), fontWeight: '800', color: theme.text }} numberOfLines={1}>
             {groupObj?.name || 'Chat'}
           </Text>
-          <Text style={{ fontSize: scale(11), color: theme.textSecondary, marginTop: 1, fontWeight: '500', opacity: 0.7 }}>
+          <Text style={{ fontSize: scale(11), color: theme.textSecondary, marginTop: 2, fontWeight: '600', opacity: 0.7 }}>
             {currentMessages.length} Messages
           </Text>
         </View>
-        {isStudentRole && !isPrivilegedRole && dailyMessageLimit > 0 ? (
+
+        {isStudentRole && !isPrivilegedRole && dailyMessageLimit > 0 && (
           <View style={{
+            position: 'absolute',
+            right: scale(16),
             flexDirection: 'row',
             alignItems: 'center',
             backgroundColor: remainingMessages <= 3 ? 'rgba(239,68,68,0.12)' : 'rgba(99,102,241,0.1)',
@@ -1029,7 +1031,6 @@ export const MessagesScreen: React.FC = () => {
             paddingVertical: scale(5),
             borderRadius: scale(14),
             gap: scale(3),
-            marginLeft: scale(8),
           }}>
             <Text style={{
               fontSize: scale(14),
@@ -1047,26 +1048,18 @@ export const MessagesScreen: React.FC = () => {
               Left
             </Text>
           </View>
-        ) : (
-          <View style={{ width: scale(32) }} />
         )}
       </View>
 
-      {/*
-        ── FIX: KeyboardAvoidingView ─────────────────────────────────────────
-        iOS   → behavior="padding"  pushes content up as keyboard rises
-        Android → behavior="height"  shrinks the view; combined with
-                  windowSoftInputMode="adjustResize" in AndroidManifest this
-                  gives the most reliable result on all Android versions.
-        keyboardVerticalOffset on iOS must equal the height of everything
-        rendered ABOVE this KeyboardAvoidingView (header inside SafeAreaView).
-        We use scale(48) as the header height; adjust if your header is taller.
-      */}
+      {/* KeyboardAvoidingView — behavior='padding' works on BOTH platforms.
+          offset = height of everything above this view (header).
+          On Android the system also does adjustResize but 'padding' + offset
+          gives us reliable, consistent behavior without any double-push. */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + scale(56) : 0}
-        enabled={Platform.OS === 'ios'}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + headerHeight : 0}
+        enabled={Platform.OS === 'ios' ? true : keyboardVisible}
       >
         <FlatList
           ref={flatListRef}
@@ -1119,13 +1112,13 @@ export const MessagesScreen: React.FC = () => {
               backgroundColor: theme.card,
               borderTopColor: theme.border,
               justifyContent: 'center',
-              paddingVertical: 14,
+              paddingVertical: scale(14),
               paddingBottom: inputBarPaddingBottom,
             }
           ]}>
             <View style={{ alignItems: 'center', flex: 1 }}>
               <Ionicons name="lock-closed" size={16} color={theme.textTertiary} />
-              <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 4, fontWeight: '600', textAlign: 'center' }}>
+              <Text style={{ color: theme.textSecondary, fontSize: scale(12), marginTop: scale(4), fontWeight: '600', textAlign: 'center' }}>
                 Messaging is currently disabled by admin
               </Text>
             </View>
@@ -1144,15 +1137,22 @@ export const MessagesScreen: React.FC = () => {
               flexDirection: 'row',
               alignItems: 'flex-end',
               borderWidth: 1,
-              borderRadius: 22,
-              paddingHorizontal: 12,
-              paddingVertical: 4,
+              borderRadius: scale(22),
+              paddingHorizontal: scale(12),
+              paddingVertical: scale(4),
               backgroundColor: theme.background,
               borderColor: theme.border,
             }}>
               <TouchableOpacity
-                onPress={() => setShowEmojiModal(true)}
-                style={{ padding: 6, marginRight: 4, marginBottom: 2 }}
+                onPress={() => {
+                  if (!showEmojiModal) {
+                    Keyboard.dismiss();
+                    setTimeout(() => setShowEmojiModal(true), 50);
+                  } else {
+                    setShowEmojiModal(false);
+                  }
+                }}
+                style={{ padding: scale(6), marginRight: scale(4), marginBottom: 2 }}
               >
                 <Ionicons name="happy-outline" size={22} color={theme.textSecondary} />
               </TouchableOpacity>
@@ -1162,9 +1162,9 @@ export const MessagesScreen: React.FC = () => {
                   flex: 1,
                   minHeight: 34,
                   maxHeight: 100,
-                  fontSize: 15,
-                  paddingVertical: 6,
-                  paddingRight: 6,
+                  fontSize: scale(15),
+                  paddingVertical: scale(6),
+                  paddingRight: scale(6),
                   color: theme.text,
                 }}
                 placeholder={editingMessageId ? 'Edit your message...' : (canStudentSend() ? 'Type your message...' : 'Daily limit reached')}
@@ -1172,6 +1172,7 @@ export const MessagesScreen: React.FC = () => {
                 value={inputText}
                 onChangeText={setInputText}
                 onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
+                onFocus={() => setShowEmojiModal(false)}
                 multiline
                 maxLength={1000}
                 editable={canStudentSend() || !!editingMessageId}
@@ -1190,122 +1191,24 @@ export const MessagesScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         )}
-      </KeyboardAvoidingView>
 
-      {/* ── Custom Action Sheet Bottom Modal ── */}
-      <Modal
-        visible={showActionSheet}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowActionSheet(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalBackdrop}
-          activeOpacity={1}
-          onPress={() => setShowActionSheet(false)}
-        >
-          <View style={[styles.bottomSheetContainer, { backgroundColor: theme.card }]}>
-            <View style={[styles.sheetIndicator, { backgroundColor: theme.border }]} />
-            
-            <Text style={[styles.sheetTitle, { color: theme.textSecondary }]}>
-              Message Options
-            </Text>
-
-            <TouchableOpacity style={styles.sheetOption} onPress={handleCopy}>
-              <Ionicons name="copy-outline" size={20} color={theme.text} />
-              <Text style={[styles.sheetOptionText, { color: theme.text }]}>Copy Text</Text>
-            </TouchableOpacity>
-
-            {selectedMessage?.isMine && (
-              <TouchableOpacity style={styles.sheetOption} onPress={handleStartEdit}>
-                <Ionicons name="pencil-outline" size={20} color={theme.primary} />
-                <Text style={[styles.sheetOptionText, { color: theme.text }]}>Edit Message</Text>
-              </TouchableOpacity>
-            )}
-
-            {(selectedMessage?.isMine || isPrivilegedRole) && (
-              <TouchableOpacity style={styles.sheetOption} onPress={handleDelete}>
-                <Ionicons name="trash-outline" size={20} color={theme.error} />
-                <Text style={[styles.sheetOptionText, { color: theme.error }]}>Delete Message</Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={[styles.sheetOption, styles.cancelOption]}
-              onPress={() => setShowActionSheet(false)}
-            >
-              <Ionicons name="close-outline" size={20} color={theme.textSecondary} />
-              <Text style={[styles.sheetOptionText, { color: theme.textSecondary }]}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* ── Custom Delete Prompt Modal ── */}
-      <Modal
-        visible={showDeletePrompt}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowDeletePrompt(false)}
-      >
-        <TouchableOpacity
-          style={styles.centeredBackdrop}
-          activeOpacity={1}
-          onPress={() => setShowDeletePrompt(false)}
-        >
-          <View style={[styles.deletePromptCard, { backgroundColor: theme.card }]}>
-            <View style={styles.deletePromptIconContainer}>
-              <Ionicons name="trash-outline" size={scale(20)} color="#ef4444" />
-            </View>
-            <Text style={[styles.deletePromptTitle, { color: theme.text }]}>Delete Message?</Text>
-            <Text style={[styles.deletePromptMessage, { color: theme.textSecondary }]}>
-              Are you sure you want to permanently delete this message? This action cannot be undone.
-            </Text>
-            
-            <View style={styles.deletePromptButtons}>
-              <TouchableOpacity
-                style={[styles.deletePromptButton, { borderColor: theme.border, borderWidth: 1, backgroundColor: 'transparent' }]}
-                onPress={() => setShowDeletePrompt(false)}
-              >
-                <Text style={[styles.deletePromptButtonText, { color: theme.textSecondary }]}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.deletePromptButton, { backgroundColor: '#ef4444' }]}
-                onPress={confirmDelete}
-              >
-                <Text style={[styles.deletePromptButtonText, { color: '#fff' }]}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* ── Custom Emoji Modal Overlay ── */}
-      <Modal
-        visible={showEmojiModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowEmojiModal(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalBackdrop}
-          activeOpacity={1}
-          onPress={() => setShowEmojiModal(false)}
-        >
-          <View style={[styles.bottomSheetContainer, { backgroundColor: theme.card }]}>
-            <View style={[styles.sheetIndicator, { backgroundColor: theme.border }]} />
-            
-            <Text style={[styles.sheetTitle, { color: theme.textSecondary }]}>
-              Select Emoji
-            </Text>
-
-            <View style={{
+        {/* ── Custom Inline Emoji Keyboard ── */}
+        {showEmojiModal && (
+          <View style={{
+            height: scale(250) + insets.bottom,
+            backgroundColor: theme.card,
+            paddingBottom: insets.bottom,
+          }}>
+            <ScrollView contentContainerStyle={{
               flexDirection: 'row',
               flexWrap: 'wrap',
               gap: 12,
               justifyContent: 'center',
-              paddingBottom: 20,
-            }}>
+              paddingHorizontal: scale(16),
+              paddingBottom: scale(20),
+            }}
+            keyboardShouldPersistTaps="handled"
+            >
               {EMOJI_LIST.map((emoji) => (
                 <TouchableOpacity
                   key={emoji}
@@ -1322,10 +1225,91 @@ export const MessagesScreen: React.FC = () => {
                   <Text style={{ fontSize: scale(22) }}>{emoji}</Text>
                 </TouchableOpacity>
               ))}
+            </ScrollView>
+          </View>
+        )}
+      </KeyboardAvoidingView>
+
+      {/* ── Custom Action Sheet Bottom Modal (Now Centered) ── */}
+      <Modal
+        visible={showActionSheet}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowActionSheet(false)}
+      >
+        <TouchableOpacity
+          style={[styles.centeredBackdrop, { backgroundColor: 'transparent' }]}
+          activeOpacity={1}
+          onPress={() => setShowActionSheet(false)}
+        >
+          <View style={[styles.centeredActionCard, { backgroundColor: theme.card, position: 'relative', paddingTop: scale(16) }]}>
+            {/* Top-Right Close Button */}
+            <TouchableOpacity
+              style={{ position: 'absolute', top: scale(8), right: scale(8), zIndex: 10, padding: scale(2) }}
+              onPress={() => setShowActionSheet(false)}
+            >
+              <Ionicons name="close" size={18} color={theme.textTertiary} />
+            </TouchableOpacity>
+
+            <Text style={[styles.sheetTitle, { color: theme.textSecondary, marginBottom: scale(4), textAlign: 'center' }]}>
+              Message Options
+            </Text>
+
+            <TouchableOpacity style={styles.sheetOption} onPress={handleCopy}>
+              <Ionicons name="copy-outline" size={20} color={theme.text} />
+              <Text style={[styles.sheetOptionText, { color: theme.text }]}>Copy Text</Text>
+            </TouchableOpacity>
+
+            {selectedMessage?.isMine && (
+              <TouchableOpacity style={styles.sheetOption} onPress={handleStartEdit}>
+                <Ionicons name="pencil-outline" size={20} color={theme.primary} />
+                <Text style={[styles.sheetOptionText, { color: theme.text }]}>Edit Message</Text>
+              </TouchableOpacity>
+            )}
+
+            {(selectedMessage?.isMine || isPrivilegedRole) && (
+              <TouchableOpacity style={[styles.sheetOption, { borderBottomWidth: 0 }]} onPress={handleDelete}>
+                <Ionicons name="trash-outline" size={20} color={theme.error} />
+                <Text style={[styles.sheetOptionText, { color: theme.error }]}>Delete Message</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ── Custom Delete Prompt Modal ── */}
+      <Modal
+        visible={showDeletePrompt}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDeletePrompt(false)}
+      >
+        <TouchableOpacity
+          style={[styles.centeredBackdrop, { backgroundColor: 'transparent' }]}
+          activeOpacity={1}
+          onPress={() => setShowDeletePrompt(false)}
+        >
+          <View style={[styles.centeredActionCard, { backgroundColor: theme.card, padding: scale(16), alignItems: 'center' }]}>
+            <Text style={{ fontSize: scale(14), fontWeight: '700', color: theme.text, marginBottom: scale(4), textAlign: 'center' }}>
+              Delete Message?
+            </Text>
+            <Text style={{ fontSize: scale(12), color: theme.textSecondary, marginBottom: scale(16), lineHeight: scale(16), textAlign: 'center' }}>
+              This message will be permanently deleted.
+            </Text>
+            
+            <View style={{ flexDirection: 'row', justifyContent: 'center', width: '100%', gap: scale(16) }}>
+              <TouchableOpacity onPress={() => setShowDeletePrompt(false)}>
+                <Text style={{ color: theme.textSecondary, fontWeight: '600', fontSize: scale(14) }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={confirmDelete}>
+                <Text style={{ color: '#ef4444', fontWeight: '700', fontSize: scale(14) }}>Delete</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* ── Custom Emoji Modal Removed (Now Inline) ── */}
 
       {/* ── Reaction Picker Modal ── */}
       <Modal
@@ -1536,12 +1520,12 @@ const styles = StyleSheet.create({
   blinkingBadge: {
     backgroundColor: '#10b981',
     minWidth: 22,
-    height: 22,
-    borderRadius: 11,
+    height: scale(22),
+    borderRadius: scale(11),
     justifyContent: 'center' as const,
     alignItems: 'center' as const,
-    paddingHorizontal: 5,
-    marginRight: 6,
+    paddingHorizontal: scale(5),
+    marginRight: scale(6),
     shadowColor: '#10b981',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
@@ -1550,7 +1534,7 @@ const styles = StyleSheet.create({
   },
   blinkingBadgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: scale(10),
     fontWeight: '800',
   },
 
@@ -1564,44 +1548,44 @@ const styles = StyleSheet.create({
   },
 
   // Messages list
-  messagesList: { padding: 16, paddingBottom: 16 },
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 100 },
-  emptyText: { textAlign: 'center', marginTop: 12, fontSize: 15, lineHeight: 22 },
+  messagesList: { padding: scale(16), paddingBottom: scale(16) },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: scale(100) },
+  emptyText: { textAlign: 'center', marginTop: scale(12), fontSize: scale(15), lineHeight: 22 },
 
   // Message bubbles
   msgRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 2, flexWrap: 'wrap' },
   msgLeft: { justifyContent: 'flex-start' },
   msgRight: { justifyContent: 'flex-end' },
   avatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: scale(24),
+    height: scale(24),
+    borderRadius: scale(12),
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 6,
+    marginRight: scale(6),
     overflow: 'hidden',
   },
-  avatarText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
+  avatarText: { color: '#fff', fontSize: scale(11), fontWeight: 'bold' },
   msgContentWrapper: { maxWidth: width * 0.75 },
-  msgBubble: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14 },
-  msgSender: { fontSize: 11, fontWeight: '600', marginBottom: 0 },
-  roleBadge: { paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 },
-  roleBadgeText: { fontSize: 8, fontWeight: '800', letterSpacing: 0.4 },
-  msgTime: { fontSize: 9, alignSelf: 'flex-end', marginTop: 2 },
+  msgBubble: { paddingHorizontal: scale(12), paddingVertical: scale(8), borderRadius: scale(14) },
+  msgSender: { fontSize: scale(11), fontWeight: '600', marginBottom: 0 },
+  roleBadge: { paddingHorizontal: scale(5), paddingVertical: 1, borderRadius: scale(4) },
+  roleBadgeText: { fontSize: scale(8), fontWeight: '800', letterSpacing: 0.4 },
+  msgTime: { fontSize: scale(9), alignSelf: 'flex-end', marginTop: 2 },
 
   announcementBubble: {
     backgroundColor: '#fff3cd',
-    padding: 14,
-    borderRadius: 12,
-    marginVertical: 16,
+    padding: scale(14),
+    borderRadius: scale(12),
+    marginVertical: scale(16),
     borderWidth: 1,
     borderColor: '#ffe69c',
     alignSelf: 'center',
     width: '90%',
   },
-  announcementLabel: { color: '#856404', fontSize: 12, fontWeight: '700', marginBottom: 6 },
-  announcementText: { color: '#856404', fontSize: 14, lineHeight: 20 },
-  announcementTime: { color: '#856404', fontSize: 10, alignSelf: 'flex-end', marginTop: 6, opacity: 0.7 },
+  announcementLabel: { color: '#856404', fontSize: scale(12), fontWeight: '700', marginBottom: scale(6) },
+  announcementText: { color: '#856404', fontSize: scale(14), lineHeight: 20 },
+  announcementTime: { color: '#856404', fontSize: scale(10), alignSelf: 'flex-end', marginTop: scale(6), opacity: 0.7 },
 
   // ── FIX: Input container ──────────────────────────────────────────────
   // Removed the static paddingBottom that was conflicting with the dynamic
@@ -1610,8 +1594,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     flexWrap: 'wrap',
-    paddingTop: 10,
-    paddingHorizontal: 12,
+    paddingTop: scale(10),
+    paddingHorizontal: scale(12),
     borderTopWidth: 1,
     // paddingBottom is applied inline dynamically via inputBarPaddingBottom
   },
@@ -1620,19 +1604,19 @@ const styles = StyleSheet.create({
     minHeight: 40,
     maxHeight: 100,
     borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    paddingRight: 12,
-    fontSize: 15,
+    borderRadius: scale(20),
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(10),
+    paddingRight: scale(12),
+    fontSize: scale(15),
   },
   sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 10,
+    marginLeft: scale(10),
     marginBottom: 2,
   },
   // Edit Bar above input
@@ -1640,8 +1624,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(10),
     borderTopWidth: 1,
   },
   editBarContent: {
@@ -1650,7 +1634,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   editBarText: {
-    fontSize: 12,
+    fontSize: scale(12),
     fontWeight: '500',
   },
   // Bottom Sheet Modal
@@ -1669,39 +1653,52 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingHorizontal: scale(20),
+    paddingTop: scale(12),
+  },
+  centeredActionCard: {
+    width: scale(200),
+    borderRadius: scale(12),
+    paddingTop: scale(12),
+    paddingBottom: scale(6),
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
   },
   sheetIndicator: {
-    width: 36,
-    height: 4,
+    width: scale(36),
+    height: scale(4),
     borderRadius: 2,
     alignSelf: 'center',
-    marginBottom: 16,
+    marginBottom: scale(16),
   },
   sheetTitle: {
-    fontSize: 12,
+    fontSize: scale(12),
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    marginBottom: 12,
+    marginBottom: scale(12),
     textAlign: 'center',
   },
   sheetOption: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   sheetOptionText: {
-    fontSize: 15,
+    fontSize: scale(15),
     fontWeight: '600',
-    marginLeft: 12,
+    marginLeft: scale(12),
   },
   cancelOption: {
     borderBottomWidth: 0,
-    marginTop: 8,
+    marginTop: scale(4),
+    marginBottom: scale(4),
     justifyContent: 'center',
   },
 
@@ -1710,16 +1707,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 5,
-    marginTop: 5,
-    marginBottom: 4,
-    paddingHorizontal: 4,
+    marginTop: scale(5),
+    marginBottom: scale(4),
+    paddingHorizontal: scale(4),
   },
   reactionPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: scale(12),
     borderWidth: 1,
-    paddingHorizontal: 8,
+    paddingHorizontal: scale(8),
     paddingVertical: 3,
     gap: 3,
     backgroundColor: 'rgba(0,0,0,0.04)',
@@ -1738,13 +1735,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   reactionPickerContainer: {
-    borderRadius: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-    paddingHorizontal: 16,
+    borderRadius: scale(20),
+    paddingTop: scale(16),
+    paddingBottom: scale(12),
+    paddingHorizontal: scale(16),
     width: width * 0.82,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: scale(8) },
     shadowOpacity: 0.18,
     shadowRadius: 16,
     elevation: 12,
@@ -1755,7 +1752,7 @@ const styles = StyleSheet.create({
     gap: 8,
     flexWrap: 'wrap',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: scale(4),
   },
   quickReactionBtn: {
     width: scale(46),
@@ -1766,16 +1763,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.04)',
   },
   quickReactionEmoji: { fontSize: scale(26) },
-  reactionDivider: { height: 1, width: '80%', marginVertical: 12, opacity: 0.3 },
+  reactionDivider: { height: 1, width: '80%', marginVertical: scale(12), opacity: 0.3 },
   reactionLabel: { fontSize: scale(10), fontWeight: '500', opacity: 0.6, textAlign: 'center' },
 
   // ── Reaction Names Modal ───────────────────────────────────────────────
   reactionNamesCard: {
-    borderRadius: 20,
+    borderRadius: scale(20),
     marginHorizontal: scale(24),
     padding: scale(16),
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: scale(10) },
     shadowOpacity: 0.2,
     shadowRadius: 20,
     elevation: 14,

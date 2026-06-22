@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Dimensions, StatusBar, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { scale } from '../../utils/responsive';
@@ -41,16 +41,35 @@ export const StaffInfoScreen: React.FC = () => {
     dispatch(toggleLikeTeacherAsync({ teacher: teacher as any, isCurrentlyLiked: isFavorite }));
   };
 
+  const allStaff = useAppSelector((state) => state.teachers.list);
+  
+  // Dynamically find the admin/HOD contact from the staff list
+  const adminStaff = useMemo(() => {
+    return allStaff.find((s: any) => 
+      s.role?.toUpperCase() === 'HOD' || 
+      s.position?.toUpperCase() === 'HOD'
+    );
+  }, [allStaff]);
+
+  // Use the admin's phone number if available, otherwise use a fallback
+  const ADMIN_PHONE = (adminStaff as any)?.phone || (adminStaff as any)?.contact || "+920000000000";
+
   const handleContactPress = () => {
-    if (teacher.phone) {
-      Linking.openURL(`tel:${teacher.phone}`).catch((err) => {
-        console.warn('Error opening dialer:', err);
-        Alert.alert('Error', 'Unable to open the phone dialer.');
-      });
-    } else {
-      Alert.alert('Contact Unavailable', "This teacher's phone number is not available.");
-    }
+    Linking.openURL(`tel:${ADMIN_PHONE}`).catch((err) => {
+      console.warn('Error opening dialer:', err);
+      Alert.alert('Error', 'Unable to open the phone dialer.');
+    });
   };
+
+  // Hide TopHeader and tab bar when this screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      navigation.getParent()?.setOptions({
+        tabBarStyle: { display: 'none' },
+        headerShown: false,
+      });
+    }, [navigation])
+  );
 
   // Modern Header Background Color
   const headerBg = isDark ? theme.backgroundSecondary : theme.primary; // Dark mode: nice dark gray, Light mode: primary color
@@ -71,7 +90,7 @@ export const StaffInfoScreen: React.FC = () => {
           >
             <Ionicons name="arrow-back" size={scale(24)} color="#ffffff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Teacher Profile</Text>
+          {/* Header Title Removed */}
           <TouchableOpacity
             onPress={handleToggleLike}
             style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
@@ -93,10 +112,20 @@ export const StaffInfoScreen: React.FC = () => {
             <View style={styles.profileMainRow}>
               <View style={styles.imageWrapper}>
                 <View style={[styles.imageRing, { borderColor: theme.primary }]}>
-                  <Image
-                    source={{ uri: teacher.image }}
-                    style={styles.profileImage}
-                  />
+                  {teacher.image ? (
+                    <Image
+                      source={{ uri: teacher.image }}
+                      style={styles.profileImage}
+                    />
+                  ) : (
+                    <View style={[styles.profileImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#e5e7eb' }]}>
+                      <Ionicons 
+                        name={(teacher as any).gender?.toLowerCase() === 'female' ? "woman" : "man"} 
+                        size={scale(40)} 
+                        color="#9ca3af" 
+                      />
+                    </View>
+                  )}
                 </View>
                 <View style={[styles.verifiedBadge, { backgroundColor: theme.card }]}>
                   <Ionicons name="checkmark-circle" size={scale(16)} color="#4CAF50" />
@@ -154,7 +183,7 @@ export const StaffInfoScreen: React.FC = () => {
           {/* About */}
           <Text style={[styles.sectionHeader, { color: theme.text }]}>About Educator</Text>
           <Text style={[styles.aboutText, { color: theme.textSecondary }]}>
-            {teacher.name} is a dedicated {teacher.subject} educator with a passion for student success. With {teacher.experience} of experience, they bring innovative teaching methodologies and a highly supportive learning approach to the academy.
+            <Text style={{ fontWeight: 'bold', color: theme.text }}>{teacher.name}</Text> is a dedicated {teacher.subject} educator with a passion for student success. With {teacher.experience} of experience, they bring innovative teaching methodologies and a highly supportive learning approach to the academy.
           </Text>
 
           {/* Professional Credentials Card */}
@@ -198,8 +227,8 @@ export const StaffInfoScreen: React.FC = () => {
           activeOpacity={0.8}
           onPress={handleContactPress}
         >
-          <Ionicons name="call-outline" size={scale(20)} color="#fff" style={{ marginRight: 8 }} />
-          <Text style={styles.contactButtonText}>Call Teacher</Text>
+          <Ionicons name="call-outline" size={scale(20)} color="#fff" style={{ marginRight: scale(8) }} />
+          <Text style={styles.contactButtonText}>Call Admin</Text>
         </TouchableOpacity>
       </View>
 
@@ -260,7 +289,7 @@ const styles = StyleSheet.create({
   profileCard: {
     borderRadius: scale(16),
     padding: scale(12),
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: scale(4) },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 5,
@@ -283,7 +312,7 @@ const styles = StyleSheet.create({
     padding: scale(3),
     backgroundColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: scale(4) },
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 10,

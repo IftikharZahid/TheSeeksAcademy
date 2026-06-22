@@ -5,12 +5,12 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchResults } from '../../store/slices/resultsSlice';
+import * as Sharing from 'expo-sharing';
 import { db, auth } from '../../api/firebaseConfig';
-import { collection, onSnapshot, query, where, or, getDocs } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
-import * as Sharing from 'expo-sharing';
+import { scale } from '../../utils/responsive';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isSmallScreen = SCREEN_WIDTH < 380;
@@ -63,7 +63,6 @@ export const ResultsScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const entries = useAppSelector(state => state.results.list);
   const loading = useAppSelector(state => state.results.isLoading);
-  const [peerExamsData, setPeerExamsData] = useState<any[]>([]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -133,22 +132,6 @@ export const ResultsScreen: React.FC = () => {
         studentName: studentName || null,
         studentClass: studentClass || null
     }));
-
-    // Fetch peer exams for ranking if studentClass is known
-    if (studentClass) {
-        try {
-            const q = query(
-                collection(db, 'exams'),
-                where('studentClass', '==', studentClass)
-            );
-            const snapshot = await getDocs(q);
-            const peers: any[] = [];
-            snapshot.forEach(d => peers.push({ id: d.id, ...d.data() }));
-            setPeerExamsData(peers);
-        } catch (err) {
-            console.error('Error fetching peer exams:', err);
-        }
-    }
   }, [userRollNo, studentName, studentClass, user?.email, dispatch]);
 
   useEffect(() => { fetchExams(); }, [fetchExams]);
@@ -234,8 +217,8 @@ export const ResultsScreen: React.FC = () => {
 
     // Calculate Class Position dynamically based on peer exams
     let computedPosition = '-';
-    // Use peerExamsData if populated, fallback to allSystemExams
-    const sourceExams = peerExamsData.length > 0 ? peerExamsData : allSystemExams;
+    // Use allSystemExams to rank against peers
+    const sourceExams = allSystemExams;
 
     if (studentClass && activeTab !== 'All' && sourceExams.length > 0) {
       // Find all exams matching this class and this test (activeTab)
@@ -332,7 +315,7 @@ export const ResultsScreen: React.FC = () => {
           <Ionicons name="chevron-back" size={20} color={isDark ? '#e2e8f0' : '#1e293b'} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: isDark ? '#f8fafc' : '#0f172a', fontSize: fontSize.header }]}>Result Detail</Text>
-        <View style={{ width: 28 }} />
+        <View style={{ width: scale(28) }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? '#fff' : '#000'} />}>
@@ -344,7 +327,7 @@ export const ResultsScreen: React.FC = () => {
             <Text style={[styles.dropdownLabel, { color: isDark ? '#64748b' : '#94a3b8' }]}>Test Type</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text numberOfLines={1} style={[styles.dropdownText, { color: isDark ? '#cbd5e1' : '#334155' }]}>{activeCategory === 'All' ? 'All Types' : activeCategory}</Text>
-              <Ionicons name="chevron-down" size={14} color={isDark ? '#94a3b8' : '#64748b'} style={{ marginLeft: 6 }} />
+              <Ionicons name="chevron-down" size={14} color={isDark ? '#94a3b8' : '#64748b'} style={{ marginLeft: scale(6) }} />
             </View>
           </TouchableOpacity>
 
@@ -357,13 +340,13 @@ export const ResultsScreen: React.FC = () => {
             <Text style={[styles.dropdownLabel, { color: isDark ? '#64748b' : '#94a3b8' }]}>Test No.</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text numberOfLines={1} style={[styles.dropdownText, { color: isDark ? '#cbd5e1' : '#334155' }]}>{activeTab === 'All' ? 'All Tests' : activeTab}</Text>
-              <Ionicons name="chevron-down" size={14} color={isDark ? '#94a3b8' : '#64748b'} style={{ marginLeft: 6 }} />
+              <Ionicons name="chevron-down" size={14} color={isDark ? '#94a3b8' : '#64748b'} style={{ marginLeft: scale(6) }} />
             </View>
           </TouchableOpacity>
         </View>
 
-        {loading ? <ActivityIndicator color="#334155" style={{ marginTop: 20 }} /> :
-          processedData.subjects.length === 0 ? <Text style={{ textAlign: 'center', color: '#94a3b8', marginTop: 20 }}>No results found.</Text> : (
+        {loading ? <ActivityIndicator color="#334155" style={{ marginTop: scale(20) }} /> :
+          processedData.subjects.length === 0 ? <Text style={{ textAlign: 'center', color: '#94a3b8', marginTop: scale(20) }}>No results found.</Text> : (
             <View ref={viewShotRef} collapsable={false} style={styles.resultSheet}>
 
               <View style={styles.sheetHeader}>
@@ -435,12 +418,12 @@ export const ResultsScreen: React.FC = () => {
               </View>
             </View>
           )}
-        <View style={{ height: 80 }} />
+        <View style={{ height: scale(80) }} />
       </ScrollView>
 
       <View style={styles.fabContainer}>
         <TouchableOpacity style={styles.saveButton} activeOpacity={0.8} onPress={handleSaveResult}>
-          <Ionicons name="download-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
+          <Ionicons name="download-outline" size={16} color="#fff" style={{ marginRight: scale(6) }} />
           <Text style={styles.saveButtonText}>Save Result</Text>
         </TouchableOpacity>
       </View>
@@ -496,59 +479,59 @@ export const ResultsScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, elevation: 2 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: scale(16), paddingVertical: scale(12), elevation: 2 },
   headerTitle: { fontWeight: '700' },
-  iconBtn: { padding: 4 },
-  scrollContent: { padding: 10 },
+  iconBtn: { padding: scale(4) },
+  scrollContent: { padding: scale(10) },
   filterSearchRow: { 
-    flexDirection: 'row', alignItems: 'center', borderRadius: 12, marginBottom: 12, 
+    flexDirection: 'row', alignItems: 'center', borderRadius: scale(12), marginBottom: scale(12), 
     elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, 
-    borderWidth: 1, height: 50, paddingHorizontal: 4 
+    borderWidth: 1, height: scale(50), paddingHorizontal: scale(4) 
   },
-  verticalDivider: { width: 1, height: '60%', marginHorizontal: 8 },
-  inlineDropdown: { flex: 1, paddingHorizontal: 10, height: '100%', justifyContent: 'center' },
-  dropdownLabel: { fontSize: 10, fontWeight: '600', marginBottom: 2 },
-  dropdownText: { fontSize: 13, fontWeight: '700' },
+  verticalDivider: { width: 1, height: '60%', marginHorizontal: scale(8) },
+  inlineDropdown: { flex: 1, paddingHorizontal: scale(10), height: '100%', justifyContent: 'center' },
+  dropdownLabel: { fontSize: scale(10), fontWeight: '600', marginBottom: 2 },
+  dropdownText: { fontSize: scale(13), fontWeight: '700' },
 
-  resultSheet: { backgroundColor: '#fff', borderRadius: 8, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0' },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  sheetLogo: { marginRight: 8 },
+  resultSheet: { backgroundColor: '#fff', borderRadius: scale(8), padding: scale(12), marginBottom: scale(16), borderWidth: 1, borderColor: '#e2e8f0' },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: scale(12) },
+  sheetLogo: { marginRight: scale(8) },
   sheetHeaderCenter: { flex: 1, alignItems: 'center' },
   sheetAcademyName: { fontWeight: '800', color: '#0f172a', textAlign: 'center' },
   sheetTitle: { fontWeight: '600', color: '#475569', marginTop: 2, textAlign: 'center' },
 
-  studentInfoSection: { marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingBottom: 10 },
-  infoRow: { flexDirection: 'row', marginBottom: 4, alignItems: 'center' },
-  infoLabel: { fontWeight: '700', color: '#0f172a', width: 70 },
+  studentInfoSection: { marginBottom: scale(12), borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingBottom: scale(10) },
+  infoRow: { flexDirection: 'row', marginBottom: scale(4), alignItems: 'center' },
+  infoLabel: { fontWeight: '700', color: '#0f172a', width: scale(70) },
   infoValue: { color: '#334155', flex: 1 },
 
-  table: { borderWidth: 1, borderColor: '#1e293b', marginBottom: 12 },
+  table: { borderWidth: 1, borderColor: '#1e293b', marginBottom: scale(12) },
   tableHeaderRow: { flexDirection: 'row', backgroundColor: '#f1f5f9', borderBottomWidth: 1, borderBottomColor: '#1e293b' },
-  tableHeaderCell: { flex: 1, fontWeight: '700', color: '#0f172a', textAlign: 'center', paddingVertical: 5, paddingHorizontal: 2, borderRightWidth: 1, borderRightColor: '#cbd5e1' },
+  tableHeaderCell: { flex: 1, fontWeight: '700', color: '#0f172a', textAlign: 'center', paddingVertical: scale(5), paddingHorizontal: 2, borderRightWidth: 1, borderRightColor: '#cbd5e1' },
   tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
   tableRowAlt: { backgroundColor: '#fafafa' },
-  tableCell: { flex: 1, color: '#334155', textAlign: 'center', paddingVertical: 5, paddingHorizontal: 2, borderRightWidth: 1, borderRightColor: '#e2e8f0' },
-  subjectCell: { textAlign: 'left', fontWeight: '600', fontStyle: 'italic', paddingLeft: 4 },
+  tableCell: { flex: 1, color: '#334155', textAlign: 'center', paddingVertical: scale(5), paddingHorizontal: 2, borderRightWidth: 1, borderRightColor: '#e2e8f0' },
+  subjectCell: { textAlign: 'left', fontWeight: '600', fontStyle: 'italic', paddingLeft: scale(4) },
   remarksCell: { textAlign: 'left', paddingLeft: 3 },
   totalRow: { flexDirection: 'row', backgroundColor: '#f1f5f9' },
-  totalCell: { flex: 1, fontWeight: '600', color: '#0f172a', textAlign: 'center', paddingVertical: 5, borderRightWidth: 1, borderRightColor: '#cbd5e1' },
+  totalCell: { flex: 1, fontWeight: '600', color: '#0f172a', textAlign: 'center', paddingVertical: scale(5), borderRightWidth: 1, borderRightColor: '#cbd5e1' },
 
-  sheetFooter: { marginTop: 6 },
-  footerMessage: { fontWeight: '600', color: '#0f172a', textAlign: 'center', marginBottom: 8 },
-  signatureSection: { marginBottom: 8 },
+  sheetFooter: { marginTop: scale(6) },
+  footerMessage: { fontWeight: '600', color: '#0f172a', textAlign: 'center', marginBottom: scale(8) },
+  signatureSection: { marginBottom: scale(8) },
   signatureRow: { flexDirection: 'row', alignItems: 'center' },
-  signatureLabel: { fontWeight: '600', color: '#0f172a', width: 100 },
-  signatureLine: { flex: 1, height: 1, backgroundColor: '#94a3b8', marginLeft: 8, maxWidth: 120 },
-  addressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 6 },
-  addressText: { color: '#64748b', marginLeft: 4, textAlign: 'center' },
+  signatureLabel: { fontWeight: '600', color: '#0f172a', width: scale(100) },
+  signatureLine: { flex: 1, height: 1, backgroundColor: '#94a3b8', marginLeft: scale(8), maxWidth: 120 },
+  addressRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: scale(6) },
+  addressText: { color: '#64748b', marginLeft: scale(4), textAlign: 'center' },
 
-  fabContainer: { position: 'absolute', bottom: 40, left: 0, right: 0, alignItems: 'center', zIndex: 100 },
-  saveButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#334155', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 30, elevation: 5 },
-  saveButtonText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  fabContainer: { position: 'absolute', bottom: scale(40), left: 0, right: 0, alignItems: 'center', zIndex: 100 },
+  saveButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#334155', paddingHorizontal: scale(20), paddingVertical: scale(10), borderRadius: scale(30), elevation: 5 },
+  saveButtonText: { color: '#fff', fontSize: scale(13), fontWeight: '700' },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { width: '75%', borderRadius: 12, padding: 12, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
-  modalTitle: { fontSize: 14, fontWeight: '700', marginBottom: 8, textAlign: 'center' },
-  modalOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 6, marginBottom: 2 },
-  modalOptionText: { fontSize: 12 }
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: scale(20) },
+  modalContent: { width: '75%', borderRadius: scale(12), padding: scale(12), elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
+  modalTitle: { fontSize: scale(14), fontWeight: '700', marginBottom: scale(8), textAlign: 'center' },
+  modalOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: scale(10), paddingHorizontal: scale(12), borderRadius: scale(6), marginBottom: 2 },
+  modalOptionText: { fontSize: scale(12) }
 });

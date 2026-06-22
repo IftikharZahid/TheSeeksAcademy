@@ -19,6 +19,7 @@ import { auth, db } from '../../api/firebaseConfig';
 import { useNetInfo } from '@react-native-community/netinfo';
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useAppSelector } from '../../store/hooks';
+import { scale } from '../../utils/responsive';
 
 const { width } = Dimensions.get('window');
 
@@ -571,12 +572,12 @@ export const VideoLecturesScreen: React.FC = () => {
                                 <Ionicons name="videocam" size={12} color={galleryColor} />
                                 <Text style={[styles.metaText, { color: galleryColor }]}>{galleryName}</Text>
                             </View>
-                            <View style={[styles.metaBadge, { backgroundColor: isDark ? theme.backgroundSecondary : '#f3f4f6', marginLeft: 8 }]}>
+                            <View style={[styles.metaBadge, { backgroundColor: isDark ? theme.backgroundSecondary : '#f3f4f6', marginLeft: scale(8) }]}>
                                 <Ionicons name="bookmark" size={12} color={theme.textSecondary} />
                                 <Text style={[styles.metaText, { color: theme.textSecondary }]}>Chapter {currentVideo.chapterNo}</Text>
                             </View>
                             {currentVideo.duration && (
-                                <Text style={[styles.videoDuration, { color: theme.textSecondary, marginLeft: 10 }]}>
+                                <Text style={[styles.videoDuration, { color: theme.textSecondary, marginLeft: scale(10) }]}>
                                     {currentVideo.duration}
                                 </Text>
                             )}
@@ -703,13 +704,13 @@ export const VideoLecturesScreen: React.FC = () => {
                 {initialLoading && (
                     <View style={styles.emptyState}>
                         <ActivityIndicator size="large" color={galleryColor} />
-                        <Text style={[styles.emptyText, { color: theme.textSecondary, marginTop: 12 }]}>
+                        <Text style={[styles.emptyText, { color: theme.textSecondary, marginTop: scale(12) }]}>
                             Loading videos...
                         </Text>
                     </View>
                 )}
 
-                <View style={{ height: 40 }} />
+                <View style={{ height: scale(40) }} />
             </ScrollView>
         </SafeAreaView>
     );
@@ -722,76 +723,76 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
+        paddingHorizontal: scale(12),
+        paddingVertical: scale(10),
         borderBottomWidth: 0.5,
     },
     backButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
+        width: scale(36),
+        height: scale(36),
+        borderRadius: scale(10),
         justifyContent: 'center',
         alignItems: 'center',
     },
     headerInfo: {
         flex: 1,
-        marginLeft: 12,
-        marginRight: 8,
+        marginLeft: scale(12),
+        marginRight: scale(8),
     },
     headerTitle: {
-        fontSize: 16,
+        fontSize: scale(16),
         fontWeight: '700',
     },
     headerSubtitle: {
-        fontSize: 12,
+        fontSize: scale(12),
     },
     actionButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
+        width: scale(36),
+        height: scale(36),
+        borderRadius: scale(10),
         justifyContent: 'center',
         alignItems: 'center',
     },
     scrollContent: {
-        paddingBottom: 20,
-        paddingTop: 10,
+        paddingBottom: scale(20),
+        paddingTop: scale(10),
     },
     playerContainer: {
         width: width - 24,
         alignSelf: 'center',
-        marginBottom: 16,
+        marginBottom: scale(16),
     },
     playerGradientBorder: {
         padding: 2,
-        borderRadius: 14,
+        borderRadius: scale(14),
     },
     playerWrapper: {
-        borderRadius: 12,
+        borderRadius: scale(12),
         overflow: 'hidden',
         backgroundColor: '#000',
     },
     noVideoContainer: {
         width: width - 32,
-        height: 200,
-        borderRadius: 16,
+        height: scale(200),
+        borderRadius: scale(16),
         alignSelf: 'center',
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: scale(16),
     },
     noVideoText: {
-        marginTop: 10,
+        marginTop: scale(10),
         fontWeight: '500',
     },
     currentVideoInfo: {
-        paddingHorizontal: 16,
-        marginBottom: 4,
+        paddingHorizontal: scale(16),
+        marginBottom: scale(4),
     },
     currentVideoTitle: {
-        fontSize: 18,
+        fontSize: scale(18),
         fontWeight: '700',
         lineHeight: 24,
-        marginBottom: 8,
+        marginBottom: scale(8),
     },
     videoMeta: {
         flexDirection: 'row',
@@ -801,63 +802,63 @@ const styles = StyleSheet.create({
     metaBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 6,
+        paddingHorizontal: scale(8),
+        paddingVertical: scale(4),
+        borderRadius: scale(6),
         gap: 4,
     },
     metaText: {
-        fontSize: 11,
+        fontSize: scale(11),
         fontWeight: '600',
     },
     videoDuration: {
-        fontSize: 12,
+        fontSize: scale(12),
     },
 
     // Chapter Section
     chapterSection: {
-        paddingHorizontal: 12,
-        marginTop: 16,
+        paddingHorizontal: scale(12),
+        marginTop: scale(16),
     },
     chapterHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
-        borderRadius: 12,
+        padding: scale(12),
+        borderRadius: scale(12),
         borderWidth: 1,
     },
     chapterIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
+        width: scale(36),
+        height: scale(36),
+        borderRadius: scale(10),
         justifyContent: 'center',
         alignItems: 'center',
     },
     chapterInfo: {
         flex: 1,
-        marginLeft: 10,
+        marginLeft: scale(10),
     },
     chapterTitle: {
-        fontSize: 14,
+        fontSize: scale(14),
         fontWeight: '700',
     },
     chapterMeta: {
-        fontSize: 11,
+        fontSize: scale(11),
         marginTop: 2,
     },
     expandIcon: {
-        width: 28,
-        height: 28,
-        borderRadius: 8,
+        width: scale(28),
+        height: scale(28),
+        borderRadius: scale(8),
         justifyContent: 'center',
         alignItems: 'center',
     },
     videoListContainer: {
-        marginTop: 8,
-        marginLeft: 20,
+        marginTop: scale(8),
+        marginLeft: scale(20),
         borderLeftWidth: 2,
         borderLeftColor: '#e5e7eb',
-        paddingLeft: 12,
+        paddingLeft: scale(12),
     },
     videoList: {
         gap: 8,
@@ -865,91 +866,91 @@ const styles = StyleSheet.create({
     videoItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
-        borderRadius: 12,
+        padding: scale(12),
+        borderRadius: scale(12),
         borderWidth: 1,
     },
     videoNumber: {
-        width: 28,
-        height: 28,
-        borderRadius: 8,
+        width: scale(28),
+        height: scale(28),
+        borderRadius: scale(8),
         justifyContent: 'center',
         alignItems: 'center',
     },
     videoNumberText: {
-        fontSize: 12,
+        fontSize: scale(12),
         fontWeight: '700',
     },
     videoInfo: {
         flex: 1,
-        marginLeft: 10,
+        marginLeft: scale(10),
     },
     videoTitle: {
-        fontSize: 13,
+        fontSize: scale(13),
         fontWeight: '600',
     },
     videoItemDuration: {
-        fontSize: 12,
+        fontSize: scale(12),
         marginTop: 2,
     },
     durationBadge: {
         flexDirection: 'row',
         alignItems: 'center',
         alignSelf: 'flex-start',
-        paddingHorizontal: 6,
+        paddingHorizontal: scale(6),
         paddingVertical: 2,
-        borderRadius: 4,
-        marginTop: 4,
+        borderRadius: scale(4),
+        marginTop: scale(4),
         gap: 4,
     },
     durationText: {
-        fontSize: 10,
+        fontSize: scale(10),
         fontWeight: '500',
     },
     playBadge: {
-        width: 32,
-        height: 28,
-        borderRadius: 8,
+        width: scale(32),
+        height: scale(28),
+        borderRadius: scale(8),
         justifyContent: 'center',
         alignItems: 'center',
     },
     emptyState: {
         alignItems: 'center',
-        paddingVertical: 30,
-        marginTop: 20,
+        paddingVertical: scale(30),
+        marginTop: scale(20),
     },
     emptyText: {
-        marginTop: 10,
-        fontSize: 14,
+        marginTop: scale(10),
+        fontSize: scale(14),
     },
     // Error UI Styles
     errorContainer: {
-        height: 180,
+        height: scale(180),
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        padding: scale(20),
     },
     errorText: {
-        fontSize: 14,
+        fontSize: scale(14),
         fontWeight: '600',
-        marginTop: 8,
+        marginTop: scale(8),
     },
     errorSubText: {
-        fontSize: 11,
-        marginTop: 4,
-        marginBottom: 12,
+        fontSize: scale(11),
+        marginTop: scale(4),
+        marginBottom: scale(12),
     },
     retryButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
+        paddingHorizontal: scale(16),
+        paddingVertical: scale(8),
+        borderRadius: scale(20),
         gap: 6,
     },
     retryText: {
         color: '#fff',
-        fontSize: 12,
+        fontSize: scale(12),
         fontWeight: '600',
     },
     // Progress Bar

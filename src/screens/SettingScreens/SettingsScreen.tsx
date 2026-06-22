@@ -9,6 +9,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "../../api/firebaseConfig";
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { scale } from '../../utils/responsive';
 
 interface SettingItemProps {
   icon: string;
@@ -67,10 +68,6 @@ export const SettingsScreen: React.FC = () => {
     }
   };
 
-  const generalItems = [
-    { icon: 'key', color: '#8b5cf6', title: 'Change Password', screen: 'ChangePasswordScreen' },
-  ];
-
   const preferenceItems = [
     { icon: 'information-circle', color: '#6366f1', title: 'About App', screen: 'AboutScreen' },
     { icon: 'shield-checkmark', color: '#10b981', title: 'Privacy Policy', screen: 'PrivacyPolicyScreen' },
@@ -88,7 +85,7 @@ export const SettingsScreen: React.FC = () => {
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Settings</Text>
-        <View style={{ width: 36 }} />
+        <View style={{ width: scale(36) }} />
       </View>
 
       <ScrollView
@@ -100,25 +97,6 @@ export const SettingsScreen: React.FC = () => {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>GENERAL</Text>
           <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            {generalItems.map((item, index) => (
-              <React.Fragment key={item.title}>
-                {index > 0 && <View style={[styles.divider, { backgroundColor: theme.border }]} />}
-                <SettingItem
-                  icon={item.icon}
-                  iconColor={item.color}
-                  title={item.title}
-                  onPress={item.screen ? () => navigation.navigate(item.screen as never) : undefined}
-                  rightElement={(item as any).value ? (
-                    <View style={styles.valueContainer}>
-                      <Text style={[styles.valueText, { color: theme.textSecondary }]}>{(item as any).value}</Text>
-                      <Ionicons name="chevron-forward" size={18} color={theme.textTertiary} />
-                    </View>
-                  ) : undefined}
-                />
-              </React.Fragment>
-            ))}
-
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
             {/* Dark Mode Toggle */}
             <SettingItem
@@ -157,33 +135,7 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Admin Panel */}
-        {isAdmin && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>ADMIN</Text>
-            <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <TouchableOpacity
-                style={styles.adminRow}
-                onPress={() => navigation.navigate('Admin')}
-                activeOpacity={0.7}
-              >
-                <LinearGradient
-                  colors={['#6366f1', '#8b5cf6']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.adminIconGradient}
-                >
-                  <Ionicons name="settings" size={18} color="#fff" />
-                </LinearGradient>
-                <View style={styles.adminTextContainer}>
-                  <Text style={[styles.adminTitle, { color: theme.text }]}>Admin Dashboard</Text>
-                  <Text style={[styles.adminSubtitle, { color: theme.textSecondary }]}>Manage academy</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={theme.textTertiary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+
 
         {/* Logout Button */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
@@ -191,7 +143,7 @@ export const SettingsScreen: React.FC = () => {
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
 
-        <View style={{ height: 24 }} />
+        <View style={{ height: scale(24) }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -205,19 +157,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(10),
     borderBottomWidth: 1,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(12),
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: scale(18),
     fontWeight: '700',
     letterSpacing: -0.3,
   },
@@ -225,41 +177,41 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 16,
+    paddingBottom: scale(16),
   },
   section: {
-    marginTop: 16,
-    paddingHorizontal: 12,
+    marginTop: scale(16),
+    paddingHorizontal: scale(12),
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: scale(11),
     fontWeight: '600',
     letterSpacing: 0.5,
-    marginBottom: 8,
-    marginLeft: 4,
+    marginBottom: scale(8),
+    marginLeft: scale(4),
   },
   card: {
-    borderRadius: 14,
+    borderRadius: scale(14),
     borderWidth: 1,
     overflow: 'hidden',
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(11),
   },
   iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(8),
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: scale(12),
   },
   settingText: {
     flex: 1,
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '500',
   },
   valueContainer: {
@@ -268,47 +220,47 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   valueText: {
-    fontSize: 13,
+    fontSize: scale(13),
     fontWeight: '500',
   },
   divider: {
     height: 1,
-    marginLeft: 56,
+    marginLeft: scale(56),
   },
   adminRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(11),
   },
   adminIconGradient: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(8),
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: scale(12),
   },
   adminTextContainer: {
     flex: 1,
   },
   adminTitle: {
-    fontSize: 14,
+    fontSize: scale(14),
     fontWeight: '600',
   },
   adminSubtitle: {
-    fontSize: 11,
+    fontSize: scale(11),
     marginTop: 1,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 12,
-    marginTop: 24,
-    paddingVertical: 12,
+    marginHorizontal: scale(12),
+    marginTop: scale(24),
+    paddingVertical: scale(12),
     backgroundColor: '#ef4444',
-    borderRadius: 12,
+    borderRadius: scale(12),
     gap: 8,
     shadowColor: '#ef4444',
     shadowOffset: { width: 0, height: 3 },
@@ -317,7 +269,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   logoutText: {
-    fontSize: 15,
+    fontSize: scale(15),
     fontWeight: '700',
     color: '#fff',
   },

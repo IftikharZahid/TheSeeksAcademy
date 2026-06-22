@@ -2,11 +2,9 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
-import { db } from '../../api/firebaseConfig';
-import { doc, onSnapshot } from 'firebase/firestore';
 import { useAppSelector } from '../../store/hooks';
+import { Ionicons } from '@expo/vector-icons';
 import { scale } from '../../utils/responsive';
 
 interface ClassSession {
@@ -89,53 +87,41 @@ export const TimetableScreen: React.FC = () => {
     }, [navigation])
   );
 
+  const allEntries = useAppSelector(state => state.timetable.entries);
+  const isTimetableLoading = useAppSelector(state => state.timetable.status === 'loading' || state.timetable.status === 'idle');
+
   useEffect(() => {
     if (!profile) {
-      setLoading(true);
+      setScheduleData([]);
       return;
     }
-    setLoading(true);
-    const docRef = doc(db, 'timetable', activeDay);
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const rawClasses = data.classes || [];
-        const studentClass = profile.class || '';
-        const userGender = profile.gender ? profile.gender.toLowerCase().trim() : '';
+    
+    const rawClasses = allEntries.filter(c => (c as any).day === activeDay);
+    const studentClass = profile.class || '';
+    const userGender = profile.gender ? profile.gender.toLowerCase().trim() : '';
 
-        const isMale = userGender === 'male' || userGender === 'boy' || userGender === 'boys';
-        const isFemale = userGender === 'female' || userGender === 'girl' || userGender === 'girls';
+    const isMale = userGender === 'male' || userGender === 'boy' || userGender === 'boys';
+    const isFemale = userGender === 'female' || userGender === 'girl' || userGender === 'girls';
 
-        const filteredClasses = rawClasses.filter((c: any) => {
-          // 1. Filter by student class (if class field is set in timetable entry)
-          const matchClass = !studentClass || !c.class || c.class.toLowerCase().trim() === studentClass.toLowerCase().trim();
-          
-          // 2. Filter by student gender (supporting Boys, Girls, and All/Both entries)
-          let matchGender = true;
-          if (c.gender && c.gender.toLowerCase().trim() !== 'all') {
-            const entryGender = c.gender.toLowerCase().trim();
-            if (entryGender === 'boys') {
-              matchGender = isMale;
-            } else if (entryGender === 'girls') {
-              matchGender = isFemale;
-            }
-          }
-          return matchClass && matchGender;
-        });
-
-        // Sort by time or order if needed, otherwise rely on Firestore array order
-        setScheduleData(filteredClasses);
-      } else {
-        setScheduleData([]);
+    const filteredClasses = rawClasses.filter((c: any) => {
+      // 1. Filter by student class
+      const matchClass = !studentClass || !c.class || c.class.toLowerCase().trim() === studentClass.toLowerCase().trim();
+      
+      // 2. Filter by gender
+      let matchGender = true;
+      if (c.gender && c.gender.toLowerCase().trim() !== 'all') {
+        const entryGender = c.gender.toLowerCase().trim();
+        if (entryGender === 'boys') {
+          matchGender = isMale;
+        } else if (entryGender === 'girls') {
+          matchGender = isFemale;
+        }
       }
-      setLoading(false);
-    }, (error) => {
-      console.error("Error listening to timetable:", error);
-      setLoading(false);
+      return matchClass && matchGender;
     });
 
-    return () => unsubscribe && unsubscribe();
-  }, [activeDay, profile]);
+    setScheduleData(filteredClasses);
+  }, [allEntries, activeDay, profile]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -156,35 +142,27 @@ export const TimetableScreen: React.FC = () => {
       </View>
 
       <View style={styles.scrollContainerWrapper}>
-        {/* Horizontal Scrollable Day Pills */}
-        <View style={styles.dayPillsScrollViewContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.dayPillsScrollContent}
-            style={styles.dayPillsScrollView}
-          >
-            {days.map((day) => (
-              <TouchableOpacity
-                key={day}
-                onPress={() => setActiveDay(day)}
-                style={[
-                  styles.dayPill,
-                  {
-                    backgroundColor: activeDay === day ? theme.primary : 'transparent',
-                    borderWidth: 0,
-                  }
-                ]}
-              >
-                <Text style={[
-                  styles.dayPillText,
-                  { color: activeDay === day ? '#fff' : theme.textSecondary }
-                ]}>
-                  {day}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+        {/* Horizontal Non-Scrollable Day Pills to ensure none are hidden */}
+        <View style={styles.dayPillsContainer}>
+          {days.map((day) => (
+            <TouchableOpacity
+              key={day}
+              onPress={() => setActiveDay(day)}
+              style={[
+                styles.dayPill,
+                {
+                  backgroundColor: activeDay === day ? theme.primary : 'transparent',
+                }
+              ]}
+            >
+              <Text style={[
+                styles.dayPillText,
+                { color: activeDay === day ? '#fff' : theme.textSecondary }
+              ]}>
+                {day.substring(0, 3)}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         <ScrollView
@@ -201,7 +179,7 @@ export const TimetableScreen: React.FC = () => {
 
           {/* Timeline Classes */}
           <View style={styles.timelineWrapper}>
-            {loading ? (
+            {isTimetableLoading ? (
               <View style={styles.loadingContainer}>
                 <Text style={{ textAlign: 'center', color: theme.textSecondary }}>Loading schedule...</Text>
               </View>
@@ -246,8 +224,8 @@ export const TimetableScreen: React.FC = () => {
                         </View>
 
                         <View style={styles.detailItem}>
-                          <Ionicons name="location-outline" size={scale(14)} color={theme.textSecondary} />
-                          <Text style={[styles.detailsText, { color: theme.textSecondary }]} numberOfLines={1}>
+                          <Text style={[styles.detailsText, { color: theme.textSecondary, fontWeight: '600' }]}>Class Room:</Text>
+                          <Text style={[styles.detailsText, { color: theme.textSecondary, marginLeft: 2 }]} numberOfLines={1}>
                             {classItem.room}
                           </Text>
                         </View>
@@ -259,7 +237,7 @@ export const TimetableScreen: React.FC = () => {
               })
             )}
 
-            {!loading && scheduleData.length === 0 && (
+            {!isTimetableLoading && scheduleData.length === 0 && (
               <View style={[styles.noClassesContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
                 <Ionicons name="cafe-outline" size={scale(36)} color={theme.textSecondary} style={{ marginBottom: scale(8) }} />
                 <Text style={[styles.noClassesText, { color: theme.textSecondary }]}>
@@ -298,33 +276,28 @@ const styles = StyleSheet.create({
   scrollContainerWrapper: {
     flex: 1,
   },
-  dayPillsScrollViewContainer: {
-    marginVertical: scale(8),
-    height: scale(42),
-  },
-  dayPillsScrollView: {
-    paddingHorizontal: scale(16),
-  },
-  dayPillsScrollContent: {
-    paddingRight: scale(32),
-    alignItems: 'center',
+  dayPillsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: scale(10),
+    marginVertical: scale(6),
   },
   dayPill: {
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(8),
-    borderRadius: scale(20),
-    marginRight: scale(8),
+    paddingVertical: scale(6),
+    borderRadius: scale(12),
     alignItems: 'center',
     justifyContent: 'center',
+    flex: 1,
+    marginHorizontal: scale(2),
   },
   dayPillText: {
-    fontSize: scale(13),
+    fontSize: scale(12),
     fontWeight: '600',
   },
   selectedDayContainer: {
     paddingHorizontal: scale(16),
-    marginTop: scale(4),
-    marginBottom: scale(12),
+    marginTop: scale(0),
+    marginBottom: scale(8),
     alignSelf: 'flex-start',
   },
   selectedDayText: {
@@ -344,71 +317,71 @@ const styles = StyleSheet.create({
   },
   timelineRow: {
     flexDirection: 'row',
-    marginBottom: scale(14),
+    marginBottom: scale(8),
   },
   timeColumn: {
-    width: scale(75),
-    paddingRight: scale(8),
+    width: scale(65),
+    paddingRight: scale(6),
     alignItems: 'flex-end',
     justifyContent: 'flex-start',
     paddingTop: scale(4),
   },
   timeText: {
-    fontSize: scale(11),
+    fontSize: scale(10),
     fontWeight: '600',
     textAlign: 'right',
   },
   timelineCenter: {
-    width: scale(20),
+    width: scale(18),
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: scale(8),
+    paddingTop: scale(6),
   },
   timelineDot: {
-    width: scale(10),
-    height: scale(10),
-    borderRadius: scale(5),
+    width: scale(8),
+    height: scale(8),
+    borderRadius: scale(4),
     zIndex: 1,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#fff',
   },
   timelineLine: {
     position: 'absolute',
-    top: scale(18),
-    bottom: scale(-18),
-    width: scale(2),
+    top: scale(14),
+    bottom: scale(-14),
+    width: scale(1.5),
     borderRadius: 1,
   },
   contentCard: {
     flex: 1,
-    borderRadius: scale(10),
-    borderLeftWidth: scale(4),
-    padding: scale(12),
-    marginLeft: scale(8),
-    shadowOffset: { width: 0, height: 2 },
+    borderRadius: scale(8),
+    borderLeftWidth: scale(3),
+    padding: scale(8),
+    marginLeft: scale(6),
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: scale(8),
+    marginBottom: scale(4),
   },
   subjectText: {
-    fontSize: scale(14),
+    fontSize: scale(13),
     fontWeight: '700',
     flex: 1,
-    paddingRight: scale(8),
+    paddingRight: scale(6),
   },
   lectureBadge: {
-    paddingHorizontal: scale(8),
-    paddingVertical: scale(4),
-    borderRadius: scale(6),
+    paddingHorizontal: scale(6),
+    paddingVertical: scale(2),
+    borderRadius: scale(4),
   },
   lectureBadgeText: {
-    fontSize: scale(10),
+    fontSize: scale(9),
     fontWeight: '700',
     textTransform: 'uppercase',
   },
@@ -416,7 +389,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: scale(4),
+    marginTop: scale(2),
   },
   detailItem: {
     flexDirection: 'row',
@@ -424,7 +397,7 @@ const styles = StyleSheet.create({
     gap: scale(4),
   },
   detailsText: {
-    fontSize: scale(11.5),
+    fontSize: scale(10),
     fontWeight: '500',
   },
   loadingContainer: {

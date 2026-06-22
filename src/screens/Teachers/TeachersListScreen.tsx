@@ -7,8 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../navigation/HomeStack';
 import teachersData from '../../../docs/teachers.json';
 import { useTheme } from '../../context/ThemeContext';
-import { db } from '../../api/firebaseConfig';
-import { collection, getDocs, setDoc, doc, onSnapshot } from 'firebase/firestore';
+import { useAppSelector } from '../../store/hooks';
 import { scale } from '../../utils/responsive';
 
 const { width } = Dimensions.get('window');
@@ -44,95 +43,34 @@ const cardColors = [
 export const TeachersScreen: React.FC = () => {
   const navigation = useNavigation<TeachersScreenNavigationProp>();
   const { theme, isDark } = useTheme();
-  const [staff, setStaff] = useState<Teacher[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const staffRaw = useAppSelector(state => state.teachers.list);
+  const loading = useAppSelector(state => state.teachers.isLoading);
   const [refreshing, setRefreshing] = useState(false);
 
-  const unsubscribeRef = useRef<(() => void) | null>(null);
+  // Apply default colors and properties if they don't exist
+  const staff = staffRaw.map((teacher: any, index: number) => ({
+    ...teacher,
+    color: teacher.color || cardColors[index % cardColors.length],
+    students: teacher.students || `${Math.floor(Math.random() * 30 + 10)}k`,
+    courses: teacher.courses || Math.floor(Math.random() * 15 + 5),
+    rating: teacher.rating || 4.5,
+    phone: teacher.phone || `+92300${Math.floor(1000000 + Math.random() * 9000000)}`,
+  }));
 
-  const fetchTeachers = useCallback(() => {
-    setLoading(true);
-    setError('');
-
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-    }
-
-    const staffCollection = collection(db, "staff");
-
-    const unsubscribe = onSnapshot(staffCollection, async (querySnapshot) => {
-      let teachersArray: Teacher[] = [];
-
-      if (querySnapshot.empty) {
-        const localTeachers = Object.entries(teachersData.staff).map(
-          ([id, teacher], index) => ({
-            id,
-            ...teacher,
-            color: cardColors[index % cardColors.length],
-            students: `${Math.floor(Math.random() * 30 + 10)}k`,
-            courses: Math.floor(Math.random() * 15 + 5),
-            rating: 4.5,
-            phone: `+92300${Math.floor(1000000 + Math.random() * 9000000)}`,
-          })
-        );
-
-        localTeachers.forEach(async (teacher) => {
-          await setDoc(doc(db, "staff", teacher.id), teacher);
-        });
-
-        setStaff(localTeachers);
-      } else {
-        querySnapshot.forEach((doc) => {
-          const data = doc.data() as Omit<Teacher, 'id'>;
-          teachersArray.push({ id: doc.id, ...data });
-        });
-
-        teachersArray = teachersArray.map((teacher, index) => ({
-          ...teacher,
-          color: cardColors[index % cardColors.length],
-          students: teacher.students || `${Math.floor(Math.random() * 30 + 10)}k`,
-          courses: teacher.courses || Math.floor(Math.random() * 15 + 5),
-          rating: teacher.rating || 4.5,
-          phone: teacher.phone || `+92300${Math.floor(1000000 + Math.random() * 9000000)}`,
-        }));
-
-        setStaff(teachersArray);
-      }
-      setLoading(false);
-      setRefreshing(false);
-    }, (err) => {
-      console.error('Error fetching teachers:', err);
-      setError('Failed to load teachers.');
-      setLoading(false);
-      setRefreshing(false);
-    });
-
-    unsubscribeRef.current = unsubscribe;
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
+  // Hide TopHeader and tab bar when this screen is focused
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       navigation.getParent()?.setOptions({
         tabBarStyle: { display: 'none' },
         headerShown: false,
       });
     }, [navigation])
   );
-
-  useEffect(() => {
-    fetchTeachers();
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-      }
-    };
-  }, [fetchTeachers]);
-
-  const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
 
   const cardWidth = (width - scale(48)) / 2;
 
@@ -214,21 +152,19 @@ export const TeachersScreen: React.FC = () => {
         )}
 
         {/* Error State */}
-        {error && !loading && !refreshing && (
+        {/* We can omit the retry since it's global, but handle empty */}
+        {!loading && staff.length === 0 && (
           <View style={styles.centerContainer}>
-            <Text style={styles.errorText}>⚠️ {error}</Text>
-            <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary }]} onPress={fetchTeachers}>
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
+            <Text style={[styles.loadingText, { color: theme.textSecondary }]}>No teachers found.</Text>
           </View>
         )}
 
         {/* Teacher Cards Grid */}
-        {(!loading || refreshing) && !error && (
+        {(!loading || refreshing) && staff.length > 0 && (
           <ScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 100 }}
+            contentContainerStyle={{ paddingBottom: scale(100) }}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
             }
@@ -289,7 +225,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: scale(4) },
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 3,

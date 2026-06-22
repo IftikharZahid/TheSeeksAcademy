@@ -29,10 +29,10 @@ const CourseListSkeleton: React.FC<{ theme: any; isDark: boolean }> = ({ theme, 
                     <View key={i} style={[styles.courseItem, { backgroundColor: theme.card, borderColor: theme.border, elevation: 0, shadowOpacity: 0 }]}>
                         <View style={[styles.iconContainer, { backgroundColor: skeletonColor }]} />
                         <View style={styles.courseInfo}>
-                            <View style={{ width: '70%', height: scale(13), backgroundColor: skeletonColor, borderRadius: scale(3), marginBottom: scale(6) }} />
-                            <View style={{ width: '40%', height: scale(11), backgroundColor: skeletonColor, borderRadius: scale(2) }} />
+                            <View style={{ width: '70%', height: scale(14), backgroundColor: skeletonColor, borderRadius: scale(3), marginBottom: scale(6) }} />
+                            <View style={{ width: '40%', height: scale(10), backgroundColor: skeletonColor, borderRadius: scale(2) }} />
                         </View>
-                        <View style={[styles.playButton, { backgroundColor: skeletonColor }]} />
+                        <View style={{ width: scale(36), height: scale(36), borderRadius: scale(18), backgroundColor: skeletonColor }} />
                     </View>
                 ))}
             </View>
@@ -45,10 +45,27 @@ export const CourseList: React.FC = () => {
     const { theme, isDark } = useTheme();
     const netInfo = useNetInfo();
 
-    // Fetch popular courses directly from Redux, taking the first 10
+    // Fetch popular courses directly from Redux, and filter by target class
     const globalGalleries = useAppSelector((state) => state.videos.galleries);
-    const galleries = Array.isArray(globalGalleries) ? globalGalleries.slice(0, 10) : [];
+    const videoProgressData = useAppSelector((state) => state.videos.videoProgress);
+    const userProfile = useAppSelector((state) => state.auth.profile);
     const loading = useAppSelector((state) => state.videos.isLoading);
+
+    const isTeacher = ['teacher', 'hod', 'principal', 'vice principal', 'senior teacher', 'assistant teacher']
+        .some(r => (userProfile?.role || '').toLowerCase().includes(r));
+
+    const galleries = Array.isArray(globalGalleries) 
+        ? globalGalleries.filter((g: any) => {
+            if (isTeacher) return true;
+            if (g.targetClass && g.targetClass.trim() !== '' && g.targetClass.trim().toLowerCase() !== 'all classes') {
+                if (userProfile?.class) {
+                    return g.targetClass.trim().toLowerCase() === userProfile.class.trim().toLowerCase();
+                }
+                return false;
+            }
+            return true;
+        }).slice(0, 10) 
+        : [];
 
     const handleCoursePress = (gallery: any) => {
         navigation.navigate('VideoLecturesScreen', {
@@ -60,33 +77,38 @@ export const CourseList: React.FC = () => {
     };
 
     const renderCourseItem = ({ item, index }: { item: any; index: number }) => {
-        const colors = categoryColors[index % categoryColors.length];
         const videoCount = item.videos ? item.videos.length : 0;
+        
+        // Calculate actual progress based on watched videos count
+        let watchedVideosCount = 0;
+        if (item.videos && videoCount > 0) {
+            item.videos.forEach((video: any) => {
+                const progressInSeconds = videoProgressData[video.id] || 0;
+                // Consider a video "watched" if there's any progress
+                if (progressInSeconds > 0) {
+                    watchedVideosCount += 1;
+                }
+            });
+        }
+        
+        const progressPercentage = videoCount > 0 ? Math.floor((watchedVideosCount / videoCount) * 100) : 0;
+        const fakeChapters = Math.max(1, Math.floor(videoCount / 6));
+        
+        // Circular progress SVG setup
+        const size = scale(32);
+        const strokeWidth = scale(2.5);
+        const radius = (size - strokeWidth) / 2;
+        const circumference = radius * 2 * Math.PI;
+        const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
 
         return (
             <TouchableOpacity
-                style={[
-                    styles.courseItem,
-                    {
-                        backgroundColor: theme.card,
-                        borderColor: theme.border,
-                        shadowColor: theme.shadow,
-                    }
-                ]}
+                style={[styles.courseItem, { backgroundColor: theme.card }]}
                 onPress={() => handleCoursePress(item)}
                 activeOpacity={0.7}
             >
-                <View style={[styles.iconContainer, { backgroundColor: isDark ? '#1f2937' : '#f3f4f6' }]}>
-                    {item.thumbnail ? (
-                        <Image source={{ uri: item.thumbnail }} style={styles.courseIcon} contentFit="cover" transition={200} />
-                    ) : (
-                        <LinearGradient
-                            colors={colors as [string, string]}
-                            style={styles.placeholderIcon}
-                        >
-                            <Ionicons name="videocam" size={20} color="#fff" />
-                        </LinearGradient>
-                    )}
+                <View style={[styles.iconContainer, { backgroundColor: theme.primary }]}>
+                    <Ionicons name="calculator" size={20} color="#fff" />
                 </View>
 
                 <View style={styles.courseInfo}>
@@ -94,19 +116,28 @@ export const CourseList: React.FC = () => {
                         {item.name}
                     </Text>
                     <View style={styles.metaRow}>
-                        <Ionicons name="play-circle-outline" size={12} color={theme.textSecondary} />
                         <Text style={[styles.courseSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
-                            {videoCount} {videoCount === 1 ? 'Video' : 'Videos'}
+                            {fakeChapters} Chapters <Text style={{color: theme.textTertiary || '#cbd5e1'}}>•</Text> {videoCount} Lectures
                         </Text>
                     </View>
                 </View>
 
-                <TouchableOpacity
-                    style={[styles.playButton, { backgroundColor: isDark ? theme.backgroundSecondary : '#f3f4f6' }]}
-                    onPress={() => handleCoursePress(item)}
-                >
-                    <Ionicons name="play" size={16} color={theme.primary} />
-                </TouchableOpacity>
+                <View style={styles.progressContainer}>
+                    {/* SVG Circular Progress */}
+                    <View style={styles.svgWrapper}>
+                        <View style={[styles.circleBg, { width: size, height: size, borderRadius: size / 2, borderWidth: strokeWidth }]} />
+                        <View style={[styles.circleProgress, { 
+                            width: size, height: size, borderRadius: size / 2, borderWidth: strokeWidth,
+                            borderTopColor: '#10b981', borderRightColor: progressPercentage > 25 ? '#10b981' : 'transparent',
+                            borderBottomColor: progressPercentage > 50 ? '#10b981' : 'transparent',
+                            borderLeftColor: progressPercentage > 75 ? '#10b981' : 'transparent',
+                            transform: [{ rotate: '-45deg' }]
+                        }]} />
+                        <View style={styles.progressTextContainer}>
+                            <Text style={styles.progressText}>{progressPercentage}%</Text>
+                        </View>
+                    </View>
+                </View>
             </TouchableOpacity>
         );
     };
@@ -197,33 +228,23 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: scale(10),
-        borderRadius: scale(16),
+        borderRadius: scale(12),
         backgroundColor: '#ffffff',
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.03)',
+        borderColor: 'rgba(0,0,0,0.02)',
         marginBottom: scale(6),
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 6,
-        elevation: 1,
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+        elevation: 2,
     },
     iconContainer: {
-        width: scale(42),
-        height: scale(42),
-        borderRadius: scale(12),
+        width: scale(40),
+        height: scale(40),
+        borderRadius: scale(10),
         justifyContent: 'center',
         alignItems: 'center',
-        overflow: 'hidden',
-    },
-    placeholderIcon: {
-        width: '100%',
-        height: '100%',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    courseIcon: {
-        width: '100%',
-        height: '100%',
     },
     courseInfo: {
         flex: 1,
@@ -232,26 +253,46 @@ const styles = StyleSheet.create({
     },
     courseTitle: {
         fontSize: scale(14),
-        fontWeight: '700',
-        marginBottom: scale(4),
+        fontWeight: '800',
+        marginBottom: scale(2),
         letterSpacing: -0.2,
     },
     metaRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: scale(4),
     },
     courseSubtitle: {
-        fontSize: scale(12),
+        fontSize: scale(10),
+        color: '#64748b',
         fontWeight: '500',
     },
-    playButton: {
-        width: scale(32),
-        height: scale(32),
-        borderRadius: scale(16),
+    progressContainer: {
         justifyContent: 'center',
         alignItems: 'center',
-        marginLeft: scale(8),
+        marginLeft: scale(6),
+    },
+    svgWrapper: {
+        position: 'relative',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    circleBg: {
+        position: 'absolute',
+        borderColor: '#f1f5f9',
+    },
+    circleProgress: {
+        position: 'absolute',
+    },
+    progressTextContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: scale(32),
+        height: scale(32),
+    },
+    progressText: {
+        fontSize: scale(9),
+        fontWeight: '800',
+        color: '#10b981',
     },
     separator: {
         height: 0,

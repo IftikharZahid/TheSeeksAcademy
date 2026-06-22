@@ -3,6 +3,7 @@ import { auth, db } from '../../api/firebaseConfig';
 import { doc, getDoc, collection, query, where, getDocs, or } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import type { ThunkDispatch, UnknownAction } from '@reduxjs/toolkit';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ── Types ──────────────────────────────────────────────
 export interface UserProfile {
@@ -56,41 +57,42 @@ export const fetchUserProfile = createAsyncThunk(
     'auth/fetchUserProfile',
     async ({ uid, email }: { uid: string; email: string | null }, { rejectWithValue }) => {
         try {
+            let profileData: UserProfile | null = null;
+            
             // 1️⃣ Primary: direct read from 'studentsprofile/{uid}'
             try {
                 const spDocRef = doc(db, 'studentsprofile', uid);
                 const spSnap = await getDoc(spDocRef);
                 if (spSnap.exists()) {
-                    const data = spSnap.data() as UserProfile;
-                    console.log('👤 Student profile fetched from studentsprofile/', uid, '- name:', data.fullname);
-                    return data;
+                    profileData = spSnap.data() as UserProfile;
+                    console.log('👤 Student profile fetched from studentsprofile/', uid, '- name:', profileData.fullname);
                 }
             } catch (spError) {
                 console.warn('⚠️ Could not read studentsprofile/', uid, spError);
             }
 
             // 1b️⃣ Direct read from 'profile/{uid}' — used for teacher/admin profiles
-            try {
-                const pDocRef = doc(db, 'profile', uid);
-                const pSnap = await getDoc(pDocRef);
-                if (pSnap.exists()) {
-                    const data = pSnap.data() as UserProfile;
-                    console.log('👤 Profile fetched from profile/', uid, '- name:', data.fullname, '| role:', data.role);
-                    return data;
+            if (!profileData) {
+                try {
+                    const pDocRef = doc(db, 'profile', uid);
+                    const pSnap = await getDoc(pDocRef);
+                    if (pSnap.exists()) {
+                        profileData = pSnap.data() as UserProfile;
+                        console.log('👤 Profile fetched from profile/', uid, '- name:', profileData.fullname, '| role:', profileData.role);
+                    }
+                } catch (pUidError) {
+                    console.warn('⚠️ Could not read profile/', uid, pUidError);
                 }
-            } catch (pUidError) {
-                console.warn('⚠️ Could not read profile/', uid, pUidError);
             }
 
             // 2️⃣ Fallback: query 'profile' collection by email
-            if (email) {
+            if (!profileData && email) {
                 try {
                     const q = query(collection(db, 'profile'), where('email', '==', email));
                     const snapshot = await getDocs(q);
                     if (!snapshot.empty) {
-                        const data = snapshot.docs[0].data() as UserProfile;
-                        console.log('👤 Profile fetched - name:', data.fullname, '| image:', data.image ? 'YES' : 'EMPTY');
-                        return data;
+                        profileData = snapshot.docs[0].data() as UserProfile;
+                        console.log('👤 Profile fetched - name:', profileData.fullname, '| image:', profileData.image ? 'YES' : 'EMPTY');
                     }
                 } catch (pError) {
                     console.warn('⚠️ Could not read profile by email:', pError);
@@ -98,14 +100,9 @@ export const fetchUserProfile = createAsyncThunk(
             }
 
             // 3️⃣ Fallback: query 'students' collection by email (already created students)
-            // Firebase Auth always returns lowercase emails, but the students collection
-            // may store them in mixed-case academy format (STD-9002@TheSeeksAcademy.edu.pk).
-            // Query with both variants to handle legacy data.
-            if (email) {
+            if (!profileData && email) {
                 try {
                     const emailLower = email.toLowerCase();
-                    // Reconstruct academy mixed-case format: std-9002@theseeksacademy.edu.pk
-                    // → STD-9002@TheSeeksAcademy.edu.pk
                     const emailParts = emailLower.split('@');
                     const emailMixed = emailParts.length === 2
                         ? `${emailParts[0].toUpperCase()}@TheSeeksAcademy.edu.pk`
@@ -118,8 +115,7 @@ export const fetchUserProfile = createAsyncThunk(
                     const sSnapshot = await getDocs(sq);
                     if (!sSnapshot.empty) {
                         const sData = sSnapshot.docs[0].data();
-                        // Map students collection fields to UserProfile format
-                        const mapped: UserProfile = {
+                        profileData = {
                             fullname: sData.name || '',
                             email: sData.email || '',
                             fathername: sData.fatherName || '',
@@ -132,8 +128,7 @@ export const fetchUserProfile = createAsyncThunk(
                             role: 'student',
                             gender: sData.gender || '',
                         };
-                        console.log('👤 Profile built from students/ - name:', mapped.fullname);
-                        return mapped;
+                        console.log('👤 Profile built from students/ - name:', profileData.fullname);
                     }
                 } catch (sError) {
                     console.warn('⚠️ Could not read students by email:', sError);
@@ -141,12 +136,26 @@ export const fetchUserProfile = createAsyncThunk(
             }
 
             // 4️⃣ Fallback: try 'users/{uid}' document
-            const docRef = doc(db, 'users', uid);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                const data = docSnap.data() as UserProfile;
-                console.log('👤 Profile fetched from users/ - name:', data.fullname);
-                return data;
+            if (!profileData) {
+                const docRef = doc(db, 'users', uid);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    profileData = docSnap.data() as UserProfile;
+                    console.log('👤 Profile fetched from users/ - name:', profileData.fullname);
+                }
+            }
+
+            if (profileData) {
+                try {
+                    const localImage = await AsyncStorage.getItem(`profile_picture_${uid}`);
+                    if (localImage) {
+                        profileData.image = localImage;
+                        console.log('🖼️ Applied local cache profile picture to global state');
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Failed to load local profile picture', e);
+                }
+                return profileData;
             }
 
             return rejectWithValue('User profile not found');
@@ -217,6 +226,12 @@ export const initAuthListener = (dispatch: ThunkDispatch<any, any, UnknownAction
                 // Load liked teachers so StaffInfoScreen has instant access
                 const { fetchLikedTeacherIds } = require('./teachersSlice');
                 dispatch(fetchLikedTeacherIds(firebaseUser.uid));
+
+                // Register for Push Notifications and save token
+                const { registerForPushNotificationsAsync, savePushTokenToFirestore } = require('../../services/PushNotificationService');
+                registerForPushNotificationsAsync().then((token: string | undefined) => {
+                    if (token) savePushTokenToFirestore(firebaseUser.uid, token);
+                }).catch((e: any) => console.log('Push Token Error:', e));
             } else {
                 // Profile not found - User was likely deleted from dashboard
                 const { signOut } = require('firebase/auth');

@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { initAssignmentsListener } from "../../store/slices/assignmentsSlice";
+import { initAssignmentsListener, markAssignmentAsRead, persistReadAssignmentIds } from "../../store/slices/assignmentsSlice";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../../context/ThemeContext";
 import { scale } from "../../utils/responsive";
@@ -60,6 +60,7 @@ export const AssignmentsScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const assignmentsData = useAppSelector((state) => state.assignments.data);
   const assignmentsStatus = useAppSelector((state) => state.assignments.status);
+  const readAssignmentIds = useAppSelector((state) => state.assignments.readIds);
   const userProfile = useAppSelector((state) => state.auth.profile);
   
   const { theme, isDark } = useTheme();
@@ -74,6 +75,23 @@ export const AssignmentsScreen: React.FC = () => {
       if (unsubscribe) unsubscribe();
     };
   }, [dispatch]);
+
+  React.useEffect(() => {
+    const newIds: string[] = [];
+    assignmentsData.forEach((a) => {
+      // Only mark as read if it's relevant to the student
+      const target = a.targetClass || 'All';
+      const isRelevant = target === 'All' || (userProfile && userProfile.class === target);
+      
+      if (isRelevant && !readAssignmentIds.includes(a.id)) {
+        dispatch(markAssignmentAsRead(a.id));
+        newIds.push(a.id);
+      }
+    });
+    if (newIds.length > 0) {
+      persistReadAssignmentIds([...readAssignmentIds, ...newIds]).catch(() => {});
+    }
+  }, [assignmentsData, readAssignmentIds, dispatch, userProfile]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -123,11 +141,7 @@ export const AssignmentsScreen: React.FC = () => {
   const lateCount      = assignments.filter((a) => a.status === "Late").length;
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
-      edges={["top", "bottom", "left", "right"]}
-    >
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
 
       {/* ── Header ─────────────────────────────────────────────────── */}
       <View style={[styles.header, { backgroundColor: theme.card }]}>
@@ -150,7 +164,7 @@ export const AssignmentsScreen: React.FC = () => {
               },
             ]}
           >
-            <Ionicons name="search" size={scale(16)} color={theme.textTertiary} style={{ marginRight: 8 }} />
+            <Ionicons name="search" size={scale(16)} color={theme.textTertiary} style={{ marginRight: scale(8) }} />
             <TextInput
               placeholder="Search assignments..."
               placeholderTextColor={theme.textTertiary}
@@ -203,7 +217,7 @@ export const AssignmentsScreen: React.FC = () => {
         <ScrollView
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: scale(100) }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
           }
@@ -305,47 +319,47 @@ export const AssignmentsScreen: React.FC = () => {
         onRequestClose={() => setSelectedAssignment(null)}
       >
         <View style={{ flex: 1, backgroundColor: isDark ? "rgba(0,0,0,0.7)" : "rgba(0,0,0,0.4)", justifyContent: "flex-end" }}>
-          <View style={{ backgroundColor: theme.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingTop: 12, maxHeight: "85%", shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 10 }}>
-            <View style={{ width: 40, height: 4, backgroundColor: theme.border, borderRadius: 2, alignSelf: "center", marginBottom: 16 }} />
+          <View style={{ backgroundColor: theme.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: scale(20), paddingTop: scale(12), maxHeight: "85%", shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 10 }}>
+            <View style={{ width: scale(40), height: scale(4), backgroundColor: theme.border, borderRadius: 2, alignSelf: "center", marginBottom: scale(16) }} />
             
             {selectedAssignment && (() => {
                 const meta = getSubjectMeta(selectedAssignment.subject);
                 const status = STATUS_CONFIG[selectedAssignment.status];
                 return (
                   <ScrollView showsVerticalScrollIndicator={false}>
-                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
-                          <View style={[{ justifyContent: "center", alignItems: "center", backgroundColor: isDark ? `${meta.accent}22` : meta.bg, width: 36, height: 36, borderRadius: 10, marginRight: 12, marginTop: 2 }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: scale(16) }}>
+                          <View style={[{ justifyContent: "center", alignItems: "center", backgroundColor: isDark ? `${meta.accent}22` : meta.bg, width: scale(36), height: scale(36), borderRadius: scale(10), marginRight: scale(12), marginTop: 2 }]}>
                               <Ionicons name={meta.icon} size={18} color={meta.accent} />
                           </View>
                           <View style={{ flex: 1 }}>
-                              <Text style={{ fontSize: 11, color: meta.accent, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>{selectedAssignment.subject}</Text>
-                              <Text style={{ fontSize: 16, fontWeight: "700", color: theme.text, lineHeight: 22 }}>{selectedAssignment.title}</Text>
+                              <Text style={{ fontSize: scale(11), color: meta.accent, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>{selectedAssignment.subject}</Text>
+                              <Text style={{ fontSize: scale(16), fontWeight: "700", color: theme.text, lineHeight: 22 }}>{selectedAssignment.title}</Text>
                           </View>
                       </View>
 
-                      <View style={{ backgroundColor: isDark ? theme.card : "#f9fafb", borderRadius: 12, padding: 12, marginBottom: 16 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                              <Ionicons name={status.icon} size={14} color={status.color} style={{ width: 20 }} />
-                              <Text style={{ fontSize: 13, color: theme.textSecondary, flex: 1 }}>Status</Text>
-                              <View style={{ backgroundColor: isDark ? `${status.color}22` : status.bg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                                <Text style={{ color: status.color, fontWeight: "700", fontSize: 11 }}>{selectedAssignment.status}</Text>
+                      <View style={{ backgroundColor: isDark ? theme.card : "#f9fafb", borderRadius: scale(12), padding: scale(12), marginBottom: scale(16) }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: scale(10) }}>
+                              <Ionicons name={status.icon} size={14} color={status.color} style={{ width: scale(20) }} />
+                              <Text style={{ fontSize: scale(13), color: theme.textSecondary, flex: 1 }}>Status</Text>
+                              <View style={{ backgroundColor: isDark ? `${status.color}22` : status.bg, paddingHorizontal: scale(8), paddingVertical: 2, borderRadius: scale(6) }}>
+                                <Text style={{ color: status.color, fontWeight: "700", fontSize: scale(11) }}>{selectedAssignment.status}</Text>
                               </View>
                           </View>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                              <Ionicons name="calendar-outline" size={14} color={theme.textSecondary} style={{ width: 20 }} />
-                              <Text style={{ fontSize: 13, color: theme.textSecondary, flex: 1 }}>Deadline</Text>
-                              <Text style={{ fontSize: 13, color: theme.text, fontWeight: "600" }}>{selectedAssignment.deadline}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: scale(10) }}>
+                              <Ionicons name="calendar-outline" size={14} color={theme.textSecondary} style={{ width: scale(20) }} />
+                              <Text style={{ fontSize: scale(13), color: theme.textSecondary, flex: 1 }}>Deadline</Text>
+                              <Text style={{ fontSize: scale(13), color: theme.text, fontWeight: "600" }}>{selectedAssignment.deadline}</Text>
                           </View>
                           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                              <Ionicons name="person-outline" size={14} color={theme.textSecondary} style={{ width: 20 }} />
-                              <Text style={{ fontSize: 13, color: theme.textSecondary, flex: 1 }}>Teacher</Text>
-                              <Text style={{ fontSize: 13, color: theme.text, fontWeight: "600" }}>{selectedAssignment.teacherName}</Text>
+                              <Ionicons name="person-outline" size={14} color={theme.textSecondary} style={{ width: scale(20) }} />
+                              <Text style={{ fontSize: scale(13), color: theme.textSecondary, flex: 1 }}>Teacher</Text>
+                              <Text style={{ fontSize: scale(13), color: theme.text, fontWeight: "600" }}>{selectedAssignment.teacherName}</Text>
                           </View>
                       </View>
 
-                      <Text style={{ fontSize: 13, fontWeight: "700", color: theme.text, marginBottom: 8, marginLeft: 2 }}>Description</Text>
-                      <View style={{ backgroundColor: isDark ? `${meta.accent}11` : meta.bg, borderRadius: 12, padding: 14, marginBottom: 20, borderLeftWidth: 3, borderLeftColor: meta.accent }}>
-                        <Text style={{ fontSize: 13, color: theme.text, lineHeight: 20 }}>
+                      <Text style={{ fontSize: scale(13), fontWeight: "700", color: theme.text, marginBottom: scale(8), marginLeft: 2 }}>Description</Text>
+                      <View style={{ backgroundColor: isDark ? `${meta.accent}11` : meta.bg, borderRadius: scale(12), padding: scale(14), marginBottom: scale(20), borderLeftWidth: 3, borderLeftColor: meta.accent }}>
+                        <Text style={{ fontSize: scale(13), color: theme.text, lineHeight: 20 }}>
                             {selectedAssignment.description || 'No additional instructions provided for this assignment.'}
                         </Text>
                       </View>
@@ -356,9 +370,9 @@ export const AssignmentsScreen: React.FC = () => {
             <TouchableOpacity 
                 activeOpacity={0.8}
                 onPress={() => setSelectedAssignment(null)}
-                style={{ backgroundColor: theme.primary, padding: 12, borderRadius: 10, alignItems: 'center' }}
+                style={{ backgroundColor: theme.primary, padding: scale(12), borderRadius: scale(10), alignItems: 'center' }}
             >
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Close Details</Text>
+                <Text style={{ color: '#fff', fontSize: scale(14), fontWeight: '700' }}>Close Details</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -10,9 +10,13 @@ import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { useNetInfo } from '@react-native-community/netinfo';
 import { initCoursesListener } from '../../store/slices/coursesSlice';
 import { initTeachersListener } from '../../store/slices/teachersSlice';
-import { initNotificationsListener } from '../../store/slices/notificationsSlice';
+import { initAppSettingsListener } from '../../store/slices/appSettingsSlice';
+import { initNotificationsListener, initDiariesListener } from '../../store/slices/notificationsSlice';
 import { initVideoGalleriesListener, initLikedVideosListener } from '../../store/slices/videosSlice';
 import { initExamsListener } from '../../store/slices/adminSlice';
+import { initAssignmentsListener } from '../../store/slices/assignmentsSlice';
+import { initTimetableListener } from '../../store/slices/timetableSlice';
+import { initAttendanceListener } from '../../store/slices/attendanceSlice';
 
 // Components
 import { CourseCategories } from '../../components/QuickActions';
@@ -20,22 +24,21 @@ import { TopperSlider } from '../../components/TopperSlider';
 import { CourseList } from '../../components/CourseList';
 
 const { width } = Dimensions.get('window');
-const cardWidth = width * 0.42;
+const cardWidth = width - scale(28); // Full width minus horizontal padding
 
 // Preloading Skeleton Screen component for video card
 const SkeletonVideoCard: React.FC<{ theme: any; isDark: boolean }> = ({ theme, isDark }) => {
   const skeletonColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
   return (
     <View style={[styles.topCourseCard, { backgroundColor: theme.card, elevation: 0, shadowOpacity: 0 }]}>
-      {/* Thumbnail placeholder */}
       <View style={[styles.topCourseImage, { backgroundColor: skeletonColor }]} />
       <View style={styles.topCourseInfo}>
-        {/* Category placeholder */}
-        <View style={{ width: '55%', height: scale(9), backgroundColor: skeletonColor, borderRadius: scale(2), marginBottom: scale(8) }} />
-        {/* Title line 1 placeholder */}
-        <View style={{ width: '95%', height: scale(11), backgroundColor: skeletonColor, borderRadius: scale(3), marginBottom: scale(6) }} />
-        {/* Title line 2 placeholder */}
-        <View style={{ width: '75%', height: scale(11), backgroundColor: skeletonColor, borderRadius: scale(3) }} />
+        <View style={{ width: '40%', height: scale(10), backgroundColor: skeletonColor, borderRadius: scale(2), marginBottom: scale(8) }} />
+        <View style={{ width: '80%', height: scale(14), backgroundColor: skeletonColor, borderRadius: scale(3), marginBottom: scale(12) }} />
+        <View style={{ flexDirection: 'row', gap: scale(10) }}>
+          <View style={{ width: scale(40), height: scale(10), backgroundColor: skeletonColor, borderRadius: scale(2) }} />
+          <View style={{ width: scale(40), height: scale(10), backgroundColor: skeletonColor, borderRadius: scale(2) }} />
+        </View>
       </View>
     </View>
   );
@@ -57,6 +60,7 @@ export const HomeScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const netInfo = useNetInfo();
   const user = useAppSelector((state) => state.auth.user);
+  const profile = useAppSelector((state) => state.auth.profile);
 
   // Restore TopHeader and tab bar when HomeScreen gains focus
   useFocusEffect(
@@ -75,8 +79,13 @@ export const HomeScreen: React.FC = () => {
       const unsubCourses = initCoursesListener(dispatch);
       const unsubTeachers = initTeachersListener(dispatch);
       const unsubNotifications = initNotificationsListener(dispatch);
+      const unsubAppSettings = initAppSettingsListener(dispatch);
+      const unsubDiaries = initDiariesListener(dispatch, profile?.class);
       const unsubGalleries = initVideoGalleriesListener(dispatch);
       const unsubExams = initExamsListener(dispatch);
+      const unsubAssignments = initAssignmentsListener(dispatch);
+      const unsubTimetable = initTimetableListener(dispatch);
+      const unsubAttendance = user?.uid ? initAttendanceListener(dispatch, user.uid) : undefined;
 
       let unsubLikedVideos: (() => void) | undefined;
       if (user && user.uid) {
@@ -89,8 +98,13 @@ export const HomeScreen: React.FC = () => {
       unsubCourses();
       unsubTeachers();
       unsubNotifications();
+        unsubAppSettings();
+      unsubDiaries();
       unsubGalleries();
       unsubExams();
+      unsubAssignments();
+      unsubTimetable();
+      if (unsubAttendance) unsubAttendance();
       if (unsubLikedVideos) unsubLikedVideos();
     } catch (e) {
       console.warn('Error during home screen refresh:', e);
@@ -128,30 +142,57 @@ export const HomeScreen: React.FC = () => {
       onPress={() => handleVideoPress(item)}
       activeOpacity={0.9}
     >
-      <Image
-        source={{ uri: item.thumbnail || `https://img.youtube.com/vi/${item.youtubeId}/hqdefault.jpg` }}
-        style={styles.topCourseImage}
-        placeholder="L6PZUOOht7yX%5NtWAof%MaxRjWB"
-        contentFit="cover"
-        transition={200}
-      />
+      <View style={styles.imageContainer}>
+        <Image
+          source={{ uri: item.thumbnail || `https://img.youtube.com/vi/${item.youtubeId}/hqdefault.jpg` }}
+          style={styles.topCourseImage}
+          placeholder="L6PZUOOht7yX%5NtWAof%MaxRjWB"
+          contentFit="cover"
+          transition={200}
+        />
+        <View style={styles.playOverlay}>
+          <Ionicons name="play" size={16} color="#fff" />
+        </View>
+      </View>
       <View style={styles.topCourseInfo}>
-        <Text style={[styles.topCourseCategory, { color: theme.textSecondary }]}>
-          {item.galleryName || 'Video'}
-        </Text>
+        <View style={styles.cardHeaderRow}>
+          <Text style={[styles.topCourseCategory, { color: theme.primary }]}>
+            {item.galleryName || 'Video'}
+          </Text>
+          <TouchableOpacity hitSlop={{ top: scale(10), bottom: scale(10), left: scale(10), right: scale(10) }}>
+            <Ionicons name="ellipsis-vertical" size={16} color="#64748b" />
+          </TouchableOpacity>
+        </View>
+        
         <Text style={[styles.topCourseTitle, { color: theme.text }]} numberOfLines={2}>
           {item.title}
         </Text>
+        
+        <View style={styles.cardFooterRow}>
+          <View style={styles.statsContainer}>
+            <View style={styles.statItem}>
+              <Ionicons name="time-outline" size={12} color={theme.textSecondary} />
+              <Text style={[styles.statText, { color: theme.textSecondary }]}>{item.duration || '24:35'}</Text>
+            </View>
+            <Text style={[styles.statDot, { color: theme.textTertiary || '#cbd5e1' }]}>•</Text>
+            <View style={styles.statItem}>
+              <Ionicons name="eye-outline" size={12} color={theme.textSecondary} />
+              <Text style={[styles.statText, { color: theme.textSecondary }]}>{item.views || '12.4K'} Views</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={[styles.bookmarkBtn, { backgroundColor: isDark ? theme.backgroundSecondary : '#f1f5f9' }]}>
+            <Ionicons name="bookmark-outline" size={14} color={theme.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]} edges={['left', 'right']}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.background} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['left', 'right']}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={{ paddingBottom: scale(80) }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
@@ -208,17 +249,19 @@ export const HomeScreen: React.FC = () => {
                 </View>
               </View>
             ) : likedVideos.length > 0 ? (
-              <FlatList
+                <FlatList
                 data={likedVideos}
                 renderItem={renderTopCourse}
                 keyExtractor={(item) => item.id}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.topCoursesList}
+                snapToInterval={cardWidth + scale(12)}
+                decelerationRate="fast"
                 ItemSeparatorComponent={() => <View style={{ width: scale(12) }} />}
-                initialNumToRender={3}
-                maxToRenderPerBatch={3}
-                windowSize={5}
+                initialNumToRender={2}
+                maxToRenderPerBatch={2}
+                windowSize={3}
                 removeClippedSubviews={true}
               />
             ) : (
@@ -288,31 +331,96 @@ const styles = StyleSheet.create({
   },
   topCourseCard: {
     width: cardWidth,
-    borderRadius: scale(12),
+    flexDirection: 'row',
+    borderRadius: scale(10),
     overflow: 'hidden',
     backgroundColor: '#ffffff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
+    padding: scale(6),
+  },
+  imageContainer: {
+    width: scale(100),
+    height: scale(75),
+    borderRadius: scale(6),
+    overflow: 'hidden',
+    position: 'relative',
   },
   topCourseImage: {
     width: '100%',
-    height: cardWidth * 0.65,
+    height: '100%',
     backgroundColor: '#f3f4f6',
   },
+  playOverlay: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -scale(12) }, { translateY: -scale(12) }],
+    width: scale(24),
+    height: scale(24),
+    borderRadius: scale(12),
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   topCourseInfo: {
-    padding: scale(10),
+    flex: 1,
+    paddingLeft: scale(10),
+    paddingVertical: scale(2),
+    justifyContent: 'space-between',
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   topCourseCategory: {
-    fontSize: scale(11),
-    marginBottom: scale(4),
+    fontSize: scale(10),
+    fontWeight: '600',
   },
   topCourseTitle: {
     fontSize: scale(13),
-    fontWeight: '600',
-    lineHeight: scale(18),
+    fontWeight: '800',
+    lineHeight: scale(16),
+    marginTop: scale(2),
+  },
+  cardFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginTop: scale(4),
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(2),
+  },
+  statText: {
+    fontSize: scale(9),
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  statDot: {
+    color: '#cbd5e1',
+    fontSize: scale(9),
+  },
+  bookmarkBtn: {
+    width: scale(20),
+    height: scale(20),
+    borderRadius: scale(10),
+    backgroundColor: '#f1f5f9',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyStateCard: {
     padding: scale(12),

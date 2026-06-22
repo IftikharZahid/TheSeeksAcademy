@@ -5,8 +5,13 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useTheme } from '../../context/ThemeContext';
-import { auth } from '../../api/firebaseConfig';
-import { signOut } from 'firebase/auth';
+import { auth, db, storage } from '../../api/firebaseConfig';
+import { signOut, updateProfile } from 'firebase/auth';
+import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { scale } from '../../utils/responsive';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
@@ -38,7 +43,17 @@ export const ProfileScreen: React.FC = () => {
   const [imageError, setImageError]  = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [localImageUri, setLocalImageUri] = useState<string | null>(null);
   const isOffline = netInfo.isConnected === false;
+
+  React.useEffect(() => {
+    if (user?.uid) {
+      AsyncStorage.getItem(`profile_picture_${user.uid}`).then(res => {
+        if (res) setLocalImageUri(res);
+      }).catch(() => {});
+    }
+  }, [user?.uid]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -65,6 +80,9 @@ export const ProfileScreen: React.FC = () => {
   const confirmLogout = async () => {
     setLoggingOut(true);
     try { 
+      if (user?.uid) {
+        await AsyncStorage.removeItem(`profile_picture_${user.uid}`).catch(() => {});
+      }
       await signOut(auth); 
       setLogoutModalVisible(false);
     } catch { 
@@ -81,11 +99,59 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
+  const handleImagePick = async () => {
+    if (isOffline) {
+      Alert.alert('Offline', 'Please connect to the internet to update your profile picture.');
+      return;
+    }
+
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (permissionResult.granted === false) {
+        Alert.alert('Permission Required', 'Permission to access camera roll is required!');
+        return;
+      }
+
+      const pickerResult = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true, // Enables the professional OS-level square cropping tool
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!pickerResult.canceled && pickerResult.assets && pickerResult.assets.length > 0) {
+        setUploadingImage(true);
+        const asset = pickerResult.assets[0];
+        
+        // Compress aggressively and get base64 for local storage
+        const manipResult = await ImageManipulator.manipulateAsync(
+          asset.uri,
+          [{ resize: { width: scale(300), height: scale(300) } }], // Small dimension for avatars
+          { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG, base64: true } // 50% quality JPEG
+        );
+
+        if (manipResult.base64 && user?.uid) {
+          const imageData = `data:image/jpeg;base64,${manipResult.base64}`;
+          await AsyncStorage.setItem(`profile_picture_${user.uid}`, imageData);
+          setLocalImageUri(imageData);
+          Alert.alert('Success', 'Profile picture saved locally in cache!');
+        } else {
+          Alert.alert('Error', 'Could not process image.');
+        }
+      }
+    } catch (error) {
+      console.error('Image pick/upload error:', error);
+      Alert.alert('Error', 'Failed to update profile picture. Please try again.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const displayName  = profileData?.fullname || user?.displayName || 'User';
   const displayRole  = profileData?.role
     ? profileData.role.charAt(0).toUpperCase() + profileData.role.slice(1)
     : 'Student';
-  const displayImage = (profileData?.image && profileData.image.trim() !== '') ? profileData.image : (user?.photoURL && user.photoURL.trim() !== '' ? user.photoURL : null);
+  const displayImage = localImageUri || ((profileData?.image && profileData.image.trim() !== '') ? profileData.image : (user?.photoURL && user.photoURL.trim() !== '' ? user.photoURL : null));
   const isTeacher    = ['teacher', 'hod', 'principal', 'vice principal', 'senior teacher', 'assistant teacher']
     .some(r => (profileData?.role || '').toLowerCase().includes(r));
 
@@ -147,14 +213,22 @@ export const ProfileScreen: React.FC = () => {
           <View style={styles.content}>
             {/* ── Profile Header ────────────────────────────────────────── */}
             <View style={styles.heroSection}>
-              <View style={[styles.avatarWrap, { borderColor: theme.border }]}>
+              <TouchableOpacity style={[styles.avatarWrap, { borderColor: theme.border }]} onPress={handleImagePick} disabled={uploadingImage} activeOpacity={0.7}>
                 <Image
                   source={displayImage && !imageError ? { uri: displayImage } : require('../../assets/default-profile.png')}
                   defaultSource={require('../../assets/default-profile.png')}
                   onError={() => setImageError(true)}
                   style={[styles.avatar, (!displayImage || imageError) && isDark ? { tintColor: '#fff' } : null]}
                 />
-              </View>
+                {uploadingImage && (
+                  <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }]}>
+                    <ActivityIndicator size="small" color="#fff" />
+                  </View>
+                )}
+                <View style={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: theme.primary, width: scale(20), height: scale(20), borderRadius: scale(10), justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: theme.card }}>
+                  <Ionicons name="camera" size={10} color="#fff" />
+                </View>
+              </TouchableOpacity>
               <View style={styles.heroInfo}>
                 <Text style={[styles.heroName, { color: theme.text }]} numberOfLines={1}>{displayName}</Text>
                 {profileData?.email ? (
@@ -181,21 +255,12 @@ export const ProfileScreen: React.FC = () => {
                 <CompactCard icon="people" label="Father Name" value={profileData?.fathername} color="#f59e0b" />
                 <CompactCard icon="call" label="Phone" value={profileData?.phone} color="#3b82f6" />
                 <CompactCard icon="school" label={isTeacher ? 'Subject' : 'Class'} value={profileData?.class} color="#ec4899" />
-                <CompactCard icon="albums" label={isTeacher ? 'Qual.' : 'Section'} value={profileData?.section} color="#8b5cf6" />
+                <CompactCard icon="albums" label={isTeacher ? 'Qual.' : 'Session'} value={profileData?.session} color="#8b5cf6" />
                 <CompactCard icon="id-card" label="ID / Roll No" value={profileData?.rollno} color="#10b981" />
               </View>
             </View>
 
-            {/* ── Management & Support ──────────────────────────────────── */}
-            {(isTeacher || isAdmin) && (
-              <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>MANAGEMENT</Text>
-                <View style={[styles.menuCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                  {isTeacher && <MenuRow icon="briefcase" label="Teacher Dashboard" subtitle="Attendance & exams" color="#3b82f6" onPress={() => navigation.navigate('TeacherDashboardScreen' as never)} isLast={!isAdmin} />}
-                  {isAdmin && <MenuRow icon="settings" label="Admin Dashboard" subtitle="Manage academy" color="#6366f1" onPress={() => navigation.navigate('Admin')} isLast />}
-                </View>
-              </View>
-            )}
+            {/* ── Support ──────────────────────────────────── */}
 
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>SUPPORT</Text>
@@ -339,7 +404,7 @@ const styles = StyleSheet.create({
   },
 
   // ── Modal ──────────────────────────────────────────────────────────────────
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: scale(20) },
+  modalOverlay: { flex: 1, backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', padding: scale(20) },
   modalCard: { width: scale(260), borderRadius: scale(16), padding: scale(18), alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
   modalIconWrap: { width: scale(40), height: scale(40), borderRadius: scale(20), justifyContent: 'center', alignItems: 'center', marginBottom: scale(10) },
   modalTitle: { fontSize: scale(14), fontWeight: '700', marginBottom: scale(4), textAlign: 'center' },

@@ -1,6 +1,7 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { db } from '../../api/firebaseConfig';
 import { collection, onSnapshot } from 'firebase/firestore';
+import type { Dispatch } from '@reduxjs/toolkit';
 
 export interface TimetableClass {
     id: string;
@@ -33,14 +34,10 @@ const initialState: TimetableState = {
     error: null,
 };
 
-// ── Thunk: start Firestore onSnapshot listener ───────────────────────────────
-// Returns an unsubscribe function — caller is responsible for calling it on cleanup.
-// The thunk dispatches setEntries on every snapshot update.
-export const subscribeTimetable = createAsyncThunk(
-    'timetable/subscribe',
-    async (_, { dispatch }) => {
-        return new Promise<() => void>((resolve) => {
-            const unsub = onSnapshot(
+// ── Listener: start Firestore onSnapshot listener ───────────────────────────────
+export const initTimetableListener = (dispatch: Dispatch) => {
+    dispatch(setStatus('loading'));
+    return onSnapshot(
                 collection(db, 'timetable'),
                 (snap) => {
                     const flat: TimetableClass[] = [];
@@ -83,10 +80,7 @@ export const subscribeTimetable = createAsyncThunk(
                     console.error('Timetable snapshot error:', err);
                 }
             );
-            resolve(unsub);
-        });
-    }
-);
+};
 
 // ── Slice ─────────────────────────────────────────────────────────────────────
 const timetableSlice = createSlice({
@@ -104,11 +98,6 @@ const timetableSlice = createSlice({
             state.status = 'idle';
             state.error = null;
         },
-    },
-    extraReducers: (builder) => {
-        builder.addCase(subscribeTimetable.pending, (state) => {
-            if (state.status === 'idle') state.status = 'loading';
-        });
     },
 });
 

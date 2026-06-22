@@ -879,22 +879,24 @@ export const FeeDetailScreen: React.FC = () => {
             </View>
           )}
         </Animated.View>
+      </ScrollView>
 
-        {/* Pay Now Button */}
-        {feeData.pendingAmount > 0 && (
+      {/* Pay Now Button (Fixed at Bottom) */}
+      {feeData.pendingAmount > 0 && (
+        <View style={{ paddingHorizontal: scale(16), paddingBottom: scale(16), paddingTop: scale(8) }}>
           <TouchableOpacity activeOpacity={0.85}>
             <LinearGradient
               colors={['#10b981', '#059669']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={styles.payButton}
+              style={[styles.payButton, { marginTop: 0 }]}
             >
-              <Ionicons name="card" size={scale(16)} color="#fff" />
+              <Ionicons name="card" size={16} color="#fff" />
               <Text style={styles.payButtonText}>Pay Outstanding Balance</Text>
             </LinearGradient>
           </TouchableOpacity>
-        )}
-      </ScrollView>
+        </View>
+      )}
 
       {/* Fee Slip Preview Modal */}
       <Modal
@@ -956,7 +958,7 @@ export const FeeDetailScreen: React.FC = () => {
                       <Text style={styles.feeSlipFieldValue}>{userData.studentName}</Text>
                     </View>
                   </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'flex-end', width: 130 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-end', width: scale(130) }}>
                     <Text style={styles.feeSlipFieldLabel}>Class:</Text>
                     <View style={[styles.feeSlipFieldLineShort, { flex: 1 }]}>
                       <Text style={styles.feeSlipFieldValue}>{userData.className}</Text>

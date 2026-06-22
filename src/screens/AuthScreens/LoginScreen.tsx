@@ -5,7 +5,7 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   ScrollView,
   StatusBar,
@@ -17,6 +17,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
 import { auth, db } from '../../api/firebaseConfig';
@@ -39,6 +40,26 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   // Interactive Focus States for Input Glow
   const [isEmailFocused, setIsEmailFocused] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+
+  // Keyboard Height State
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // Native Keyboard Listeners for flawless scrolling
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardHeight(0)
+    );
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     loadCredentials();
@@ -196,185 +217,184 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={[styles.container, { backgroundColor: theme.background }]}
-    >
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.background} />
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Logo and Stars Section */}
-        <View style={styles.logoOuterContainer}>
-          <Image
-            source={require('../../../assets/icon.png')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-          <View style={styles.crestStarRow}>
-            <Ionicons name="star" size={12} color="#d4af37" />
-            <Ionicons name="star" size={12} color="#d4af37" style={{ marginHorizontal: 4 }} />
-            <Ionicons name="star" size={12} color="#d4af37" />
-          </View>
-        </View>
-
-        {/* Academic Header */}
-        <View style={styles.headerContainer}>
-          <Text style={[styles.academyTitle, { color: theme.text }]}>THE SEEKS ACADEMY</Text>
-          <Text style={[styles.academyMotto, { color: '#d4af37' }]}>FORT ABBAS</Text>
-          <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-            PORTAL OF ACADEMIC EXCELLENCE
-          </Text>
-        </View>
-
-        {/* Form Card Container */}
-        <View style={[styles.formCard, { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow }]}>
-          
-          {/* Email Input */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Institutional Email / ID</Text>
-            <View style={[
-              styles.inputContainer, 
-              { 
-                backgroundColor: isDark ? theme.background : '#f8fafc', 
-                borderColor: isEmailFocused ? theme.primary : theme.border 
-              }
-            ]}>
-              <Ionicons 
-                name="mail-outline" 
-                size={18} 
-                color={isEmailFocused ? theme.primary : theme.textTertiary} 
-                style={styles.inputIcon} 
+      <SafeAreaView style={{flex: 1}} edges={['top', 'left', 'right']}>
+          <ScrollView
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardHeight }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Logo and Stars Section */}
+            <View style={styles.logoOuterContainer}>
+              <Image
+                source={require('../../../assets/icon.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
               />
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                onFocus={() => setIsEmailFocused(true)}
-                onBlur={() => setIsEmailFocused(false)}
-                placeholder="e.g. student@theseeksacademy.com"
-                placeholderTextColor={theme.textTertiary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                style={[styles.textInput, { color: theme.text }]}
-              />
+              <View style={styles.crestStarRow}>
+                <Ionicons name="star" size={12} color="#d4af37" />
+                <Ionicons name="star" size={12} color="#d4af37" style={{ marginHorizontal: 4 }} />
+                <Ionicons name="star" size={12} color="#d4af37" />
+              </View>
             </View>
-          </View>
 
-          {/* Password Input */}
-          <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Security Password</Text>
-            <View style={[
-              styles.inputContainer, 
-              { 
-                backgroundColor: isDark ? theme.background : '#f8fafc', 
-                borderColor: isPasswordFocused ? theme.primary : theme.border 
-              }
-            ]}>
-              <Ionicons 
-                name="lock-closed-outline" 
-                size={18} 
-                color={isPasswordFocused ? theme.primary : theme.textTertiary} 
-                style={styles.inputIcon} 
-              />
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                onFocus={() => setIsPasswordFocused(true)}
-                onBlur={() => setIsPasswordFocused(false)}
-                placeholder="••••••••"
-                placeholderTextColor={theme.textTertiary}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                style={[styles.textInput, { color: theme.text }]}
-              />
+            {/* Academic Header */}
+            <View style={styles.headerContainer}>
+              <Text style={[styles.academyTitle, { color: theme.text }]}>THE SEEKS ACADEMY</Text>
+              <Text style={[styles.academyMotto, { color: '#d4af37' }]}>FORT ABBAS</Text>
+              <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
+                PORTAL OF ACADEMIC EXCELLENCE
+              </Text>
+            </View>
+
+            {/* Form Card Container */}
+            <View style={[styles.formCard, { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow }]}>
+              
+              {/* Email Input */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Institutional Email / ID</Text>
+                <View style={[
+                  styles.inputContainer, 
+                  { 
+                    backgroundColor: isDark ? theme.background : '#f8fafc', 
+                    borderColor: isEmailFocused ? theme.primary : theme.border 
+                  }
+                ]}>
+                  <Ionicons 
+                    name="mail-outline" 
+                    size={18} 
+                    color={isEmailFocused ? theme.primary : theme.textTertiary} 
+                    style={styles.inputIcon} 
+                  />
+                  <TextInput
+                    value={email}
+                    onChangeText={setEmail}
+                    onFocus={() => setIsEmailFocused(true)}
+                    onBlur={() => setIsEmailFocused(false)}
+                    placeholder="e.g. student@theseeksacademy.com"
+                    placeholderTextColor={theme.textTertiary}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={[styles.textInput, { color: theme.text }]}
+                  />
+                </View>
+              </View>
+
+              {/* Password Input */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Security Password</Text>
+                <View style={[
+                  styles.inputContainer, 
+                  { 
+                    backgroundColor: isDark ? theme.background : '#f8fafc', 
+                    borderColor: isPasswordFocused ? theme.primary : theme.border 
+                  }
+                ]}>
+                  <Ionicons 
+                    name="lock-closed-outline" 
+                    size={18} 
+                    color={isPasswordFocused ? theme.primary : theme.textTertiary} 
+                    style={styles.inputIcon} 
+                  />
+                  <TextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    onFocus={() => setIsPasswordFocused(true)}
+                    onBlur={() => setIsPasswordFocused(false)}
+                    placeholder="••••••••"
+                    placeholderTextColor={theme.textTertiary}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    style={[styles.textInput, { color: theme.text }]}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.passwordToggle}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons 
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'} 
+                      size={18} 
+                      color={theme.textSecondary} 
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Remember Me & Forgot Password */}
+              <View style={styles.optionsRow}>
+                <TouchableOpacity
+                  onPress={() => setRememberMe(!rememberMe)}
+                  style={styles.rememberMeContainer}
+                  activeOpacity={0.8}
+                >
+                  <View style={[
+                    styles.checkbox,
+                    { borderColor: theme.border },
+                    rememberMe && { backgroundColor: theme.primary, borderColor: theme.primary }
+                  ]}>
+                    {rememberMe && <Ionicons name="checkmark" size={12} color="#ffffff" style={{ fontWeight: 'bold' }} />}
+                  </View>
+                  <Text style={[styles.rememberMeText, { color: theme.textSecondary }]}>Save Credentials</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.7}>
+                  <Text style={[styles.forgotPasswordText, { color: theme.primary }]}>Reset Password?</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Login Button with Premium Linear Gradient */}
               <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.passwordToggle}
-                activeOpacity={0.7}
+                onPress={handleLogin}
+                disabled={isLoading}
+                activeOpacity={0.85}
+                style={styles.loginButtonWrapper}
               >
-                <Ionicons 
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'} 
-                  size={18} 
-                  color={theme.textSecondary} 
-                />
+                <LinearGradient
+                  colors={[theme.primaryDark || '#7c3aed', theme.primary || '#8b5cf6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[
+                    styles.loginButtonGradient,
+                    isLoading && styles.loginButtonDisabled
+                  ]}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#ffffff" size="small" />
+                  ) : (
+                    <View style={styles.loginButtonContent}>
+                      <Ionicons name="log-in-outline" size={18} color="#ffffff" style={{ marginRight: 8 }} />
+                      <Text style={styles.loginButtonText}>SIGN IN</Text>
+                    </View>
+                  )}
+                </LinearGradient>
               </TouchableOpacity>
             </View>
-          </View>
 
-          {/* Remember Me & Forgot Password */}
-          <View style={styles.optionsRow}>
-            <TouchableOpacity
-              onPress={() => setRememberMe(!rememberMe)}
-              style={styles.rememberMeContainer}
-              activeOpacity={0.8}
-            >
-              <View style={[
-                styles.checkbox,
-                { borderColor: theme.border },
-                rememberMe && { backgroundColor: theme.primary, borderColor: theme.primary }
-              ]}>
-                {rememberMe && <Ionicons name="checkmark" size={12} color="#ffffff" style={{ fontWeight: 'bold' }} />}
+            {/* Professional Academic Footer */}
+            <View style={styles.footerContainer}>
+              <View style={styles.dividerRow}>
+                <View style={[styles.footerLine, { backgroundColor: theme.border }]} />
+                <Ionicons name="book-outline" size={14} color="#d4af37" style={{ marginHorizontal: 10 }} />
+                <View style={[styles.footerLine, { backgroundColor: theme.border }]} />
               </View>
-              <Text style={[styles.rememberMeText, { color: theme.textSecondary }]}>Save Credentials</Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.7}>
-              <Text style={[styles.forgotPasswordText, { color: theme.primary }]}>Reset Password?</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Login Button with Premium Linear Gradient */}
-          <TouchableOpacity
-            onPress={handleLogin}
-            disabled={isLoading}
-            activeOpacity={0.85}
-            style={styles.loginButtonWrapper}
-          >
-            <LinearGradient
-              colors={[theme.primaryDark || '#7c3aed', theme.primary || '#8b5cf6']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[
-                styles.loginButtonGradient,
-                isLoading && styles.loginButtonDisabled
-              ]}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#ffffff" size="small" />
-              ) : (
-                <View style={styles.loginButtonContent}>
-                  <Ionicons name="log-in-outline" size={18} color="#ffffff" style={{ marginRight: 8 }} />
-                  <Text style={styles.loginButtonText}>SIGN IN</Text>
-                </View>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-
-        {/* Professional Academic Footer */}
-        <View style={styles.footerContainer}>
-          <View style={styles.dividerRow}>
-            <View style={[styles.footerLine, { backgroundColor: theme.border }]} />
-            <Ionicons name="book-outline" size={14} color="#d4af37" style={{ marginHorizontal: 10 }} />
-            <View style={[styles.footerLine, { backgroundColor: theme.border }]} />
-          </View>
-
-          <Text style={[styles.securityMotto, { color: theme.textSecondary }]}>
-            KNOWLEDGE  •  INTEGRITY  •  LEADERSHIP
-          </Text>
-          <View style={styles.securityStatusRow}>
-            <Ionicons name="shield-checkmark" size={11} color={theme.success} style={{ marginRight: 4 }} />
-            <Text style={[styles.securityText, { color: theme.textTertiary }]}>
-              Official Student Information Portal • Secure Connection
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+              <Text style={[styles.securityMotto, { color: theme.textSecondary }]}>
+                KNOWLEDGE  •  INTEGRITY  •  LEADERSHIP
+              </Text>
+              <View style={styles.securityStatusRow}>
+                <Ionicons name="shield-checkmark" size={11} color={theme.success} style={{ marginRight: 4 }} />
+                <Text style={[styles.securityText, { color: theme.textTertiary }]}>
+                  Official Student Information Portal • Secure Connection
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 };
 
@@ -386,7 +406,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 18,
+    paddingTop: 18,
+    paddingBottom: 0,
   },
 
   /* ── Logo Section ── */

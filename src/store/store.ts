@@ -14,6 +14,7 @@ import messagesReducer from './slices/messagesSlice';
 import adminReducer from './slices/adminSlice';
 import complaintsReducer from './slices/complaintsSlice';
 import assignmentsReducer from './slices/assignmentsSlice';
+import appSettingsReducer from './slices/appSettingsSlice';
 import timetableReducer from './slices/timetableSlice';
 
 const persistConfig = {
@@ -36,6 +37,7 @@ const rootReducer = combineReducers({
     admin: adminReducer,
     complaints: complaintsReducer,
     assignments: assignmentsReducer,
+        appSettings: appSettingsReducer,
     timetable: timetableReducer,
 });
 

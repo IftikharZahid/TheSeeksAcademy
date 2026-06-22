@@ -1,7 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../../api/firebaseConfig';
-import { collection, query, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, Timestamp, where } from 'firebase/firestore';
 import type { Dispatch } from '@reduxjs/toolkit';
 
 // ── Types ──────────────────────────────────────────────
@@ -20,15 +20,29 @@ export interface Notice {
     iconBgColor?: string;
 }
 
+export interface DiaryEntry {
+    id: string;
+    className: string;
+    subject: string;
+    title: string;
+    details: string;
+    date: string | null;
+    createdAt?: any;
+}
+
 interface NotificationsState {
     notices: Notice[];
+    diaries: DiaryEntry[];
     readIds: string[];
+    readDiaryIds: string[];
     loading: boolean;
 }
 
 const initialState: NotificationsState = {
     notices: [],
+    diaries: [],
     readIds: [],
+    readDiaryIds: [],
     loading: true,
 };
 
@@ -69,18 +83,32 @@ const notificationsSlice = createSlice({
                 state.readIds.push(action.payload);
             }
         },
+        setDiaries(state, action: PayloadAction<DiaryEntry[]>) {
+            state.diaries = action.payload;
+        },
+        setReadDiaryIds(state, action: PayloadAction<string[]>) {
+            state.readDiaryIds = action.payload;
+        },
+        markDiaryAsRead(state, action: PayloadAction<string>) {
+            if (!state.readDiaryIds.includes(action.payload)) {
+                state.readDiaryIds.push(action.payload);
+            }
+        },
         setLoading(state, action: PayloadAction<boolean>) {
             state.loading = action.payload;
         },
     },
 });
 
-export const { setNotices, setReadIds, markAsRead, setLoading } = notificationsSlice.actions;
+export const { setNotices, setReadIds, markAsRead, setDiaries, setReadDiaryIds, markDiaryAsRead, setLoading } = notificationsSlice.actions;
 export default notificationsSlice.reducer;
 
 // ── Selectors ──────────────────────────────────────────
 export const selectUnreadCount = (notices: Notice[], readIds: string[]) =>
     notices.filter((n) => !readIds.includes(n.id)).length;
+
+export const selectUnreadDiariesCount = (diaries: DiaryEntry[], readDiaryIds: string[]) =>
+    diaries.filter((d) => !readDiaryIds.includes(d.id)).length;
 
 // ── Firebase Listener + Persistence (call once from App.tsx) ──
 export const initNotificationsListener = (dispatch: Dispatch) => {
@@ -118,5 +146,56 @@ export const persistReadIds = async (readIds: string[]) => {
         await AsyncStorage.setItem('read_notices', JSON.stringify(readIds));
     } catch (error) {
         console.error('Error saving read status:', error);
+    }
+};
+
+export const initDiariesListener = (dispatch: Dispatch, studentClass?: string) => {
+    AsyncStorage.getItem('read_diaries').then((stored) => {
+        if (stored) {
+            try { dispatch(setReadDiaryIds(JSON.parse(stored))); } catch { }
+        }
+    });
+
+    let q;
+    if (studentClass) {
+        q = query(collection(db, 'diaries'), where('className', '==', studentClass));
+    } else {
+        q = query(collection(db, 'diaries'));
+    }
+
+    return onSnapshot(q, (snapshot) => {
+        const fetched = snapshot.docs.map(doc => {
+            const data = doc.data();
+            let dateStr = null;
+            if (data.date) {
+                if (data.date.toDate) {
+                    dateStr = data.date.toDate().toISOString();
+                } else if (typeof data.date === 'string' || typeof data.date === 'number') {
+                    dateStr = new Date(data.date).toISOString();
+                }
+            }
+            return {
+                id: doc.id,
+                ...data,
+                date: dateStr,
+            };
+        }) as DiaryEntry[];
+        
+        // Sort manually to avoid requiring a composite index in Firestore
+        fetched.sort((a, b) => {
+            const timeA = typeof a.createdAt === 'number' ? a.createdAt : (a.createdAt?.toMillis ? a.createdAt.toMillis() : 0);
+            const timeB = typeof b.createdAt === 'number' ? b.createdAt : (b.createdAt?.toMillis ? b.createdAt.toMillis() : 0);
+            return timeB - timeA;
+        });
+        
+        dispatch(setDiaries(fetched));
+    });
+};
+
+export const persistReadDiaryIds = async (readIds: string[]) => {
+    try {
+        await AsyncStorage.setItem('read_diaries', JSON.stringify(readIds));
+    } catch (error) {
+        console.error('Error saving diary read status:', error);
     }
 };

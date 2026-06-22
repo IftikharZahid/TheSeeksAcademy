@@ -8,6 +8,7 @@ import { Svg, Path, Circle } from 'react-native-svg';
 import { useNotifications } from '../context/NotificationContext';
 import { useAppSelector } from '../store/hooks';
 import { selectUnreadMessagesCount } from '../store/slices/messagesSlice';
+import { scale } from '../utils/responsive';
 
 // Modern sleek icons with rounded corners
 const TabIcons = {
@@ -291,7 +292,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    paddingTop: 6,
+    paddingTop: scale(6),
     position: 'relative',
   },
   indicator: {
@@ -309,7 +310,7 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: scale(6),
   },
   tabContent: {
     alignItems: 'center',
@@ -326,8 +327,8 @@ const styles = StyleSheet.create({
     top: -4,
     right: -8,
     minWidth: 16,
-    height: 16,
-    borderRadius: 8,
+    height: scale(16),
+    borderRadius: scale(8),
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -335,12 +336,12 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: '#FFFFFF',
-    fontSize: 9,
+    fontSize: scale(9),
     fontWeight: '700',
     paddingHorizontal: 3,
   },
   label: {
-    fontSize: 10,
+    fontSize: scale(10),
     marginTop: 2,
     textAlign: 'center',
   },

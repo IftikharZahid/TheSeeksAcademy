@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import { scale } from '../../utils/responsive';
 
 export const PrivacyPolicyScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -28,7 +29,7 @@ export const PrivacyPolicyScreen: React.FC = () => {
           <Ionicons name="arrow-back" size={20} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.text }]}>Privacy & Policy</Text>
-        <View style={{ width: 36 }} />
+        <View style={{ width: scale(36) }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -160,58 +161,58 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(10),
     borderBottomWidth: 1,
   },
   backBtn: {
-    width: 36, height: 36,
-    borderRadius: 12,
+    width: scale(36), height: scale(36),
+    borderRadius: scale(12),
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
+  headerTitle: { fontSize: scale(18), fontWeight: '700', letterSpacing: -0.3 },
 
-  scroll: { padding: 12, paddingBottom: 32, gap: 10 },
+  scroll: { padding: scale(12), paddingBottom: scale(32), gap: 10 },
 
   lastUpdatedCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(8),
+    borderRadius: scale(10),
     borderWidth: 1,
     borderStyle: 'dashed',
   },
-  lastUpdatedText: { fontSize: 11, fontWeight: '600' },
+  lastUpdatedText: { fontSize: scale(11), fontWeight: '600' },
 
   card: {
-    borderRadius: 14, borderWidth: 1,
-    padding: 16,
+    borderRadius: scale(14), borderWidth: 1,
+    padding: scale(16),
   },
 
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: scale(12) },
   sectionIconWrap: {
-    width: 32, height: 32, borderRadius: 10,
+    width: scale(32), height: scale(32), borderRadius: scale(10),
     justifyContent: 'center', alignItems: 'center',
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2 },
-  paragraph: { fontSize: 13, lineHeight: 22, letterSpacing: 0.2 },
+  sectionTitle: { fontSize: scale(15), fontWeight: '700', letterSpacing: -0.2 },
+  paragraph: { fontSize: scale(13), lineHeight: 22, letterSpacing: 0.2 },
 
   bulletPoint: {
     flexDirection: 'row',
-    paddingLeft: 4,
-    marginTop: 6,
+    paddingLeft: scale(4),
+    marginTop: scale(6),
     gap: 8,
   },
   bullet: {
-    fontSize: 13,
+    fontSize: scale(13),
     lineHeight: 22,
   },
   bulletText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: scale(13),
     lineHeight: 22,
     letterSpacing: 0.2,
   },
@@ -221,13 +222,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: scale(10),
+    borderRadius: scale(10),
     borderWidth: 1,
-    marginTop: 12,
+    marginTop: scale(12),
   },
   emailText: {
-    fontSize: 13,
+    fontSize: scale(13),
     fontWeight: '600',
   },
 });

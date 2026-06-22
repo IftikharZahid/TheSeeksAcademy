@@ -123,7 +123,7 @@ export const AboutScreen: React.FC = () => {
 
         <View style={styles.footerWrap}>
           <Text style={[styles.footerText, { color: theme.textSecondary }]}>Made with ❤️ by </Text>
-          <TouchableOpacity onPress={() => Linking.openURL('https://zahid.codes')} activeOpacity={0.7} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://zahid.codes')} activeOpacity={0.7} hitSlop={{ top: scale(10), bottom: scale(10), left: scale(10), right: scale(10) }}>
             <Text style={[styles.footerLink, { color: theme.primary }]}>ZahidCodes</Text>
           </TouchableOpacity>
         </View>

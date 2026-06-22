@@ -173,9 +173,7 @@ export const LikedVideosScreen: React.FC = () => {
     );
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
-            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
-
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
             <View style={[styles.header, { backgroundColor: theme.card }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={scale(24)} color={theme.text} />
@@ -231,7 +229,7 @@ export const LikedVideosScreen: React.FC = () => {
                                 <View style={styles.totalTimeRow}>
                                     <Text style={[styles.footerLabel, { color: theme.textSecondary }]}>Total Watch Time</Text>
                                     <View style={styles.timeValueContainer}>
-                                        <Ionicons name="time-outline" size={16} color={theme.primary} style={{ marginRight: 4 }} />
+                                        <Ionicons name="time-outline" size={16} color={theme.primary} style={{ marginRight: scale(4) }} />
                                         <Text style={[styles.footerValue, { color: theme.text }]}>{totalDuration}</Text>
                                     </View>
                                 </View>

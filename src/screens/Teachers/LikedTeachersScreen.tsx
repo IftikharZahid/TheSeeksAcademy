@@ -6,7 +6,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { auth, db } from '../../api/firebaseConfig';
-import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { useAppSelector } from '../../store/hooks';
 import { scale } from '../../utils/responsive';
 import { HomeStackParamList } from '../navigation/HomeStack';
 
@@ -29,6 +30,7 @@ export const LikedTeachersScreen: React.FC = () => {
     const { theme, isDark } = useTheme();
     const [likedTeachers, setLikedTeachers] = useState<Teacher[]>([]);
     const [loading, setLoading] = useState(true);
+    const globalStaff = useAppSelector(state => state.teachers.list);
 
     // Hide TopHeader and tab bar — restoration is handled by MainTabs hiddenRoutes logic
     useFocusEffect(
@@ -59,32 +61,25 @@ export const LikedTeachersScreen: React.FC = () => {
             } as Teacher));
 
             // Cross-reference with live staff collection for latest images
-            try {
-                const staffSnapshot = await getDocs(collection(db, 'staff'));
-                const staffMap = new Map<string, string>();
-                staffSnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    if (data.image) {
-                        staffMap.set(doc.id, data.image);
-                    }
-                });
+            const staffMap = new Map<string, string>();
+            globalStaff.forEach((teacher: any) => {
+                if (teacher.image) {
+                    staffMap.set(teacher.id, teacher.image);
+                }
+            });
 
-                // Merge: use latest image from staff if available
-                const merged = favorites.map(teacher => ({
-                    ...teacher,
-                    image: staffMap.get(teacher.id) || teacher.image,
-                }));
-                setLikedTeachers(merged);
-            } catch {
-                // Fallback to saved data if staff fetch fails
-                setLikedTeachers(favorites);
-            }
-
+            // Merge: use latest image from staff if available
+            const merged = favorites.map(teacher => ({
+                ...teacher,
+                image: staffMap.get(teacher.id) || teacher.image,
+            }));
+            
+            setLikedTeachers(merged);
             setLoading(false);
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [globalStaff]);
 
     const cardWidth = (width - scale(48)) / 2;
 
@@ -275,7 +270,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         overflow: 'hidden',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: scale(4) },
         shadowOpacity: 0.05,
         shadowRadius: 10,
         elevation: 3,

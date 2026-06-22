@@ -5,22 +5,19 @@ import { HomeScreen } from '../CoreScreens/HomeScreen';
 import { ResultsScreen } from '../Academics/ResultsScreen';
 import { TimetableScreen } from '../Academics/TimetableScreen';
 import { AssignmentsScreen } from '../Academics/AssignmentsScreen';
+import DiaryScreen from '../Academics/DiaryScreen';
 import { TeachersScreen } from '../Teachers/TeachersListScreen';
 import { AttendanceScreen } from '../Academics/AttendanceScreen';
 import { StaffInfoScreen } from '../Teachers/TeacherDetailsScreen';
-import { ComplaintsScreen } from '../AdminScreens/ComplaintsScreen';
-import { AdminTeachersScreen } from '../AdminScreens/AdminTeachersScreen';
 import { FeeDetailScreen } from '../Finance/FeeDetailScreen';
 import { VideoLecturesScreen } from '../Lectures/VideoLecturesScreen';
 import { VideoGalleryScreen } from '../Lectures/VideoGalleryScreen';
-import { SearchScreen } from '../CoreScreens/SearchScreen';
 import { NoticesScreen } from '../Communication/NoticeScreen';
-import { AdminNoticeBoardScreen } from '../AdminScreens/AdminNoticeBoardScreen';
 import { MessagesScreen } from '../Communication/MessagesScreen';
 import { LikedVideosScreen } from '../Lectures/LikedVideosScreen';
 import { LikedTeachersScreen } from '../Teachers/LikedTeachersScreen';
 
-// NOTE: HelpCenterScreen, AboutScreen, PrivacyPolicyScreen, ChangePasswordScreen,
+// NOTE: HelpCenterScreen, AboutScreen, PrivacyPolicyScreen,
 // and TeacherDashboardScreen have been moved to the root AppNavigator stack so they
 // render completely fullscreen without any tab bar or TopHeader leaking through.
 
@@ -29,6 +26,7 @@ export type HomeStackParamList = {
   ResultsScreen: undefined;
   TimetableScreen: undefined;
   AssignmentsScreen: undefined;
+  DiaryScreen: undefined;
   TeachersScreen: undefined;
   AttendanceScreen: undefined;
   StaffInfoScreen: {
@@ -41,8 +39,6 @@ export type HomeStackParamList = {
       image: string;
     };
   };
-  ComplaintsScreen: undefined;
-  AdminTeachersScreen: undefined;
   FeeDetailScreen: undefined;
   VideoLecturesScreen: {
     galleryId?: string;
@@ -56,9 +52,7 @@ export type HomeStackParamList = {
     }>;
   };
   VideoGalleryScreen: undefined;
-  SearchScreen: undefined;
   NoticesScreen: undefined;
-  AdminNoticeBoardScreen: undefined;
   MessagesScreen: undefined;
   LikedVideosScreen: undefined;
   LikedTeachersScreen: undefined;
@@ -73,17 +67,14 @@ export const HomeStack: React.FC = () => {
       <Stack.Screen name="ResultsScreen" component={ResultsScreen} />
       <Stack.Screen name="TimetableScreen" component={TimetableScreen} />
       <Stack.Screen name="AssignmentsScreen" component={AssignmentsScreen} />
+      <Stack.Screen name="DiaryScreen" component={DiaryScreen} />
       <Stack.Screen name="TeachersScreen" component={TeachersScreen} />
       <Stack.Screen name="AttendanceScreen" component={AttendanceScreen} />
       <Stack.Screen name="StaffInfoScreen" component={StaffInfoScreen} />
-      <Stack.Screen name="ComplaintsScreen" component={ComplaintsScreen} />
-      <Stack.Screen name="AdminTeachersScreen" component={AdminTeachersScreen} />
       <Stack.Screen name="FeeDetailScreen" component={FeeDetailScreen} />
       <Stack.Screen name="VideoLecturesScreen" component={VideoLecturesScreen} />
       <Stack.Screen name="VideoGalleryScreen" component={VideoGalleryScreen} />
-      <Stack.Screen name="SearchScreen" component={SearchScreen} />
       <Stack.Screen name="NoticesScreen" component={NoticesScreen} />
-      <Stack.Screen name="AdminNoticeBoardScreen" component={AdminNoticeBoardScreen} />
       <Stack.Screen name="MessagesScreen" component={MessagesScreen} />
       <Stack.Screen name="LikedVideosScreen" component={LikedVideosScreen} />
       <Stack.Screen name="LikedTeachersScreen" component={LikedTeachersScreen} />

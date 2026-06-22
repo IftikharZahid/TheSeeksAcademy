@@ -16,6 +16,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppSelector } from '../../store/hooks';
+import { scale } from '../../utils/responsive';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 36) / 2;
@@ -158,13 +159,25 @@ export const VideoGalleryScreen: React.FC = () => {
     const userProfile = useAppSelector(state => state.auth.profile);
 
     // Map Redux galleries to the local Gallery type and filter based on user's class
+    const isTeacher = ['teacher', 'hod', 'principal', 'vice principal', 'senior teacher', 'assistant teacher']
+        .some(r => (userProfile?.role || '').toLowerCase().includes(r));
+
     const galleries: Gallery[] = reduxGalleries
         .filter((g: any) => {
-            // Filter by targetClass: if it exists, it must match the user's class.
-            // If it doesn't exist, it's a general gallery available to everyone.
-            if (userProfile?.class && g.targetClass) {
-                return g.targetClass.toLowerCase() === userProfile.class.toLowerCase();
+            // Teachers and Admins can see all galleries
+            if (isTeacher) return true;
+
+            // If the gallery has a specific target class assigned
+            if (g.targetClass && g.targetClass.trim() !== '' && g.targetClass.trim().toLowerCase() !== 'all classes') {
+                // If the student has a class, only show if it matches EXACTLY
+                if (userProfile?.class) {
+                    return g.targetClass.trim().toLowerCase() === userProfile.class.trim().toLowerCase();
+                }
+                // If student doesn't have a class assigned, hide targeted galleries
+                return false;
             }
+            
+            // If the gallery has NO target class, it's for everyone
             return true;
         })
         .map((g: any) => ({
@@ -290,39 +303,39 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
+        paddingHorizontal: scale(12),
+        paddingVertical: scale(10),
     },
     headerIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
+        width: scale(40),
+        height: scale(40),
+        borderRadius: scale(12),
         justifyContent: 'center',
         alignItems: 'center',
     },
     backButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 12,
+        width: scale(36),
+        height: scale(36),
+        borderRadius: scale(12),
         justifyContent: 'center',
         alignItems: 'center',
     },
     headerCenter: {
         flex: 1,
-        marginLeft: 12,
+        marginLeft: scale(12),
     },
     headerTitle: {
-        fontSize: 18,
+        fontSize: scale(18),
         fontWeight: '700',
         letterSpacing: -0.3,
     },
     headerSubtitle: {
-        fontSize: 11,
+        fontSize: scale(11),
         marginTop: 1,
     },
     placeholderButton: {
-        width: 36,
-        height: 36,
+        width: scale(36),
+        height: scale(36),
     },
     loadingContainer: {
         flex: 1,
@@ -330,16 +343,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     scrollContent: {
-        paddingBottom: 24,
+        paddingBottom: scale(24),
     },
     // Banner
     bannerContainer: {
-        marginHorizontal: 12,
-        marginTop: 12,
+        marginHorizontal: scale(12),
+        marginTop: scale(12),
     },
     banner: {
-        borderRadius: 16,
-        padding: 16,
+        borderRadius: scale(16),
+        padding: scale(16),
         overflow: 'hidden',
         position: 'relative',
     },
@@ -347,22 +360,22 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     bannerTitle: {
-        fontSize: 18,
+        fontSize: scale(18),
         fontWeight: '700',
         color: '#fff',
-        marginBottom: 4,
+        marginBottom: scale(4),
     },
     bannerSubtitle: {
-        fontSize: 12,
+        fontSize: scale(12),
         color: 'rgba(255, 255, 255, 0.85)',
     },
     bannerDecoration: {
         position: 'absolute',
         top: -20,
         right: -20,
-        width: 80,
-        height: 80,
-        borderRadius: 40,
+        width: scale(80),
+        height: scale(80),
+        borderRadius: scale(40),
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
     // Section Header
@@ -370,40 +383,40 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginHorizontal: 12,
-        marginTop: 20,
-        marginBottom: 12,
+        marginHorizontal: scale(12),
+        marginTop: scale(20),
+        marginBottom: scale(12),
     },
     sectionTitle: {
-        fontSize: 16,
+        fontSize: scale(16),
         fontWeight: '700',
         letterSpacing: -0.2,
     },
     sectionCount: {
-        fontSize: 12,
+        fontSize: scale(12),
     },
     // Empty State
     emptyState: {
         alignItems: 'center',
-        paddingVertical: 40,
+        paddingVertical: scale(40),
     },
     emptyText: {
-        marginTop: 12,
-        fontSize: 14,
+        marginTop: scale(12),
+        fontSize: scale(14),
     },
     // Grid
     grid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        paddingHorizontal: 12,
+        paddingHorizontal: scale(12),
         gap: 12,
     },
     cardContainer: {
         width: CARD_WIDTH,
     },
     galleryCard: {
-        padding: 14,
-        borderRadius: 14,
+        padding: scale(14),
+        borderRadius: scale(14),
         borderWidth: 1,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -412,33 +425,33 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     thumbnailImage: {
-        width: 42,
-        height: 42,
-        borderRadius: 12,
-        marginBottom: 10,
+        width: scale(42),
+        height: scale(42),
+        borderRadius: scale(12),
+        marginBottom: scale(10),
         backgroundColor: '#e5e5e5',
     },
     iconGradient: {
-        width: 42,
-        height: 42,
-        borderRadius: 12,
+        width: scale(42),
+        height: scale(42),
+        borderRadius: scale(12),
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 10,
+        marginBottom: scale(10),
     },
     galleryName: {
-        fontSize: 14,
+        fontSize: scale(14),
         fontWeight: '700',
         marginBottom: 2,
     },
     galleryDescription: {
-        fontSize: 11,
-        marginBottom: 10,
+        fontSize: scale(11),
+        marginBottom: scale(10),
     },
     statsRow: {
         flexDirection: 'row',
         gap: 12,
-        marginBottom: 8,
+        marginBottom: scale(8),
     },
     statItem: {
         flexDirection: 'row',
@@ -446,16 +459,16 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     statText: {
-        fontSize: 10,
+        fontSize: scale(10),
         fontWeight: '500',
     },
     arrowContainer: {
         position: 'absolute',
-        top: 14,
-        right: 14,
-        width: 24,
-        height: 24,
-        borderRadius: 8,
+        top: scale(14),
+        right: scale(14),
+        width: scale(24),
+        height: scale(24),
+        borderRadius: scale(8),
         justifyContent: 'center',
         alignItems: 'center',
     },

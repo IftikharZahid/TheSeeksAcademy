@@ -1,7 +1,25 @@
 import React, { useEffect } from 'react';
 import * as SplashScreenNative from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { LogBox } from 'react-native';
+import * as Notifications from 'expo-notifications';
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
+if (!__DEV__) {
+  console.log = () => {};
+  console.warn = () => {};
+  console.error = () => {};
+  LogBox.ignoreAllLogs(true);
+}
 SplashScreenNative.preventAutoHideAsync().catch(() => {});
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -11,10 +29,13 @@ import { initAuthListener } from './src/store/slices/authSlice';
 import { loadSavedTheme } from './src/store/slices/themeSlice';
 import { initCoursesListener } from './src/store/slices/coursesSlice';
 import { initTeachersListener } from './src/store/slices/teachersSlice';
-import { initNotificationsListener } from './src/store/slices/notificationsSlice';
+import { initNotificationsListener, initDiariesListener } from './src/store/slices/notificationsSlice';
 import { initVideoGalleriesListener, initLikedVideosListener } from './src/store/slices/videosSlice';
 import { initMessagesListener, loadLastReadTimestamp } from './src/store/slices/messagesSlice';
+import { initAssignmentsListener } from './src/store/slices/assignmentsSlice';
+import { initTimetableListener } from './src/store/slices/timetableSlice';
 import { AppNavigator } from './src/screens/navigation/AppNavigator';
+import { Audio } from 'expo-av';
 
 /**
  * Inner component that has access to Redux dispatch
@@ -27,6 +48,15 @@ function AppContent() {
 
   // ── Global Auth & Data Listeners ────────────────────
   useEffect(() => {
+    // Configure audio to play even if the device is on silent mode
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      allowsRecordingIOS: false,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+    }).catch(() => {});
+
     // Dismiss the native Expo splash screen once our app is ready
     SplashScreenNative.hideAsync().catch(() => {});
 
@@ -38,6 +68,8 @@ function AppContent() {
     const unsubTeachers = initTeachersListener(dispatch);
     const unsubNotifications = initNotificationsListener(dispatch);
     const unsubGalleries = initVideoGalleriesListener(dispatch);
+    const unsubAssignments = initAssignmentsListener(dispatch);
+    const unsubTimetable = initTimetableListener(dispatch);
 
     return () => {
       unsubAuth();
@@ -45,6 +77,8 @@ function AppContent() {
       unsubTeachers();
       unsubNotifications();
       unsubGalleries();
+      unsubAssignments();
+      unsubTimetable();
     };
   }, [dispatch]);
 
@@ -62,8 +96,10 @@ function AppContent() {
   useEffect(() => {
     if (profile) {
       const unsubMessages = initMessagesListener(dispatch, profile);
+      const unsubDiaries = initDiariesListener(dispatch, profile.class);
       return () => {
         unsubMessages();
+        unsubDiaries();
       };
     }
   }, [dispatch, profile]);

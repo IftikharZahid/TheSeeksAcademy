@@ -1,7 +1,8 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 // @ts-ignore
-import { initializeAuth, getReactNativePersistence } from "firebase/auth";
+import { initializeAuth, getReactNativePersistence, getAuth } from "firebase/auth";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Your Firebase Config (Take from Firebase Console → Project Settings)
@@ -28,7 +29,7 @@ if (isCensored) {
 }
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 console.log('🔥 Firebase initialized with project:', firebaseConfig.projectId);
 
@@ -37,7 +38,22 @@ export const db = getFirestore(app);
 console.log('💾 Firestore initialized');
 
 // Initialize Auth with Native Persistence
-export const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage)
-});
-console.log('🔐 Firebase Auth initialized with native persistence');
+let authTemp;
+try {
+  authTemp = initializeAuth(app, {
+    persistence: getReactNativePersistence(AsyncStorage)
+  });
+  console.log('🔐 Firebase Auth initialized with native persistence');
+} catch (error: any) {
+  if (error.code === 'auth/already-initialized') {
+    authTemp = getAuth(app);
+    console.log('🔐 Firebase Auth already initialized, retrieving instance');
+  } else {
+    throw error;
+  }
+}
+export const auth = authTemp;
+
+// Initialize Storage
+export const storage = getStorage(app);
+console.log('📦 Firebase Storage initialized');

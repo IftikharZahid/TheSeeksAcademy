@@ -5,7 +5,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTheme } from '../../context/ThemeContext';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { initAttendanceListener } from '../../store/slices/attendanceSlice';
 import { scale, verticalScale, moderateScale } from '../../utils/responsive';
 
 const { width } = Dimensions.get("window");
@@ -39,13 +38,6 @@ export const AttendanceScreen: React.FC = () => {
   // Real-time attendance via onSnapshot listener
   const user           = useAppSelector(s => s.auth.user);
   const attendanceData = useAppSelector(s => s.attendance.data);
-
-  // Subscribe once per uid — auto-updates when admin changes records
-  useEffect(() => {
-    if (!user?.uid) return;
-    const unsub = initAttendanceListener(dispatch, user.uid);
-    return () => unsub();
-  }, [user?.uid]);
 
   // dailyRecords from Firestore (falls back to empty map)
   const attendanceMap: Record<string, 'present' | 'absent' | 'late'> =
@@ -936,7 +928,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     elevation: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
+    shadowOffset: { width: 0, height: scale(5) },
     shadowOpacity: 0.15,
     shadowRadius: 10,
   },
