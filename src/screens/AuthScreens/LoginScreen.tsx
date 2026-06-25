@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
   topSection: {
     alignItems: "center",
     width: "100%",
-    marginBottom: isSmall ? 10 : 14,
+    marginBottom: isSmall ? 4 : 8,
     zIndex: 1,
   },
   mainTitle: {
@@ -491,23 +491,23 @@ const styles = StyleSheet.create({
   logoSection: {
     alignItems: "center",
     width: "100%",
-    marginBottom: isSmall ? 10 : 16,
+    marginBottom: isSmall ? 4 : 8,
     zIndex: 1,
   },
   logoContainer: {
-    marginBottom: isSmall ? 4 : 8,
+    marginBottom: isSmall ? 2 : 4,
     alignItems: "center",
     justifyContent: "center",
   },
   logoImage: {
-    width: isSmall ? 75 : 95,
-    height: isSmall ? 75 : 95,
+    width: isSmall ? 90 : 120,
+    height: isSmall ? 90 : 120,
   },
   starsRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: isSmall ? 6 : 10,
+    marginBottom: isSmall ? 4 : 8,
   },
   centerStar: {
     marginHorizontal: scale(4),
@@ -518,13 +518,13 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: COLORS.darkBlue,
     letterSpacing: 1,
-    marginBottom: isSmall ? 4 : 6,
+    marginBottom: isSmall ? 2 : 4,
   },
   locationRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: scale(12),
+    marginBottom: scale(6),
   },
   locationLine: {
     width: scale(30),
