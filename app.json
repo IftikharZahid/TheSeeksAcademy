@@ -4,10 +4,10 @@
     "slug": "TheSeeks-Students",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.jpg",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/splash-icon.jpg",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#0d1f3c"
     },
@@ -18,7 +18,7 @@
     "android": {
       "package": "com.TheSeeksAcademy.Students",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.jpg",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0d1f3c"
       },
       "predictiveBackGestureEnabled": false,
@@ -43,7 +43,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.jpg",
+          "icon": "./assets/icon.png",
           "color": "#0d1f3c",
           "androidMode": "default",
           "androidCollapsedTitle": "The Seeks Academy"

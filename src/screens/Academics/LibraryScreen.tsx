@@ -376,7 +376,7 @@ export const LibraryScreen: React.FC = () => {
         {/* Hero Header */}
         <View style={[styles.headerBackground, { backgroundColor: headerBg }]}>
           <Image 
-            source={require('../../../assets/the-seeks-logo.jpg')} 
+            source={require('../../../assets/the-seeks-logo.png')} 
             style={{ position: 'absolute', right: -scale(135), top: scale(40), width: scale(430), height: scale(90), opacity: 0.15, resizeMode: 'contain' }} 
           />
         </View>

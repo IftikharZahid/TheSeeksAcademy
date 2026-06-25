@@ -72,7 +72,7 @@ export const WelcomeScreen: React.FC = () => {
   return (
     <View style={[styles.mainContainer, { backgroundColor: theme.background }]}>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
-      
+
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -92,7 +92,7 @@ export const WelcomeScreen: React.FC = () => {
           {/* ── Top Header Section ── */}
           <View style={styles.topSection}>
             <Text style={styles.mainTitle}>STUDENT PORTAL</Text>
-            
+
             <View style={styles.dividerRow}>
               <View style={styles.thinLine} />
               <Ionicons name="school" size={14} color={COLORS.darkBlue} style={styles.hatIcon} />
@@ -106,12 +106,12 @@ export const WelcomeScreen: React.FC = () => {
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
               <Image
-                source={require("../../../assets/icon.jpg")}
+                source={require("../../../assets/icon.png")}
                 style={styles.logoImage}
                 resizeMode="contain"
               />
             </View>
-            
+
             <View style={styles.starsRow}>
               <Ionicons name="star" size={12} color={COLORS.gold} />
               <Ionicons name="star" size={14} color={COLORS.gold} style={styles.centerStar} />
@@ -119,7 +119,7 @@ export const WelcomeScreen: React.FC = () => {
             </View>
 
             <Text style={styles.academyTitle}>THE SEEKS ACADEMY</Text>
-            
+
             <View style={styles.locationRow}>
               <View style={styles.locationLine} />
               <Text style={styles.locationText}>F O R T  A B B A S</Text>
@@ -149,7 +149,7 @@ export const WelcomeScreen: React.FC = () => {
 
           {/* ── Bottom Buttons ── */}
           <View style={styles.buttonContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               activeOpacity={0.85}
               style={styles.primaryBtn}
               onPress={() => navigation.navigate("Login")}
@@ -158,7 +158,7 @@ export const WelcomeScreen: React.FC = () => {
               <Text style={styles.primaryBtnText}>Student Login</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               activeOpacity={0.7}
               style={styles.secondaryBtn}
               onPress={() =>
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   logoContainer: {
-    marginBottom: scale(8),
+    marginBottom: scale(2),
     alignItems: "center",
     justifyContent: "center",
   },

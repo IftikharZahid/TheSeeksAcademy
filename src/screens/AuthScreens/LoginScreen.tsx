@@ -268,7 +268,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.logoSection}>
               <View style={styles.logoContainer}>
                 <Image
-                  source={require('../../../assets/icon.jpg')}
+                  source={require('../../../assets/icon.png')}
                   style={styles.logoImage}
                   resizeMode="contain"
                 />
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
   logoSection: {
     alignItems: "center",
     width: "100%",
-    marginTop: scale(-12),
+    marginTop: scale(-20),
     marginBottom: isSmall ? 4 : 8,
     zIndex: 1,
   },
