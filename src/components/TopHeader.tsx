@@ -292,8 +292,8 @@ const styles = StyleSheet.create({
     marginRight: scale(10),
   },
   logoImage: {
-    width: scale(44),
-    height: scale(44),
+    width: scale(56),
+    height: scale(56),
     marginLeft: scale(4),
   },
   academyTextContainer: {
