@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
   topSection: {
     alignItems: "center",
     width: "100%",
-    marginBottom: isSmall ? 4 : 8,
+    marginBottom: 0,
     zIndex: 1,
   },
   mainTitle: {
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     width: "80%",
-    marginVertical: scale(8),
+    marginVertical: scale(2),
   },
   thinLine: {
     flex: 1,
@@ -491,6 +491,7 @@ const styles = StyleSheet.create({
   logoSection: {
     alignItems: "center",
     width: "100%",
+    marginTop: scale(-12),
     marginBottom: isSmall ? 4 : 8,
     zIndex: 1,
   },
