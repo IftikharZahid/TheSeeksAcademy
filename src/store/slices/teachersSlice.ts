@@ -17,6 +17,7 @@ export interface Teacher {
     rating?: number;
     booktitle?: string;
     bookimage?: string;
+    gender?: string;
 }
 
 interface TeachersState {

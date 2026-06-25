@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Dimensions } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../navigation/HomeStack';
@@ -24,6 +25,7 @@ interface Teacher {
   courses?: number;
   rating?: number;
   phone?: string;
+  gender?: string;
 }
 
 type TeachersScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'TeachersScreen'>;
@@ -91,7 +93,17 @@ export const TeachersScreen: React.FC = () => {
     >
       {/* Teacher Image & Rating overlay */}
       <View style={[styles.imageWrapper, { backgroundColor: teacher.color }]}>
-        <Image source={{ uri: teacher.image }} style={styles.teacherImage} />
+        {teacher.image ? (
+          <Image source={{ uri: teacher.image }} style={styles.teacherImage} />
+        ) : (
+          <View style={[styles.teacherImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#e5e7eb' }]}>
+            <Ionicons 
+              name={teacher.gender?.toLowerCase() === 'female' ? "woman" : "man"} 
+              size={scale(50)} 
+              color="#9ca3af" 
+            />
+          </View>
+        )}
         <View style={styles.ratingBadge}>
           <Ionicons name="star" size={scale(10)} color="#FFD700" />
           <Text style={styles.ratingText}>{teacher.rating}</Text>
@@ -125,6 +137,7 @@ export const TeachersScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={theme.background} />
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.border, borderBottomWidth: 1 }]}>
         <TouchableOpacity
