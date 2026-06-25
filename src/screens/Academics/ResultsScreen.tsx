@@ -59,7 +59,7 @@ export const ResultsScreen: React.FC = () => {
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showTabPicker, setShowTabPicker] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   const dispatch = useAppDispatch();
   const entries = useAppSelector(state => state.results.list);
   const loading = useAppSelector(state => state.results.isLoading);
@@ -69,7 +69,7 @@ export const ResultsScreen: React.FC = () => {
   useEffect(() => {
     let newlyRead = false;
     const newReadIds = [...readResultIds];
-    
+
     entries.forEach(entry => {
       if (!newReadIds.includes(entry.id)) {
         newReadIds.push(entry.id);
@@ -146,10 +146,10 @@ export const ResultsScreen: React.FC = () => {
   const fetchExams = useCallback(async () => {
     if (!user) { return; }
     dispatch(fetchResults({
-        userRollNo: userRollNo || null,
-        userEmail: user?.email || null,
-        studentName: studentName || null,
-        studentClass: studentClass || null
+      userRollNo: userRollNo || null,
+      userEmail: user?.email || null,
+      studentName: studentName || null,
+      studentClass: studentClass || null
     }));
   }, [userRollNo, studentName, studentClass, user?.email, dispatch]);
 
@@ -164,7 +164,7 @@ export const ResultsScreen: React.FC = () => {
   // Process data for the result sheet - aggregate by subject
   const processedData = useMemo(() => {
     let filtered = activeTab === 'All' ? entries : entries.filter(e => (e.title || '').toUpperCase() === activeTab.toUpperCase());
-    
+
     if (activeCategory !== 'All') {
       filtered = filtered.filter(e => e.category === activeCategory);
     }
@@ -222,7 +222,7 @@ export const ResultsScreen: React.FC = () => {
     subjectsData.sort((a, b) => {
       const rankA = getSubjectRank(a.name);
       const rankB = getSubjectRank(b.name);
-      
+
       if (rankA !== rankB) {
         return rankA - rankB;
       }
@@ -242,9 +242,9 @@ export const ResultsScreen: React.FC = () => {
     if (studentClass && activeTab !== 'All' && sourceExams.length > 0) {
       // Find all exams matching this class and this test (activeTab)
       const peerExams = sourceExams.filter(
-        ex => ex.studentClass === studentClass && 
-              (ex.title || '').toUpperCase() === activeTab.toUpperCase() &&
-              (activeCategory !== 'All' ? ex.category === activeCategory : true)
+        ex => ex.studentClass === studentClass &&
+          (ex.title || '').toUpperCase() === activeTab.toUpperCase() &&
+          (activeCategory !== 'All' ? ex.category === activeCategory : true)
       );
 
       const studentRankings = new Map<string, { total: number; obtained: number }>();
@@ -329,9 +329,9 @@ export const ResultsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0f172a' : '#f8fafc' }]} edges={['top', 'left', 'right']}>
-      <StatusBar 
-        backgroundColor={theme.card} 
-        barStyle={isDark ? 'light-content' : 'dark-content'} 
+      <StatusBar
+        backgroundColor={theme.card}
+        barStyle={isDark ? 'light-content' : 'dark-content'}
       />
       <View style={[styles.header, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
@@ -343,8 +343,8 @@ export const ResultsScreen: React.FC = () => {
 
       <ScrollView contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? '#fff' : '#000'} />}>
         <View style={[styles.filterSearchRow, { backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: isDark ? '#334155' : '#e2e8f0' }]}>
-          <TouchableOpacity 
-            onPress={() => setShowCategoryPicker(true)} 
+          <TouchableOpacity
+            onPress={() => setShowCategoryPicker(true)}
             style={styles.inlineDropdown}
           >
             <Text style={[styles.dropdownLabel, { color: isDark ? '#64748b' : '#94a3b8' }]}>Test Type</Text>
@@ -356,8 +356,8 @@ export const ResultsScreen: React.FC = () => {
 
           <View style={[styles.verticalDivider, { backgroundColor: isDark ? '#334155' : '#e2e8f0' }]} />
 
-          <TouchableOpacity 
-            onPress={() => setShowTabPicker(true)} 
+          <TouchableOpacity
+            onPress={() => setShowTabPicker(true)}
             style={styles.inlineDropdown}
           >
             <Text style={[styles.dropdownLabel, { color: isDark ? '#64748b' : '#94a3b8' }]}>Test No.</Text>
@@ -373,7 +373,7 @@ export const ResultsScreen: React.FC = () => {
             <View ref={viewShotRef} collapsable={false} style={styles.resultSheet}>
 
               <View style={styles.sheetHeader}>
-                <Image source={require('../../assets/the-seeks-logo.jpg')} style={[styles.sheetLogo, { width: isSmallScreen ? 40 : 50, height: isSmallScreen ? 40 : 50 }]} resizeMode="contain" />
+                <Image source={require('../../assets/the-seeks-logo.png')} style={[styles.sheetLogo, { width: isSmallScreen ? 40 : 50, height: isSmallScreen ? 40 : 50 }]} resizeMode="contain" />
                 <View style={styles.sheetHeaderCenter}>
                   <Text style={[styles.sheetAcademyName, { fontSize: isSmallScreen ? 14 : 16 }]}>The Seeks Academy Fort Abbas</Text>
                   <Text style={[styles.sheetTitle, { fontSize: isSmallScreen ? 10 : 11 }]}>Result Sheet ({activeTab === 'All' ? 'Grand Test' : `${processedData.testCategory} ${activeTab}`} Session {new Date().getFullYear()}-{new Date().getFullYear() + 1})</Text>
@@ -506,10 +506,10 @@ const styles = StyleSheet.create({
   headerTitle: { fontWeight: '700' },
   iconBtn: { padding: scale(4) },
   scrollContent: { padding: scale(10) },
-  filterSearchRow: { 
-    flexDirection: 'row', alignItems: 'center', borderRadius: scale(12), marginBottom: scale(12), 
-    elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, 
-    borderWidth: 1, height: scale(50), paddingHorizontal: scale(4) 
+  filterSearchRow: {
+    flexDirection: 'row', alignItems: 'center', borderRadius: scale(12), marginBottom: scale(12),
+    elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3,
+    borderWidth: 1, height: scale(50), paddingHorizontal: scale(4)
   },
   verticalDivider: { width: 1, height: '60%', marginHorizontal: scale(8) },
   inlineDropdown: { flex: 1, paddingHorizontal: scale(10), height: '100%', justifyContent: 'center' },

@@ -46,9 +46,9 @@ const { width, height } = Dimensions.get('window');
 import { GROUPS } from '../../store/slices/messagesSlice';
 
 const EMOJI_LIST = [
-  "😊","😂","❤️","👍","🎉","🔥","👋","💪","🙏","✨",
-  "😍","🤔","👏","💯","🎓","📚","✅","⭐","🏆","💡",
-  "😎","🥳","💐","🌟","📝","✍️","🤝","🙌","💬","📢",
+  "😊", "😂", "❤️", "👍", "🎉", "🔥", "👋", "💪", "🙏", "✨",
+  "😍", "🤔", "👏", "💯", "🎓", "📚", "✅", "⭐", "🏆", "💡",
+  "😎", "🥳", "💐", "🌟", "📝", "✍️", "🤝", "🙌", "💬", "📢",
 ];
 
 // Quick-reaction emojis shown on double-tap (subset for speed)
@@ -128,7 +128,7 @@ export const MessagesScreen: React.FC = () => {
     let match;
     while ((match = regex.exec(text)) !== null) {
       const matchIndex = match.index;
-      
+
       if (matchIndex > currentIndex) {
         segments.push({
           type: 'text',
@@ -747,7 +747,7 @@ export const MessagesScreen: React.FC = () => {
   // When keyboard is visible, the keyboard itself covers the bottom — no inset needed.
   // When keyboard is hidden, the bottom tab bar handles the bottom safe area.
   // We don't need to add insets.bottom anymore to avoid the gap above the tab bar.
-  const inputBarPaddingBottom = showEmojiModal 
+  const inputBarPaddingBottom = showEmojiModal
     ? 0
     : 8;
 
@@ -873,7 +873,7 @@ export const MessagesScreen: React.FC = () => {
     return (
       <TouchableOpacity
         activeOpacity={1}
-        onPress={() => {}}
+        onPress={() => { }}
         onLongPress={() => handleLongPressMessage(item)}
         delayLongPress={350}
         onPressOut={(e) => {
@@ -923,7 +923,7 @@ export const MessagesScreen: React.FC = () => {
           <TouchableOpacity
             activeOpacity={0.85}
             onLongPress={() => handleLongPressMessage(item)}
-            onPress={() => {}}
+            onPress={() => { }}
             delayLongPress={350}
             style={[
               styles.msgBubble,
@@ -975,7 +975,7 @@ export const MessagesScreen: React.FC = () => {
                       ]}>{users.length}</Text>
                     </TouchableOpacity>
                   );
-              })}
+                })}
               {/* Add / change reaction button */}
               <TouchableOpacity
                 onPress={() => handleDoubleTapMessage(item)}
@@ -1013,9 +1013,9 @@ export const MessagesScreen: React.FC = () => {
         <TouchableOpacity onPress={() => setActiveGroup(null)} style={[styles.backButtonNoticeStyle, { marginRight: scale(8) }]}>
           <Ionicons name="arrow-back" size={scale(24)} color={theme.text} />
         </TouchableOpacity>
-        
+
         <View style={{ width: scale(36), height: scale(36), borderRadius: scale(18), backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', justifyContent: 'center', alignItems: 'center', marginRight: scale(10), overflow: 'hidden', borderWidth: 1, borderColor: theme.border }}>
-          <Image source={require('../../assets/the-seeks-logo.jpg')} style={{ width: '70%', height: '70%', resizeMode: 'contain' }} />
+          <Image source={require('../../assets/the-seeks-logo.png')} style={{ width: '70%', height: '70%', resizeMode: 'contain' }} />
         </View>
 
         <View style={{ flex: 1, justifyContent: 'center' }}>
@@ -1163,7 +1163,7 @@ export const MessagesScreen: React.FC = () => {
               >
                 <Ionicons name="happy-outline" size={22} color={theme.textSecondary} />
               </TouchableOpacity>
-              
+
               <TextInput
                 style={{
                   flex: 1,
@@ -1214,7 +1214,7 @@ export const MessagesScreen: React.FC = () => {
               paddingHorizontal: scale(16),
               paddingBottom: scale(20),
             }}
-            keyboardShouldPersistTaps="handled"
+              keyboardShouldPersistTaps="handled"
             >
               {EMOJI_LIST.map((emoji) => (
                 <TouchableOpacity
@@ -1303,7 +1303,7 @@ export const MessagesScreen: React.FC = () => {
             <Text style={{ fontSize: scale(12), color: theme.textSecondary, marginBottom: scale(16), lineHeight: scale(16), textAlign: 'center' }}>
               This message will be permanently deleted.
             </Text>
-            
+
             <View style={{ flexDirection: 'row', justifyContent: 'center', width: '100%', gap: scale(16) }}>
               <TouchableOpacity onPress={() => setShowDeletePrompt(false)}>
                 <Text style={{ color: theme.textSecondary, fontWeight: '600', fontSize: scale(14) }}>Cancel</Text>

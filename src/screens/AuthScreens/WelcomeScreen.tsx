@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
   topSection: {
     alignItems: "center",
     width: "100%",
-    marginBottom: scale(16),
+    marginBottom: 0,
     zIndex: 1,
   },
   mainTitle: {
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     width: "80%",
-    marginVertical: scale(8),
+    marginVertical: scale(2),
   },
   thinLine: {
     flex: 1,
@@ -241,23 +241,24 @@ const styles = StyleSheet.create({
   logoSection: {
     alignItems: "center",
     width: "100%",
-    marginBottom: scale(16), // Compacted
+    marginTop: scale(-20),
+    marginBottom: isSmall ? 4 : 8,
     zIndex: 1,
   },
   logoContainer: {
-    marginBottom: scale(2),
+    marginBottom: isSmall ? 2 : 4,
     alignItems: "center",
     justifyContent: "center",
   },
   logoImage: {
-    width: isSmall ? 90 : 110,
-    height: isSmall ? 90 : 110,
+    width: isSmall ? 100 : 130,
+    height: isSmall ? 100 : 130,
   },
   starsRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: scale(10),
+    marginBottom: isSmall ? 4 : 8,
   },
   centerStar: {
     marginHorizontal: scale(4),
@@ -268,13 +269,13 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: COLORS.darkBlue,
     letterSpacing: 1,
-    marginBottom: scale(6),
+    marginBottom: isSmall ? 2 : 4,
   },
   locationRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: scale(12),
+    marginBottom: scale(6),
   },
   locationLine: {
     width: scale(30),

@@ -501,8 +501,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   logoImage: {
-    width: isSmall ? 90 : 120,
-    height: isSmall ? 90 : 120,
+    width: isSmall ? 100 : 130,
+    height: isSmall ? 100 : 130,
   },
   starsRow: {
     flexDirection: "row",

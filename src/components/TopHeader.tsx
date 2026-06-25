@@ -156,7 +156,7 @@ export const TopHeader: React.FC = () => {
         {/* Left Section - Logo & Title */}
         <View style={styles.middleSection}>
           <Image
-            source={require('../../assets/the-seeks-logo.jpg')}
+            source={require('../../assets/the-seeks-logo.png')}
             style={styles.logoImage}
             resizeMode="contain"
           />
