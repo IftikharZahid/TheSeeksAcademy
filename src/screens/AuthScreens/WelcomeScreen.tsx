@@ -106,7 +106,7 @@ export const WelcomeScreen: React.FC = () => {
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
               <Image
-                source={require("../../../assets/icon.png")}
+                source={require("../../../assets/icon.jpg")}
                 style={styles.logoImage}
                 resizeMode="contain"
               />

@@ -45,7 +45,7 @@ export const AboutScreen: React.FC = () => {
           style={styles.heroSection}
         >
           <View style={styles.heroTop}>
-            <Image source={require('../../../assets/icon.png')} style={styles.appLogo} resizeMode="contain" />
+            <Image source={require('../../../assets/icon.jpg')} style={styles.appLogo} resizeMode="contain" />
             <View style={styles.heroInfo}>
               <Text style={styles.heroName}>The Seeks Academy</Text>
               <Text style={styles.heroLocation}>Fort Abbas, Bahawalnagar</Text>

@@ -938,7 +938,7 @@ export const FeeDetailScreen: React.FC = () => {
                 <View style={styles.feeSlipTopRow}>
                   <Text style={styles.feeSlipSerialLabel}>S No. <Text style={styles.feeSlipSerialValue}>{userData.serialNo}</Text></Text>
                   <Image
-                    source={require('../../../assets/icon.png')}
+                    source={require('../../../assets/icon.jpg')}
                     style={styles.feeSlipLogo}
                     resizeMode="contain"
                   />
