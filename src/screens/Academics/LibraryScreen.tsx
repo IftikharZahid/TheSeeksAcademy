@@ -1,43 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ScrollView, Modal, Dimensions, Linking, Image, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ScrollView, Modal, Dimensions, Linking, Image, KeyboardAvoidingView, Platform, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { scale } from '../../utils/responsive';
-import { markAsRead } from '../../store/slices/notificationsSlice';
+import { markAsRead, persistReadIds } from '../../store/slices/notificationsSlice';
 import type { Notice } from '../../store/slices/notificationsSlice';
 
 const { width, height } = Dimensions.get('window');
 
 const StatCard = ({ iconName, iconColor, value, label, theme, isDark }: any) => (
-  <View style={[styles.statCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, shadowOpacity: isDark ? 0.3 : 0.05 }]}>
+  <View style={[styles.statCard, { backgroundColor: theme.card, borderColor: theme.border, shadowOpacity: isDark ? 0.3 : 0.05 }]}>
     <View style={[styles.statIconWrapper, { backgroundColor: isDark ? iconColor + '30' : iconColor + '15' }]}>
       <Ionicons name={iconName} size={scale(24)} color={iconColor} />
     </View>
     <View>
-      <Text style={[styles.statValue, { color: theme.colors.text }]}>{value}</Text>
-      <Text style={[styles.statLabel, { color: theme.colors.placeholder }]}>{label}</Text>
+      <Text style={[styles.statValue, { color: theme.text }]}>{value}</Text>
+      <Text style={[styles.statLabel, { color: theme.placeholder }]}>{label}</Text>
     </View>
   </View>
 );
 
-const DropdownBtn = ({ label, hasIcon = true, onPress, theme }: any) => (
-  <TouchableOpacity style={[styles.dropdownBtn, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]} onPress={onPress}>
-    {label === 'Sort' && <Ionicons name="options-outline" size={scale(14)} color={theme.colors.placeholder} style={{ marginRight: 4 }} />}
-    <Text style={[styles.dropdownLabel, { color: theme.colors.text }]}>{label}</Text>
-    {hasIcon && <Ionicons name="chevron-down" size={scale(14)} color={theme.colors.placeholder} />}
-  </TouchableOpacity>
-);
+const DropdownBtn = ({ label, hasIcon = true, onPress, theme }: any) => {
+  const isSort = ['Sort', 'Newest', 'Oldest', 'A-Z', 'Z-A'].includes(label);
+  return (
+    <TouchableOpacity style={[styles.dropdownBtn, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={onPress}>
+      {isSort && <Ionicons name="options-outline" size={scale(14)} color={theme.placeholder} style={{ marginRight: 4 }} />}
+      <Text style={[styles.dropdownLabel, { color: theme.text }]}>{label}</Text>
+      {hasIcon && <Ionicons name="chevron-down" size={scale(14)} color={theme.placeholder} />}
+    </TouchableOpacity>
+  );
+};
 
 const Chip = ({ label, iconName, color, isActive, onPress, theme, isDark }: any) => (
   <TouchableOpacity onPress={onPress} style={[
     styles.chip,
-    isActive ? { backgroundColor: '#1d4ed8', borderColor: '#1d4ed8' } : { borderColor: isDark ? theme.colors.border : color + '40', backgroundColor: theme.colors.card }
+    isActive ? { backgroundColor: '#1d4ed8', borderColor: '#1d4ed8' } : { borderColor: isDark ? theme.border : color + '40', backgroundColor: theme.card }
   ]}>
-    {iconName && <Ionicons name={iconName} size={scale(14)} color={isActive ? '#fff' : (isDark ? theme.colors.placeholder : color)} style={{ marginRight: scale(4) }} />}
-    <Text style={[styles.chipText, { color: isActive ? '#fff' : (isDark ? theme.colors.text : color) }]}>{label}</Text>
+    {iconName && <Ionicons name={iconName} size={scale(14)} color={isActive ? '#fff' : (isDark ? theme.placeholder : color)} style={{ marginRight: scale(4) }} />}
+    <Text style={[styles.chipText, { color: isActive ? '#fff' : (isDark ? theme.text : color) }]}>{label}</Text>
   </TouchableOpacity>
 );
 
@@ -61,10 +64,10 @@ const renderRichText = (text: string, theme: any, isDark: boolean) => {
         else if (isH3) content = trimmed.substring(4);
         else if (isBullet) content = trimmed.substring(2);
         
-        let baseStyle: any = { fontSize: scale(13), color: theme.colors.text, lineHeight: scale(20) };
-        if (isH1) baseStyle = { fontSize: scale(18), fontWeight: 'bold', color: theme.colors.text, marginTop: scale(12), marginBottom: scale(4) };
-        if (isH2) baseStyle = { fontSize: scale(16), fontWeight: 'bold', color: theme.colors.text, marginTop: scale(10), marginBottom: scale(4) };
-        if (isH3) baseStyle = { fontSize: scale(14), fontWeight: 'bold', color: theme.colors.text, marginTop: scale(8), marginBottom: scale(2) };
+        let baseStyle: any = { fontSize: scale(13), color: theme.text, lineHeight: scale(20) };
+        if (isH1) baseStyle = { fontSize: scale(18), fontWeight: 'bold', color: theme.text, marginTop: scale(12), marginBottom: scale(4) };
+        if (isH2) baseStyle = { fontSize: scale(16), fontWeight: 'bold', color: theme.text, marginTop: scale(10), marginBottom: scale(4) };
+        if (isH3) baseStyle = { fontSize: scale(14), fontWeight: 'bold', color: theme.text, marginTop: scale(8), marginBottom: scale(2) };
         
         const tokens: any[] = [];
         let remaining = content;
@@ -154,21 +157,41 @@ export const LibraryScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const notices = useAppSelector(state => state.notifications.notices) as Notice[];
+  const profile = useAppSelector((state: any) => state.auth.profile);
+  const studentClass = profile?.class || '';
   const classesFromStore = useAppSelector((state: any) => state.appSettings?.classes) as string[] || [];
   const subjectsFromStore = useAppSelector((state: any) => state.appSettings?.books) as string[] || [];
 
   const dispatch = useAppDispatch();
   const readIds = useAppSelector(state => state.notifications.readIds) as string[];
-  const unreadCount = notices.filter(n => !readIds.includes(n.id)).length;
+  
+  // Hide TopHeader and tab bar when LibraryScreen gains focus
+  useFocusEffect(
+    React.useCallback(() => {
+      navigation.getParent()?.setOptions({
+        headerShown: false,
+        tabBarStyle: { display: 'none' },
+      });
+    }, [navigation])
+  );
+  
+  const classRestrictedNotices = notices.filter((n: any) => {
+    const targetClass = n.targetClass || n.class || 'All Classes';
+    if (!studentClass) return true;
+    if (targetClass.toLowerCase() === 'all' || targetClass.toLowerCase() === 'all classes') return true;
+    return targetClass.toLowerCase() === studentClass.toLowerCase();
+  });
+
+  const unreadCount = classRestrictedNotices.filter(n => !readIds.includes(n.id)).length;
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterClass, setFilterClass] = useState<string>('All Classes');
-  const [filterSubject, setFilterSubject] = useState<string>('All Subjects');
+  const [filterSubject, setFilterSubject] = useState<string>('All Books');
   const [filterType, setFilterType] = useState<string>('All');
+  const [sortOrder, setSortOrder] = useState<string>('Newest');
   
   // Modal states
   const [pickerModalVisible, setPickerModalVisible] = useState(false);
-  const [pickerType, setPickerType] = useState<'Class'|'Subject'>('Class');
+  const [pickerType, setPickerType] = useState<'Subject' | 'Sort'>('Subject');
   
   // Content View Modal state
   const [viewModalVisible, setViewModalVisible] = useState(false);
@@ -185,13 +208,16 @@ export const LibraryScreen: React.FC = () => {
   });
   const availableSubjects = subjectsFromStore;
 
+  // Derive dynamic subjects if store is empty
+  const dynamicSubjects = Array.from(new Set(classRestrictedNotices.map((n: any) => n.subject).filter((s: any) => s && s !== 'Select Subject' && s !== 'Select Book'))) as string[];
+  const displaySubjects = availableSubjects.length > 0 ? availableSubjects : dynamicSubjects;
+
   // Derived stats
-  const totalMaterials = notices.length;
-  const uniqueClassesCount = availableClasses.length || new Set(notices.map((n: any) => n.targetClass).filter(c => c && c !== 'All')).size;
-  const uniqueSubjectsCount = availableSubjects.length || new Set(notices.map((n: any) => n.subject).filter(s => s && s !== 'Select Subject')).size;
+  const totalMaterials = classRestrictedNotices.length;
+  const uniqueSubjectsCount = displaySubjects.length;
 
   const getSubjectColor = (subject: string) => {
-      if (!subject || subject === 'All Subjects' || subject === 'Select Subject') return '#64748b';
+      if (!subject || subject === 'All Subjects' || subject === 'Select Subject' || subject === 'All Books' || subject === 'Select Book') return '#64748b';
       const s = subject.toLowerCase();
       if (s.includes('math')) return '#3b82f6';
       if (s.includes('physic')) return '#8b5cf6';
@@ -235,7 +261,7 @@ export const LibraryScreen: React.FC = () => {
   };
 
   // Filtered data
-  const filteredNotices = notices.filter((n: any) => {
+  const filteredNotices = classRestrictedNotices.filter((n: any) => {
       const ext = getExtendedData(n);
       
       // Text search
@@ -246,11 +272,8 @@ export const LibraryScreen: React.FC = () => {
         if (!tMatch && !sMatch) return false;
       }
       
-      // Class filter
-      if (filterClass !== 'All Classes' && ext.targetClass !== filterClass) return false;
-      
       // Subject filter
-      if (filterSubject !== 'All Subjects' && ext.subject !== filterSubject) return false;
+      if (filterSubject !== 'All Subjects' && filterSubject !== 'All Books' && ext.subject !== filterSubject) return false;
       
       // Type chip filter
       if (filterType !== 'All') {
@@ -264,11 +287,23 @@ export const LibraryScreen: React.FC = () => {
       return true;
   });
 
+  // Apply Sort
+  if (sortOrder === 'Newest') {
+      filteredNotices.sort((a: any, b: any) => (b.timestamp || b.id || '').toString().localeCompare((a.timestamp || a.id || '').toString()));
+  } else if (sortOrder === 'Oldest') {
+      filteredNotices.sort((a: any, b: any) => (a.timestamp || a.id || '').toString().localeCompare((b.timestamp || b.id || '').toString()));
+  } else if (sortOrder === 'A-Z') {
+      filteredNotices.sort((a: any, b: any) => (a.title || '').localeCompare(b.title || ''));
+  } else if (sortOrder === 'Z-A') {
+      filteredNotices.sort((a: any, b: any) => (b.title || '').localeCompare(a.title || ''));
+  }
+
   const handleViewMaterial = (item: any) => {
       setSelectedMaterial(item);
       setViewModalVisible(true);
       if (!readIds.includes(item.id)) {
           dispatch(markAsRead(item.id));
+          persistReadIds([...readIds, item.id]).catch(() => {});
       }
   };
 
@@ -276,9 +311,9 @@ export const LibraryScreen: React.FC = () => {
     const ext = getExtendedData(item);
     
     return (
-        <View style={[styles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, shadowOpacity: isDark ? 0.3 : 0.04 }]}>
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border, shadowOpacity: isDark ? 0.3 : 0.04 }]}>
           <View style={styles.cardLeft}>
-            <View style={[styles.docIconWrapper, { backgroundColor: isDark ? theme.colors.background : '#fafafa', borderColor: ext.typeColor + '30' }]}>
+            <View style={[styles.docIconWrapper, { backgroundColor: isDark ? theme.background : '#fafafa', borderColor: ext.typeColor + '30' }]}>
               <Ionicons name={ext.iconName as any} size={scale(28)} color={ext.typeColor} />
               <View style={[styles.typeBadge, { backgroundColor: ext.typeColor }]}>
                 <Text style={styles.typeBadgeText}>{ext.type}</Text>
@@ -287,21 +322,26 @@ export const LibraryScreen: React.FC = () => {
           </View>
           
           <View style={styles.cardCenter}>
-            <Text style={[styles.cardTitle, { color: theme.colors.text }]} numberOfLines={1}>{item.title}</Text>
-            <Text style={[styles.cardSubtitle, { color: theme.colors.placeholder }]} numberOfLines={1}>
+            <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>{item.title}</Text>
+            <Text style={[styles.cardSubtitle, { color: theme.placeholder }]} numberOfLines={1}>
                <Text style={styles.blueLabel}>Class: </Text>{ext.targetClass}  <Text style={styles.blueLabel}>•  Subject: </Text>
                <Text style={{ color: getSubjectColor(ext.subject), fontWeight: '600' }}>{ext.subject}</Text>
             </Text>
             
             <View style={styles.cardMetaRow}>
-              <Ionicons name="calendar-outline" size={scale(12)} color={theme.colors.placeholder} />
-              <Text style={[styles.metaText, { color: theme.colors.placeholder }]}>{item.timeAgo || 'Uploaded recently'}</Text>
-              <Ionicons name="person-outline" size={scale(12)} color={theme.colors.placeholder} style={{ marginLeft: scale(8) }} />
-              <Text style={[styles.metaText, { color: theme.colors.placeholder }]}>{ext.teacherName}</Text>
+              <Ionicons name="calendar-outline" size={scale(12)} color={theme.placeholder} />
+              <Text style={[styles.metaText, { color: theme.placeholder }]}>{item.timeAgo || 'Uploaded recently'}</Text>
+              <Ionicons name="person-outline" size={scale(12)} color={theme.placeholder} style={{ marginLeft: scale(8) }} />
+              <Text style={[styles.metaText, { color: theme.placeholder }]}>{ext.teacherName}</Text>
             </View>
         </View>
         
         <View style={styles.cardRight}>
+          <View style={{ width: '100%', alignItems: 'center', paddingTop: scale(2) }}>
+            {!readIds.includes(item.id) && (
+              <View style={styles.unreadDotIndependent} />
+            )}
+          </View>
           <View style={{ flex: 1 }} />
           <TouchableOpacity 
              style={styles.btnViewDownload}
@@ -314,21 +354,27 @@ export const LibraryScreen: React.FC = () => {
     );
   };
 
-  const openPicker = (type: 'Class'|'Subject') => {
+  const openPicker = (type: 'Subject' | 'Sort') => {
       setPickerType(type);
       setPickerModalVisible(true);
   };
 
   const selectPickerItem = (val: string) => {
-      if (pickerType === 'Class') setFilterClass(val);
-      else setFilterSubject(val);
+      if (pickerType === 'Subject') {
+          setFilterSubject(val);
+      } else {
+          setSortOrder(val);
+      }
       setPickerModalVisible(false);
   };
 
+  const headerBg = isDark ? theme.backgroundSecondary : '#1e3a8a';
+
   return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <StatusBar backgroundColor={headerBg} barStyle="light-content" />
         {/* Hero Header */}
-        <View style={styles.headerBackground}>
+        <View style={[styles.headerBackground, { backgroundColor: headerBg }]}>
           <Image 
             source={require('../../../assets/the-seeks-logo.png')} 
             style={{ position: 'absolute', right: -scale(135), top: scale(40), width: scale(430), height: scale(90), opacity: 0.15, resizeMode: 'contain' }} 
@@ -373,9 +419,8 @@ export const LibraryScreen: React.FC = () => {
               )}
             </TouchableOpacity>
           </View>
-                    <View style={styles.headerSubtitleWrapper}>
-               <Text style={styles.headerSubtitle}>Explore study materials, notes & resources</Text>
-               <Text style={styles.headerSubtitle}>shared by academy administrators</Text>
+            <View style={styles.headerSubtitleWrapper}>
+               <Text style={styles.headerSubtitle}>Study materials & resources</Text>
             </View>
         </SafeAreaView>
         
@@ -388,35 +433,43 @@ export const LibraryScreen: React.FC = () => {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
-            <View>
-               {/* Stats Row */}
-               <View style={styles.statsRow}>
-               <StatCard iconName="document-text-outline" iconColor="#8b5cf6" value={totalMaterials} label="Materials" theme={theme} isDark={isDark} />
-               <StatCard iconName="book-outline" iconColor="#3b82f6" value={uniqueSubjectsCount} label="Subjects" theme={theme} isDark={isDark} />
-               <StatCard iconName="school-outline" iconColor="#10b981" value={uniqueClassesCount} label="Classes" theme={theme} isDark={isDark} />
-             </View>
-             
-             {/* Search */}
-             <View style={[styles.searchContainer, { backgroundColor: theme.colors.card }]}>
-               <Ionicons name="search" size={scale(18)} color={theme.colors.placeholder} style={{ marginRight: scale(8) }} />
-               <TextInput 
-                 style={[styles.searchInput, { color: theme.colors.text }]}
-                 placeholder="Search materials by title, subject or class..."
-                 placeholderTextColor={theme.colors.placeholder}
-                 value={searchQuery}
-                 onChangeText={setSearchQuery}
-               />
-               <TouchableOpacity style={{ padding: scale(4) }}>
-                 <Ionicons name="options-outline" size={scale(20)} color={theme.colors.placeholder} />
-               </TouchableOpacity>
-             </View>
-             
-             {/* Dropdowns */}
-             <View style={styles.dropdownsRow}>
-               <DropdownBtn label={filterClass.length > 10 ? filterClass.substring(0,8)+'...' : filterClass} onPress={() => openPicker('Class')} theme={theme} isDark={isDark} />
-               <DropdownBtn label={filterSubject.length > 10 ? filterSubject.substring(0,8)+'...' : filterSubject} onPress={() => openPicker('Subject')} theme={theme} isDark={isDark} />
-               <DropdownBtn label="Sort" hasIcon={true} theme={theme} isDark={isDark} />
-             </View>
+             <View>
+                {/* Minimalist Stats Row */}
+                <View style={[styles.statsRow, { marginBottom: scale(4) }]}>
+                  <Text style={{ fontSize: scale(11), color: theme.placeholder, fontWeight: '500' }}>
+                    <Ionicons name="document-text-outline" size={scale(12)} color="#8b5cf6" /> {totalMaterials} Materials
+                    {'   '}•{'   '}
+                    <Ionicons name="book-outline" size={scale(12)} color="#3b82f6" /> {uniqueSubjectsCount} Books
+                  </Text>
+                </View>
+              
+                {/* Search & Filters Row */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: scale(12), gap: scale(6) }}>
+                  <View style={[styles.searchContainer, { backgroundColor: theme.card, flex: 1, marginBottom: 0 }]}>
+                    <Ionicons name="search" size={scale(16)} color={theme.placeholder} style={{ marginRight: scale(6) }} />
+                    <TextInput 
+                      style={[styles.searchInput, { color: theme.text }]}
+                      placeholder="Search..."
+                      placeholderTextColor={theme.placeholder}
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                    />
+                  </View>
+                  
+                  <DropdownBtn 
+                    label={filterSubject.length > 12 ? filterSubject.substring(0,10)+'..' : filterSubject} 
+                    onPress={() => openPicker('Subject')} 
+                    theme={theme} 
+                    isDark={isDark} 
+                  />
+                  <DropdownBtn 
+                    label={sortOrder} 
+                    hasIcon={true} 
+                    onPress={() => openPicker('Sort')}
+                    theme={theme} 
+                    isDark={isDark} 
+                  />
+                </View>
              
              {/* Chips Scroll */}
              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsContainer}>
@@ -432,8 +485,8 @@ export const LibraryScreen: React.FC = () => {
         renderItem={renderMaterial}
         ListEmptyComponent={
           <View style={{ alignItems: 'center', marginTop: scale(40) }}>
-             <Ionicons name="folder-open-outline" size={scale(48)} color={theme.colors.placeholder} />
-             <Text style={{ marginTop: scale(12), color: theme.colors.placeholder, fontSize: scale(14) }}>No materials found</Text>
+             <Ionicons name="folder-open-outline" size={scale(48)} color={theme.placeholder} />
+             <Text style={{ marginTop: scale(12), color: theme.placeholder, fontSize: scale(14) }}>No materials found</Text>
           </View>
         }
       />
@@ -442,54 +495,151 @@ export const LibraryScreen: React.FC = () => {
       {/* Dynamic Picker Modal */}
       <Modal visible={pickerModalVisible} transparent={true} animationType="fade">
          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setPickerModalVisible(false)}>
-            <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}>
-               <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Select {pickerType}</Text>
+            <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+               <Text style={[styles.modalTitle, { color: theme.text }]}>
+                  {pickerType === 'Subject' ? 'Select Book' : 'Sort By'}
+               </Text>
                <ScrollView style={{ maxHeight: height * 0.5 }}>
-                  <TouchableOpacity style={styles.modalOption} onPress={() => selectPickerItem(`All ${pickerType === 'Class' ? 'Classes' : 'Subjects'}`)}>
-                     <Text style={[styles.modalOptionText, { color: theme.colors.text }]}>All {pickerType === 'Class' ? 'Classes' : 'Subjects'}</Text>
-                  </TouchableOpacity>
-                  {(pickerType === 'Class' ? availableClasses : availableSubjects).map((item: any, idx) => {
-                      const color = pickerType === 'Subject' ? getSubjectColor(item) : getClassColor(item);
-                      return (
-                      <TouchableOpacity key={idx} style={styles.modalOption} onPress={() => selectPickerItem(item)}>
-                         <View style={[styles.colorDot, { backgroundColor: color }]} />
-                         <Text style={[styles.modalOptionText, { color: theme.colors.text }]}>{item}</Text>
+                  {pickerType === 'Subject' ? (
+                    <>
+                      <TouchableOpacity style={styles.modalOption} onPress={() => selectPickerItem(`All Books`)}>
+                         <Text style={[styles.modalOptionText, { color: theme.text }]}>All Books</Text>
                       </TouchableOpacity>
-                  )})}
+                      {displaySubjects.map((item: any, idx) => {
+                          const color = getSubjectColor(item);
+                          return (
+                          <TouchableOpacity key={idx} style={styles.modalOption} onPress={() => selectPickerItem(item)}>
+                             <View style={[styles.colorDot, { backgroundColor: color }]} />
+                             <Text style={[styles.modalOptionText, { color: theme.text }]}>{item}</Text>
+                          </TouchableOpacity>
+                      )})}
+                    </>
+                  ) : (
+                    <>
+                      {['Newest', 'Oldest', 'A-Z', 'Z-A'].map((item, idx) => (
+                        <TouchableOpacity key={idx} style={styles.modalOption} onPress={() => selectPickerItem(item)}>
+                          <Text style={[styles.modalOptionText, { color: theme.text, marginLeft: scale(10) }]}>{item}</Text>
+                          {sortOrder === item && <Ionicons name="checkmark" size={scale(18)} color="#1d4ed8" style={{ position: 'absolute', right: scale(10) }} />}
+                        </TouchableOpacity>
+                      ))}
+                    </>
+                  )}
                </ScrollView>
             </View>
          </TouchableOpacity>
       </Modal>
 
       {/* Material View Modal */}
-      <Modal visible={viewModalVisible} transparent={true} animationType="slide">
-         <View style={[styles.viewModalContainer, { backgroundColor: theme.colors.background }]}>
-            <SafeAreaView edges={['top', 'bottom']} style={[styles.viewModalSafeArea, { backgroundColor: theme.colors.background }]}>
-               <View style={[styles.viewModalHeader, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
-                  <Text style={[styles.viewModalHeaderTitle, { color: theme.colors.text }]} numberOfLines={1}>{selectedMaterial?.title || 'Material Details'}</Text>
-                  <TouchableOpacity onPress={() => setViewModalVisible(false)} style={[styles.closeBtn, { backgroundColor: isDark ? theme.colors.border : '#f1f5f9' }]}>
-                     <Ionicons name="close" size={scale(24)} color={theme.colors.text} />
+      <Modal
+        visible={viewModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewModalVisible(false)}
+        statusBarTranslucent
+      >
+        <View style={styles.popupOverlay}>
+          {/* Backdrop tap to dismiss */}
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setViewModalVisible(false)}
+          />
+
+          {selectedMaterial != null && (() => {
+            const ext = getExtendedData(selectedMaterial);
+
+            return (
+              <View style={[styles.popupCard, { backgroundColor: theme.card }]}>
+
+                {/* ─ Coloured accent top bar ─ */}
+                <View style={[styles.popupAccentBar, { backgroundColor: ext.typeColor }]} />
+
+                {/* ─ Header row ─ */}
+                <View style={[styles.popupHeader, { borderBottomColor: theme.border }]}>
+                  <View style={[styles.popupIconBox, { backgroundColor: isDark ? ext.typeColor + '28' : ext.typeColor + '15' }]}>
+                    <Ionicons name={ext.iconName as any} size={scale(24)} color={ext.typeColor} />
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <View style={[styles.popupTypePill, { backgroundColor: ext.typeColor }]}>
+                      <Text style={styles.popupTypePillTxt}>{ext.type}</Text>
+                    </View>
+                    <Text style={[styles.popupTitle, { color: theme.text }]} numberOfLines={3}>
+                      {selectedMaterial.title || 'Untitled Material'}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => setViewModalVisible(false)}
+                    style={[styles.popupCloseBtn, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close" size={scale(18)} color={theme.text} />
                   </TouchableOpacity>
-               </View>
-               <ScrollView style={styles.viewModalBody} contentContainerStyle={{ paddingBottom: scale(40) }}>
-                  {selectedMaterial && (
-                      <View>
-                         <View style={styles.viewModalMeta}>
-                             <View style={styles.viewModalMetaBadge}>
-                                 <Text style={styles.viewModalMetaBadgeText}>{selectedMaterial.targetClass || 'All Classes'}</Text>
-                             </View>
-                             <View style={[styles.viewModalMetaBadge, { backgroundColor: getSubjectColor(selectedMaterial.subject) + '20' }]}>
-                                 <Text style={[styles.viewModalMetaBadgeText, { color: getSubjectColor(selectedMaterial.subject) }]}>{selectedMaterial.subject || 'General'}</Text>
-                             </View>
-                         </View>
-                         <View style={styles.richTextContainer}>
-                             {renderRichText(selectedMaterial.content || selectedMaterial.message || 'No description available for this material.', theme, isDark)}
-                         </View>
-                      </View>
+                </View>
+
+                {/* ─ Meta row ─ */}
+                <View style={[styles.popupMetaRow, { borderBottomColor: theme.border, backgroundColor: isDark ? theme.background : '#f8fafc' }]}>
+                  <View style={[styles.popupMetaBadge, { backgroundColor: isDark ? getClassColor(ext.targetClass) + '30' : getClassColor(ext.targetClass) + '18' }]}>
+                    <Ionicons name="school-outline" size={scale(12)} color={getClassColor(ext.targetClass)} />
+                    <Text style={[styles.popupMetaTxt, { color: getClassColor(ext.targetClass) }]}>{ext.targetClass}</Text>
+                  </View>
+
+                  <View style={[styles.popupMetaBadge, { backgroundColor: isDark ? getSubjectColor(ext.subject) + '30' : getSubjectColor(ext.subject) + '18' }]}>
+                    <Ionicons name="book-outline" size={scale(12)} color={getSubjectColor(ext.subject)} />
+                    <Text style={[styles.popupMetaTxt, { color: getSubjectColor(ext.subject) }]}>{ext.subject}</Text>
+                  </View>
+
+                  {!!ext.teacherName && (
+                    <View style={[styles.popupMetaBadge, { backgroundColor: isDark ? '#1e293b' : '#e2e8f0' }]}>
+                      <Ionicons name="person-outline" size={scale(12)} color={theme.placeholder} />
+                      <Text style={[styles.popupMetaTxt, { color: theme.placeholder }]} numberOfLines={1}>
+                        {ext.teacherName}
+                      </Text>
+                    </View>
                   )}
-               </ScrollView>
-            </SafeAreaView>
-         </View>
+
+                  {!!selectedMaterial.timeAgo && (
+                    <View style={[styles.popupMetaBadge, { backgroundColor: isDark ? '#1e293b' : '#e2e8f0' }]}>
+                      <Ionicons name="time-outline" size={scale(12)} color={theme.placeholder} />
+                      <Text style={[styles.popupMetaTxt, { color: theme.placeholder }]}>{selectedMaterial.timeAgo}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* ─ Content area ─ */}
+                <ScrollView
+                  style={styles.popupScroll}
+                  contentContainerStyle={styles.popupBody}
+                  showsVerticalScrollIndicator={true}
+                  keyboardShouldPersistTaps="handled"
+                >
+                  <Text style={[styles.popupSectionLabel, { color: theme.placeholder }]}>CONTENT</Text>
+                  <View style={[styles.richBox, { backgroundColor: isDark ? theme.background : '#f8fafc', borderColor: theme.border }]}>
+                    {renderRichText(
+                      ext.contentBody || 'No description has been provided for this material.',
+                      theme,
+                      isDark
+                    )}
+                  </View>
+                  <View style={{ height: scale(16) }} />
+                </ScrollView>
+
+                {/* ─ Footer close button ─ */}
+                <View style={[styles.popupFooter, { borderTopColor: theme.border }]}>
+                  <TouchableOpacity
+                    style={[styles.popupDoneBtn, { backgroundColor: ext.typeColor }]}
+                    onPress={() => setViewModalVisible(false)}
+                    activeOpacity={0.82}
+                  >
+                    <Ionicons name="checkmark" size={scale(16)} color="#fff" style={{ marginRight: scale(6) }} />
+                    <Text style={styles.popupDoneTxt}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })()}
+        </View>
       </Modal>
 
     </View>
@@ -525,7 +675,7 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: scale(12), color: '#0f172a' },
   
   dropdownsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: scale(8) },
-  dropdownBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', paddingHorizontal: scale(6), paddingVertical: scale(6), borderRadius: scale(6), borderWidth: 1, borderColor: '#e2e8f0' },
+  dropdownBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', paddingHorizontal: scale(10), height: scale(38), borderRadius: scale(8), borderWidth: 1, borderColor: '#e2e8f0' },
   dropdownLabel: { fontSize: scale(11), color: '#475569', marginRight: scale(4), fontWeight: '500' },
   
   chipsScroll: { marginBottom: scale(20) },
@@ -543,9 +693,15 @@ const styles = StyleSheet.create({
   blueLabel: { color: '#1d4ed8', fontWeight: '600' },
   cardMetaRow: { flexDirection: 'row', alignItems: 'center' },
   metaText: { fontSize: scale(9), color: '#94a3b8', marginLeft: scale(4) },
-  cardRight: { justifyContent: 'space-between', alignItems: 'flex-end', marginLeft: scale(8) },
+  cardRight: { justifyContent: 'space-between', alignItems: 'center', marginLeft: scale(8) },
   btnViewDownload: { paddingHorizontal: scale(12), paddingVertical: scale(8), borderRadius: scale(6), backgroundColor: '#1d4ed8' },
-  btnViewDownloadText: { color: '#fff', fontSize: scale(10), fontWeight: '600' },
+  btnViewDownloadText: { color: '#fff', fontSize: scale(10), fontWeight: '700' },
+  unreadDotIndependent: {
+    width: scale(10),
+    height: scale(10),
+    borderRadius: scale(5),
+    backgroundColor: '#22c55e',
+  },
   
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { width: '80%', backgroundColor: '#fff', borderRadius: scale(12), padding: scale(16), maxHeight: '80%' },
@@ -554,14 +710,24 @@ const styles = StyleSheet.create({
   modalOptionText: { fontSize: scale(14), fontWeight: '500' },
   colorDot: { width: scale(10), height: scale(10), borderRadius: scale(5), marginRight: scale(8) },
   
-  viewModalContainer: { flex: 1, backgroundColor: 'rgba(15,23,42,0.6)', justifyContent: 'flex-end' },
-  viewModalSafeArea: { backgroundColor: '#fff', borderTopLeftRadius: scale(24), borderTopRightRadius: scale(24), height: height * 0.85 },
-  viewModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: scale(20), paddingVertical: scale(16), borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
-  viewModalHeaderTitle: { fontSize: scale(16), fontWeight: '700', color: '#0f172a', flex: 1, marginRight: scale(12) },
-  closeBtn: { padding: scale(4), backgroundColor: '#f1f5f9', borderRadius: scale(20) },
-  viewModalBody: { flex: 1, padding: scale(20) },
-  viewModalMeta: { flexDirection: 'row', gap: scale(8), marginBottom: scale(16) },
-  viewModalMetaBadge: { paddingHorizontal: scale(10), paddingVertical: scale(4), borderRadius: scale(6), backgroundColor: '#e0e7ff' },
-  viewModalMetaBadgeText: { fontSize: scale(11), fontWeight: '600', color: '#4338ca' },
-  richTextContainer: { backgroundColor: '#f8fafc', padding: scale(16), borderRadius: scale(12), borderWidth: 1, borderColor: '#f1f5f9' }
+  /* ── Detail popup ── */
+  popupOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: scale(16) },
+  popupCard: { width: '100%', maxHeight: height * 0.82, borderRadius: scale(18), overflow: 'hidden', elevation: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 20 },
+  popupAccentBar:  { height: scale(4), width: '100%' },
+  popupHeader: { flexDirection: 'row', alignItems: 'flex-start', padding: scale(14), paddingBottom: scale(12), borderBottomWidth: StyleSheet.hairlineWidth, gap: scale(10) },
+  popupIconBox:    { width: scale(44), height: scale(44), borderRadius: scale(12), justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  popupTypePill:   { alignSelf: 'flex-start', paddingHorizontal: scale(7), paddingVertical: scale(2), borderRadius: scale(5), marginBottom: scale(4) },
+  popupTypePillTxt:{ color: '#fff', fontSize: scale(9), fontWeight: '800', letterSpacing: 0.5 },
+  popupTitle:      { fontSize: scale(15), fontWeight: '700', lineHeight: scale(22) },
+  popupCloseBtn:   { width: scale(34), height: scale(34), borderRadius: scale(17), justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  popupMetaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: scale(6), paddingHorizontal: scale(14), paddingVertical: scale(10), borderBottomWidth: StyleSheet.hairlineWidth },
+  popupMetaBadge:  { flexDirection: 'row', alignItems: 'center', gap: scale(4), paddingHorizontal: scale(8), paddingVertical: scale(5), borderRadius: scale(8) },
+  popupMetaTxt:    { fontSize: scale(11), fontWeight: '600' },
+  popupScroll:     { maxHeight: height * 0.40 },
+  popupBody:       { padding: scale(14) },
+  popupSectionLabel: { fontSize: scale(10), fontWeight: '700', letterSpacing: 0.8, marginBottom: scale(8) },
+  popupFooter: { padding: scale(12), borderTopWidth: StyleSheet.hairlineWidth, alignItems: 'center' },
+  popupDoneBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', paddingVertical: scale(12), borderRadius: scale(10) },
+  popupDoneTxt:    { color: '#fff', fontSize: scale(14), fontWeight: '700' },
+  richBox:         { padding: scale(14), borderRadius: scale(12), borderWidth: 1, minHeight: scale(60) }
 });

@@ -28,12 +28,14 @@ export interface ExamEntry {
 
 interface ResultsState {
     list: ExamEntry[];
+    readIds: string[];
     isLoading: boolean;
     error: string | null;
 }
 
 const initialState: ResultsState = {
     list: [],
+    readIds: [],
     isLoading: false,
     error: null,
 };
@@ -129,6 +131,14 @@ const resultsSlice = createSlice({
             state.list = [];
             state.error = null;
         },
+        setReadResultIds(state, action) {
+            state.readIds = action.payload;
+        },
+        markResultAsRead(state, action) {
+            if (!state.readIds.includes(action.payload)) {
+                state.readIds.push(action.payload);
+            }
+        }
     },
     extraReducers: (builder) => {
         builder
@@ -147,5 +157,27 @@ const resultsSlice = createSlice({
     },
 });
 
-export const { clearResults } = resultsSlice.actions;
+export const { clearResults, setReadResultIds, markResultAsRead } = resultsSlice.actions;
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+export const persistReadResultIds = async (ids: string[]) => {
+    try {
+        await AsyncStorage.setItem('readResultIds', JSON.stringify(ids));
+    } catch (e) {
+        console.error('Failed to save readResultIds to storage', e);
+    }
+};
+
+export const loadReadResultIds = () => async (dispatch: any) => {
+    try {
+        const data = await AsyncStorage.getItem('readResultIds');
+        if (data) {
+            dispatch(setReadResultIds(JSON.parse(data)));
+        }
+    } catch (e) {
+        console.error('Failed to load readResultIds from storage', e);
+    }
+};
+
 export default resultsSlice.reducer;

@@ -34,6 +34,8 @@ import { initVideoGalleriesListener, initLikedVideosListener } from './src/store
 import { initMessagesListener, loadLastReadTimestamp } from './src/store/slices/messagesSlice';
 import { initAssignmentsListener } from './src/store/slices/assignmentsSlice';
 import { initTimetableListener } from './src/store/slices/timetableSlice';
+import { initAttendanceListener } from './src/store/slices/attendanceSlice';
+import { loadReadResultIds } from './src/store/slices/resultsSlice';
 import { AppNavigator } from './src/screens/navigation/AppNavigator';
 import { Audio } from 'expo-av';
 
@@ -62,6 +64,7 @@ function AppContent() {
 
     dispatch(loadSavedTheme());
     dispatch(loadLastReadTimestamp());
+    dispatch(loadReadResultIds());
 
     const unsubAuth = initAuthListener(dispatch);
     const unsubCourses = initCoursesListener(dispatch);
@@ -82,12 +85,16 @@ function AppContent() {
     };
   }, [dispatch]);
 
-  // ── User-Specific Data Listeners ────────────────────
+  // ── User-Specific Data Listeners (keyed by Firebase Auth UID) ────────────────────
   useEffect(() => {
     if (user && user.uid) {
       const unsubLikedVideos = initLikedVideosListener(dispatch, user.uid);
+      // Attendance listener: Teacher/Dashboard writes to attendance/{auth_uid}
+      // We MUST use user.uid (Firebase Auth UID), NOT any Firestore doc ID
+      const unsubAttendance = initAttendanceListener(dispatch, user.uid);
       return () => {
         unsubLikedVideos();
+        unsubAttendance();
       };
     }
   }, [dispatch, user?.uid]);

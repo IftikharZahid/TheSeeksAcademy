@@ -745,12 +745,11 @@ export const MessagesScreen: React.FC = () => {
   const [headerHeight, setHeaderHeight] = useState(56);
 
   // When keyboard is visible, the keyboard itself covers the bottom — no inset needed.
-  // When keyboard is hidden, respect the device's home indicator / safe area on all platforms.
+  // When keyboard is hidden, the bottom tab bar handles the bottom safe area.
+  // We don't need to add insets.bottom anymore to avoid the gap above the tab bar.
   const inputBarPaddingBottom = showEmojiModal 
     ? 0
-    : keyboardVisible 
-      ? 8 
-      : Math.max(8, insets.bottom + 4);
+    : 8;
 
   // ── Render: Groups List ────────────────────────────────────────────────
   if (!activeGroup) {

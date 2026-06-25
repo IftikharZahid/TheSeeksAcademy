@@ -111,9 +111,12 @@ export const TimetableScreen: React.FC = () => {
       let matchGender = true;
       if (c.gender && c.gender.toLowerCase().trim() !== 'all') {
         const entryGender = c.gender.toLowerCase().trim();
-        if (entryGender === 'boys') {
+        const entryIsMale = ['boys', 'boy', 'male', 'm'].includes(entryGender);
+        const entryIsFemale = ['girls', 'girl', 'female', 'f'].includes(entryGender);
+        
+        if (entryIsMale) {
           matchGender = isMale;
-        } else if (entryGender === 'girls') {
+        } else if (entryIsFemale) {
           matchGender = isFemale;
         }
       }

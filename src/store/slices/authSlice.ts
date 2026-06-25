@@ -18,6 +18,7 @@ export interface UserProfile {
     image: string;
     role?: string;
     gender?: string;
+    studentId?: string;
 }
 
 // We can't store Firebase User directly (not serializable), so we extract what we need
@@ -114,7 +115,8 @@ export const fetchUserProfile = createAsyncThunk(
 
                     const sSnapshot = await getDocs(sq);
                     if (!sSnapshot.empty) {
-                        const sData = sSnapshot.docs[0].data();
+                        const sDoc = sSnapshot.docs[0];
+                        const sData = sDoc.data();
                         profileData = {
                             fullname: sData.name || '',
                             email: sData.email || '',
@@ -128,10 +130,10 @@ export const fetchUserProfile = createAsyncThunk(
                             role: 'student',
                             gender: sData.gender || '',
                         };
-                        console.log('👤 Profile built from students/ - name:', profileData.fullname);
+                        console.log('✅  Profile built from students/ - name:', profileData.fullname);
                     }
                 } catch (sError) {
-                    console.warn('⚠️ Could not read students by email:', sError);
+                    console.warn('❌  Could not read students by email:', sError);
                 }
             }
 
@@ -141,7 +143,7 @@ export const fetchUserProfile = createAsyncThunk(
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
                     profileData = docSnap.data() as UserProfile;
-                    console.log('👤 Profile fetched from users/ - name:', profileData.fullname);
+                    console.log('✅  Profile fetched from users/ - name:', profileData.fullname);
                 }
             }
 

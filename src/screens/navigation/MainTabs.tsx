@@ -7,14 +7,14 @@ import { ProfileStack } from './ProfileStack';
 import { VideoGalleryScreen } from '../Lectures/VideoGalleryScreen';
 import { MessagesScreen } from '../Communication/MessagesScreen';
 import { TopHeader } from '../../components/TopHeader';
-import { NoticesScreen } from '../Communication/NoticeScreen';
+import { LibraryScreen } from '../Academics/LibraryScreen';
 import { EducationalTabBar } from '../../components/CustomTabBar';
 
 type TabParamList = {
   Home: undefined;
   VideoGallery: undefined;
   Messages: undefined;
-  NoticeBoard: undefined;
+  ELibrary: undefined;
   Profile: undefined;
 };
 
@@ -34,7 +34,7 @@ export const MainTabs: React.FC = () => {
         component={HomeStack}
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeScreen';
-          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'StaffInfoScreen', 'HelpCenterScreen', 'AdminTeachersScreen', 'FeeDetailScreen', 'VideoLecturesScreen', 'VideoGalleryScreen', 'NoticesScreen', 'LikedVideosScreen', 'LikedTeachersScreen', 'MessagesScreen', 'DiaryScreen'];
+          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'StaffInfoScreen', 'HelpCenterScreen', 'AdminTeachersScreen', 'FeeDetailScreen', 'VideoLecturesScreen', 'VideoGalleryScreen', 'LikedVideosScreen', 'LikedTeachersScreen', 'DiaryScreen'];
 
           const isHidden = hiddenRoutes.includes(routeName);
 
@@ -62,19 +62,18 @@ export const MainTabs: React.FC = () => {
         component={MessagesScreen}
         options={{
           headerShown: false,
-          tabBarStyle: { display: 'none' },
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
           ),
         }}
       />
       <Tab.Screen
-        name="NoticeBoard"
-        component={NoticesScreen}
+        name="ELibrary"
+        component={LibraryScreen}
         options={{
           headerShown: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="notifications" size={size} color={color} />
+            <Ionicons name="book" size={size} color={color} />
           ),
         }}
       />

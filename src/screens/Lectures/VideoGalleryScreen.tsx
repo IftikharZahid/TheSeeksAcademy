@@ -9,6 +9,7 @@ import {
     Dimensions,
     Image,
     ActivityIndicator,
+    StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -215,6 +216,7 @@ export const VideoGalleryScreen: React.FC = () => {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+            <StatusBar backgroundColor={theme.background} barStyle={isDark ? "light-content" : "dark-content"} />
             {/* Compact Header */}
             <Animated.View
                 style={[

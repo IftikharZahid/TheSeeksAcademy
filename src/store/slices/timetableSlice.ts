@@ -12,9 +12,13 @@ export interface TimetableClass {
     room: string;
     instructor: string;
     teacher: string;
+    lectureNo?: string | number;
+    lectureNumber?: string | number;
     period: string;
     class: string;
     type: string;
+    gender?: string;
+    day?: string;
 }
 
 export interface TimetableEntry {
@@ -55,9 +59,12 @@ export const initTimetableListener = (dispatch: Dispatch) => {
                                     room: cls.room || '',
                                     instructor: cls.instructor || cls.teacher || '',
                                     teacher: cls.instructor || cls.teacher || '',
+                                    lectureNo: cls.lectureNo || cls.lectureNumber || cls.period || '',
+                                    lectureNumber: cls.lectureNumber || cls.lectureNo || cls.period || '',
                                     period: cls.period || '',
                                     class: cls.class || '',
                                     type: cls.type || 'LECTURE',
+                                    gender: cls.gender || 'All',
                                     // Attach the day for filtering
                                     ...(day ? { day } : {}),
                                 } as any);

@@ -91,20 +91,25 @@ const TabIcons = {
     </Svg>
   ),
 
-  NoticeBoard: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
+  ELibrary: ({ color, size, focused }: { color: string; size: number; focused: boolean }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      {/* Modern notification bell */}
+      {/* Modern Book / Library */}
       <Path
-        d="M15 17H20L18.5951 5.52786C18.4596 4.64373 17.7269 4 16.8549 4H7.14509C6.27309 4 5.54041 4.64373 5.40486 5.52786L4 17H9M15 17V18C15 19.6569 13.6569 21 12 21C10.3431 21 9 19.6569 9 18V17M15 17H9"
+        d="M4 19.5C4 18.837 4.53726 18.3 5.2 18.3H20V5.7C20 5.03726 19.4627 4.5 18.8 4.5H5.2C4.53726 4.5 4 5.03726 4 5.7V19.5ZM4 19.5C4 20.1627 4.53726 20.7 5.2 20.7H20"
         stroke={color}
         strokeWidth={focused ? 2 : 1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
-        fill="none"
+        fill={focused ? color : 'none'}
+        fillOpacity={focused ? 0.05 : 0}
       />
-      {focused && (
-        <Circle cx="18" cy="6" r="3" fill="#EF4444" stroke="#FFFFFF" strokeWidth="1.5" />
-      )}
+      <Path
+        d="M8 8.5H16M8 11.5H13"
+        stroke={color}
+        strokeWidth={focused ? 2 : 1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </Svg>
   ),
 
@@ -142,7 +147,7 @@ const TAB_CONFIG: TabData[] = [
   { id: 'Home', label: 'Home', icon: 'Dashboard' },
   { id: 'VideoGallery', label: 'Videos', icon: 'VideoGallery' },
   { id: 'Messages', label: 'Messages', icon: 'Messages' },
-  { id: 'NoticeBoard', label: 'Notices', icon: 'NoticeBoard' },
+  { id: 'ELibrary', label: 'e-Library', icon: 'ELibrary' },
   { id: 'Profile', label: 'Profile', icon: 'Profile' },
 ];
 
@@ -211,7 +216,7 @@ export const EducationalTabBar: React.FC<BottomTabBarProps> = ({ state, descript
         let displayBadgeCount = tabData.badgeCount;
         if (tabData.id === 'Messages') {
           displayBadgeCount = unreadMessagesCount;
-        } else if (tabData.id === 'NoticeBoard') {
+        } else if (tabData.id === 'ELibrary') {
           displayBadgeCount = notificationCount;
         }
 
@@ -224,9 +229,9 @@ export const EducationalTabBar: React.FC<BottomTabBarProps> = ({ state, descript
 
           if (!isFocused && !event.defaultPrevented) {
             if (tabData.id === 'Messages') {
-              navigation.navigate('Home', { screen: 'MessagesScreen' });
-            } else if (tabData.id === 'NoticeBoard') {
-              navigation.navigate('Home', { screen: 'NoticesScreen' });
+              navigation.navigate('Messages');
+            } else if (tabData.id === 'ELibrary') {
+              navigation.navigate('ELibrary');
             } else if (route.name === 'Home') {
               navigation.navigate('Home', { screen: 'HomeScreen' });
             } else {

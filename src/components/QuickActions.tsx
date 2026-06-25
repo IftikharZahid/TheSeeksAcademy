@@ -14,65 +14,83 @@ const categories = [
     {
         key: 'attendance',
         label: 'Attendance',
+        subtitle: 'View your attendance',
         icon: 'calendar',
         iconType: 'Ionicons',
-        color: '#0d9488', // Teal
+        color: '#10b981', // Green
+        bgColor: '#ecfdf5',
     },
     {
         key: 'timetable',
         label: 'Timetable',
+        subtitle: 'Your class schedule',
         icon: 'time',
         iconType: 'Ionicons',
-        color: '#ea580c', // Orange
+        color: '#f97316', // Orange
+        bgColor: '#fff7ed',
     },
     {
         key: 'diary',
         label: 'Diary',
+        subtitle: 'Personal diary',
         icon: 'book',
         iconType: 'Ionicons',
-        color: '#8b5cf6', // Purple/Indigo
+        color: '#8b5cf6', // Purple
+        bgColor: '#f5f3ff',
     },
     {
         key: 'assignments',
         label: 'Assignments',
-        icon: 'library',
+        subtitle: 'View & submit work',
+        icon: 'document-text',
         iconType: 'Ionicons',
-        color: '#2563eb', // Rich Blue
+        color: '#3b82f6', // Blue
+        bgColor: '#eff6ff',
     },
     {
         key: 'results',
         label: 'Results',
-        icon: 'podium',
+        subtitle: 'Check your results',
+        icon: 'bar-chart',
         iconType: 'Ionicons',
-        color: '#db2777', // Rose
+        color: '#ec4899', // Pink
+        bgColor: '#fdf2f8',
     },
     {
         key: 'teachers',
         label: 'Teachers',
+        subtitle: 'Connect teachers',
         icon: 'people',
         iconType: 'Ionicons',
-        color: '#7c3aed', // Violet
+        color: '#6366f1', // Indigo
+        bgColor: '#eef2ff',
     },
     {
         key: 'feedetails',
         label: 'Fees',
+        subtitle: 'Fee status & history',
         icon: 'wallet',
         iconType: 'Ionicons',
-        color: '#059669', // Emerald
+        color: '#14b8a6', // Teal
+        bgColor: '#f0fdfa',
     },
     {
-        key: 'noticeboard',
-        label: 'Notices',
-        icon: 'megaphone',
+        key: 'library',
+        label: 'e-Library',
+        subtitle: 'Study materials & resources',
+        icon: 'library-outline',
         iconType: 'Ionicons',
-        color: '#d97706', // Amber
+        color: '#f59e0b', // Amber
+        bgColor: '#fffbeb',
     },
     {
         key: 'complaints',
-        label: 'Help',
+        label: 'Help Center',
+        subtitle: 'Get support',
         icon: 'shield-checkmark',
         iconType: 'Ionicons',
-        color: '#dc2626', // Red
+        color: '#ef4444', // Red
+        bgColor: '#fef2f2',
     },
 ];
 
@@ -96,6 +114,23 @@ export const CourseCategories: React.FC = () => {
         }).length;
     }, [assignments, readAssignmentIds, profile]);
 
+    const resultsList = useAppSelector((state) => state.results.list);
+    const readResultIds = useAppSelector((state) => state.results.readIds);
+    const unreadResultsCount = React.useMemo(() => {
+        return resultsList.filter(r => !readResultIds.includes(r.id)).length;
+    }, [resultsList, readResultIds]);
+
+    const notices = useAppSelector((state) => state.notifications.notices);
+    const readNoticeIds = useAppSelector((state) => state.notifications.readIds);
+    const unreadLibraryCount = React.useMemo(() => {
+        return notices.filter(n => {
+            const targetClass = (n as any).targetClass || (n as any).class || 'All Classes';
+            if (!profile?.class) return true;
+            if (targetClass.toLowerCase() === 'all' || targetClass.toLowerCase() === 'all classes') return true;
+            return targetClass.toLowerCase() === profile.class.toLowerCase();
+        }).filter(n => !readNoticeIds.includes(n.id)).length;
+    }, [notices, readNoticeIds, profile]);
+
     const handlePress = (key: string) => {
         switch (key) {
             case 'assignments':
@@ -116,8 +151,8 @@ export const CourseCategories: React.FC = () => {
             case 'feedetails':
                 navigation.navigate('FeeDetailScreen');
                 break;
-            case 'noticeboard':
-                navigation.navigate('NoticesScreen');
+            case 'library':
+                navigation.navigate('LibraryScreen');
                 break;
             case 'complaints':
                 navigation.navigate('HelpCenterScreen');
@@ -143,7 +178,7 @@ export const CourseCategories: React.FC = () => {
     return (
         <View style={styles.container}>
             <View style={styles.headerRow}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Actions</Text>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Access</Text>
                 <TouchableOpacity onPress={() => console.log('View All pressed')}>
                     <Text style={[styles.viewAllText, { color: theme.primary }]}>View All</Text>
                 </TouchableOpacity>
@@ -156,24 +191,27 @@ export const CourseCategories: React.FC = () => {
                         onPress={() => handlePress(item.key)}
                         activeOpacity={0.7}
                     >
-                        <View style={[styles.iconContainer, { backgroundColor: isDark ? item.color + '15' : item.color + '10' }]}>
+                        <View style={[styles.iconContainer, { backgroundColor: isDark ? item.color + '15' : item.bgColor }]}>
                             {renderIcon(item)}
-                            {item.key === 'diary' && unreadDiariesCount > 0 && (
-                                <View style={styles.badge}>
-                                    <Text style={styles.badgeText}>
-                                        {unreadDiariesCount > 9 ? '9+' : unreadDiariesCount}
-                                    </Text>
-                                </View>
-                            )}
-                            {item.key === 'assignments' && unreadAssignmentsCount > 0 && (
-                                <View style={styles.badge}>
-                                    <Text style={styles.badgeText}>
-                                        {unreadAssignmentsCount > 9 ? '9+' : unreadAssignmentsCount}
-                                    </Text>
-                                </View>
-                            )}
                         </View>
-                        <Text style={[styles.categoryLabel, { color: theme.text }]}>{item.label}</Text>
+                        <View style={styles.textContainer}>
+                            <Text style={[styles.categoryLabel, { color: theme.text }]} numberOfLines={1}>{item.label}</Text>
+                            <Text style={[styles.categorySubtitle, { color: theme.textSecondary }]} numberOfLines={1}>{item.subtitle}</Text>
+                        </View>
+                        
+                        {/* Top right green dot indicator */}
+                        {item.key === 'diary' && unreadDiariesCount > 0 && (
+                            <View style={styles.topRightDot} />
+                        )}
+                        {item.key === 'assignments' && unreadAssignmentsCount > 0 && (
+                            <View style={styles.topRightDot} />
+                        )}
+                        {item.key === 'library' && unreadLibraryCount > 0 && (
+                            <View style={styles.topRightDot} />
+                        )}
+                        {item.key === 'results' && unreadResultsCount > 0 && (
+                            <View style={styles.topRightDot} />
+                        )}
                     </TouchableOpacity>
                 ))}
             </View>
@@ -182,10 +220,10 @@ export const CourseCategories: React.FC = () => {
 };
 
 const GAP_SIZE = scale(8);
-const ITEMS_PER_ROW = 3;
+const ITEMS_PER_ROW = 2; // Switched to 2 columns for better layout with subtitles
 const TOTAL_HORIZONTAL_PADDING = scale(14) * 2;
 const TOTAL_GAPS = GAP_SIZE * (ITEMS_PER_ROW - 1);
-const cardSize = (width - TOTAL_HORIZONTAL_PADDING - TOTAL_GAPS) / ITEMS_PER_ROW;
+const cardWidth = (width - TOTAL_HORIZONTAL_PADDING - TOTAL_GAPS) / ITEMS_PER_ROW;
 
 const styles = StyleSheet.create({
     container: {
@@ -195,16 +233,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: scale(6),
+        marginBottom: scale(8),
         paddingHorizontal: scale(4),
     },
     sectionTitle: {
-        fontSize: scale(14),
+        fontSize: scale(15),
         fontWeight: '700',
         letterSpacing: -0.2,
     },
     viewAllText: {
-        fontSize: scale(11),
+        fontSize: scale(13),
         fontWeight: '600',
     },
     grid: {
@@ -214,11 +252,11 @@ const styles = StyleSheet.create({
         gap: GAP_SIZE,
     },
     categoryCard: {
-        width: cardSize,
-        height: cardSize * 0.9,
-        borderRadius: scale(12),
-        justifyContent: 'center',
+        width: cardWidth,
+        flexDirection: 'row',
         alignItems: 'center',
+        padding: scale(10),
+        borderRadius: scale(12),
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.04,
@@ -228,36 +266,53 @@ const styles = StyleSheet.create({
         borderColor: 'rgba(0,0,0,0.02)',
     },
     iconContainer: {
-        width: scale(36),
-        height: scale(36),
-        borderRadius: scale(12),
+        width: scale(38),
+        height: scale(38),
+        borderRadius: scale(10),
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: scale(6),
+        marginRight: scale(10),
+    },
+    textContainer: {
+        flex: 1,
+        justifyContent: 'center',
     },
     categoryLabel: {
-        fontSize: scale(10.5),
-        fontWeight: '600',
-        textAlign: 'center',
-        letterSpacing: 0.1,
+        fontSize: scale(13),
+        fontWeight: '700',
+        marginBottom: scale(2),
+        letterSpacing: -0.2,
+    },
+    categorySubtitle: {
+        fontSize: scale(9.5),
+        fontWeight: '500',
     },
     badge: {
         position: 'absolute',
-        top: -6,
-        right: -6,
-        minWidth: scale(18),
-        height: scale(18),
-        borderRadius: scale(9),
+        top: -4,
+        right: -4,
+        minWidth: scale(16),
+        height: scale(16),
+        borderRadius: scale(8),
         backgroundColor: '#ef4444',
         borderWidth: 1.5,
         borderColor: '#ffffff',
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 3,
+        paddingHorizontal: 2,
     },
     badgeText: {
         color: '#fff',
-        fontSize: scale(9),
+        fontSize: scale(8),
         fontWeight: '700',
+    },
+    topRightDot: {
+        position: 'absolute',
+        top: scale(10),
+        right: scale(10),
+        width: scale(8),
+        height: scale(8),
+        borderRadius: scale(4),
+        backgroundColor: '#22c55e',
     },
 });

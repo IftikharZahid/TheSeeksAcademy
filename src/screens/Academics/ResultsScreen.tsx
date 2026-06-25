@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchResults } from '../../store/slices/resultsSlice';
+import { fetchResults, markResultAsRead, persistReadResultIds } from '../../store/slices/resultsSlice';
 import * as Sharing from 'expo-sharing';
 import { db, auth } from '../../api/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
@@ -63,6 +63,25 @@ export const ResultsScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const entries = useAppSelector(state => state.results.list);
   const loading = useAppSelector(state => state.results.isLoading);
+  const readResultIds = useAppSelector(state => state.results.readIds);
+
+  // Mark all fetched results as read
+  useEffect(() => {
+    let newlyRead = false;
+    const newReadIds = [...readResultIds];
+    
+    entries.forEach(entry => {
+      if (!newReadIds.includes(entry.id)) {
+        newReadIds.push(entry.id);
+        dispatch(markResultAsRead(entry.id));
+        newlyRead = true;
+      }
+    });
+
+    if (newlyRead) {
+      persistReadResultIds(newReadIds);
+    }
+  }, [entries, dispatch, readResultIds]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -353,7 +372,7 @@ export const ResultsScreen: React.FC = () => {
                 <Image source={require('../../assets/the-seeks-logo.png')} style={[styles.sheetLogo, { width: isSmallScreen ? 40 : 50, height: isSmallScreen ? 40 : 50 }]} resizeMode="contain" />
                 <View style={styles.sheetHeaderCenter}>
                   <Text style={[styles.sheetAcademyName, { fontSize: isSmallScreen ? 14 : 16 }]}>The Seeks Academy Fort Abbas</Text>
-                  <Text style={[styles.sheetTitle, { fontSize: isSmallScreen ? 10 : 11 }]}>Result Sheet ({activeTab === 'All' ? 'Grand Test' : `${processedData.testCategory} ${activeTab}`} Session 2025-26)</Text>
+                  <Text style={[styles.sheetTitle, { fontSize: isSmallScreen ? 10 : 11 }]}>Result Sheet ({activeTab === 'All' ? 'Grand Test' : `${processedData.testCategory} ${activeTab}`} Session {new Date().getFullYear()}-{new Date().getFullYear() + 1})</Text>
                 </View>
               </View>
 

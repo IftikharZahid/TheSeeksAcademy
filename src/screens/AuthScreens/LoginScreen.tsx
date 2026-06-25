@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
-  Keyboard,
   Platform,
   ScrollView,
   StatusBar,
@@ -13,19 +12,33 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
+  Linking,
+  Keyboard,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme } from '../../context/ThemeContext';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
 import { auth, db } from '../../api/firebaseConfig';
 import { doc, getDoc, collection, query, where, getDocs, or } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
+import { scale } from '../../utils/responsive';
+import { useTheme } from '../../context/ThemeContext';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const isSmall = height < 700;
+
+// Exact Colors from the Design
+const COLORS = {
+  darkBlue: "#0B2D64",
+  gold: "#D4AF37",
+  textGray: "#64748B",
+  lightBlueBg: "#EBF4FB",
+  white: "#FFFFFF",
+  lineGray: "#CBD5E1",
+};
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -36,24 +49,25 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   // Interactive Focus States for Input Glow
   const [isEmailFocused, setIsEmailFocused] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
 
   // Keyboard Height State
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const scrollViewRef = React.useRef<ScrollView>(null);
 
   // Native Keyboard Listeners for flawless scrolling
   useEffect(() => {
-    const showSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => setKeyboardHeight(e.endCoordinates.height)
-    );
-    const hideSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardHeight(0)
-    );
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
 
     return () => {
       showSub.remove();
@@ -84,18 +98,19 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleLogin = async () => {
+    setErrorMsg(null);
     if (!email.trim()) {
-      Alert.alert('Authentication Failed', 'Email is required.');
+      setErrorMsg('Institutional Email is required.');
       return;
     }
     if (!password.trim()) {
-      Alert.alert('Authentication Failed', 'Password is required.');
+      setErrorMsg('Security Password is required.');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      Alert.alert('Authentication Failed', 'Invalid email format.');
+      setErrorMsg('Please enter a valid email format.');
       return;
     }
 
@@ -204,7 +219,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         console.error('🔥 FIREBASE CONFIG ERROR: Check firebaseConfig.ts credentials');
       }
 
-      Alert.alert('Authentication Failed', errorMessage);
+      setErrorMsg(errorMessage);
     }
   };
 
@@ -217,108 +232,133 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.background} />
+    <View style={[styles.mainContainer, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
 
-      <SafeAreaView style={{flex: 1}} edges={['top', 'left', 'right']}>
+      {/* ── Background Graphic (Fixed position) ── */}
+      <View style={styles.backgroundGraphic}>
+        <Svg height={Math.max(height, 800)} width="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <Path d="M0,18 L50,45 L100,18 L100,100 L0,100 Z" fill="#F4F8FC" />
+          <Path d="M0,25 L50,55 L100,25 L100,100 L0,100 Z" fill="#EAF2F8" />
+        </Svg>
+      </View>
+
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
           <ScrollView
+            ref={scrollViewRef}
             contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardHeight }]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            bounces={false}
           >
-            {/* Logo and Stars Section */}
-            <View style={styles.logoOuterContainer}>
-              <Image
-                source={require('../../../assets/icon.png')}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-              <View style={styles.crestStarRow}>
-                <Ionicons name="star" size={12} color="#d4af37" />
-                <Ionicons name="star" size={12} color="#d4af37" style={{ marginHorizontal: 4 }} />
-                <Ionicons name="star" size={12} color="#d4af37" />
+            {/* ── Top Header Section ── */}
+            <View style={styles.topSection}>
+              <Text style={styles.mainTitle}>STUDENT PORTAL</Text>
+
+              <View style={styles.dividerRow}>
+                <View style={styles.thinLine} />
+                <Ionicons name="school" size={14} color={COLORS.darkBlue} style={styles.hatIcon} />
+                <View style={styles.thinLine} />
+              </View>
+
+              <Text style={styles.topSubtitle}>Your Gateway to Academic Excellence</Text>
+            </View>
+
+            {/* ── Logo & Middle Header ── */}
+            <View style={styles.logoSection}>
+              <View style={styles.logoContainer}>
+                <Image
+                  source={require('../../../assets/icon.png')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+              </View>
+
+              <View style={styles.starsRow}>
+                <Ionicons name="star" size={12} color={COLORS.gold} />
+                <Ionicons name="star" size={14} color={COLORS.gold} style={styles.centerStar} />
+                <Ionicons name="star" size={12} color={COLORS.gold} />
+              </View>
+
+              <Text style={styles.academyTitle}>THE SEEKS ACADEMY</Text>
+
+              <View style={styles.locationRow}>
+                <View style={styles.locationLine} />
+                <Text style={styles.locationText}>F O R T  A B B A S</Text>
+                <View style={styles.locationLine} />
               </View>
             </View>
 
-            {/* Academic Header */}
-            <View style={styles.headerContainer}>
-              <Text style={[styles.academyTitle, { color: theme.text }]}>THE SEEKS ACADEMY</Text>
-              <Text style={[styles.academyMotto, { color: '#d4af37' }]}>FORT ABBAS</Text>
-              <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-                PORTAL OF ACADEMIC EXCELLENCE
-              </Text>
-            </View>
-
             {/* Form Card Container */}
-            <View style={[styles.formCard, { backgroundColor: theme.card, borderColor: theme.border, shadowColor: theme.shadow }]}>
-              
+            <View style={styles.formCard}>
+
+              {/* Welcome Section */}
+              <View style={styles.welcomeSection}>
+                <Text style={styles.welcomeTitle}>Welcome Back!</Text>
+                <Text style={styles.welcomeSubtitle}>Sign in to continue to your account</Text>
+              </View>
+
               {/* Email Input */}
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Institutional Email / ID</Text>
+                <Text style={styles.inputLabel}>Institutional Email / ID</Text>
                 <View style={[
-                  styles.inputContainer, 
-                  { 
-                    backgroundColor: isDark ? theme.background : '#f8fafc', 
-                    borderColor: isEmailFocused ? theme.primary : theme.border 
-                  }
+                  styles.inputContainer,
+                  isEmailFocused && styles.inputContainerFocused
                 ]}>
-                  <Ionicons 
-                    name="mail-outline" 
-                    size={18} 
-                    color={isEmailFocused ? theme.primary : theme.textTertiary} 
-                    style={styles.inputIcon} 
+                  <Ionicons
+                    name="mail-outline"
+                    size={18}
+                    color={isEmailFocused ? COLORS.darkBlue : COLORS.textGray}
+                    style={styles.inputIcon}
                   />
                   <TextInput
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={(text) => { setEmail(text); setErrorMsg(null); }}
                     onFocus={() => setIsEmailFocused(true)}
                     onBlur={() => setIsEmailFocused(false)}
                     placeholder="e.g. student@theseeksacademy.com"
-                    placeholderTextColor={theme.textTertiary}
+                    placeholderTextColor={COLORS.textGray}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
-                    style={[styles.textInput, { color: theme.text }]}
+                    style={styles.textInput}
                   />
                 </View>
               </View>
 
               {/* Password Input */}
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Security Password</Text>
+                <Text style={styles.inputLabel}>Security Password</Text>
                 <View style={[
-                  styles.inputContainer, 
-                  { 
-                    backgroundColor: isDark ? theme.background : '#f8fafc', 
-                    borderColor: isPasswordFocused ? theme.primary : theme.border 
-                  }
+                  styles.inputContainer,
+                  isPasswordFocused && styles.inputContainerFocused
                 ]}>
-                  <Ionicons 
-                    name="lock-closed-outline" 
-                    size={18} 
-                    color={isPasswordFocused ? theme.primary : theme.textTertiary} 
-                    style={styles.inputIcon} 
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={18}
+                    color={isPasswordFocused ? COLORS.darkBlue : COLORS.textGray}
+                    style={styles.inputIcon}
                   />
                   <TextInput
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => { setPassword(text); setErrorMsg(null); }}
                     onFocus={() => setIsPasswordFocused(true)}
                     onBlur={() => setIsPasswordFocused(false)}
                     placeholder="••••••••"
-                    placeholderTextColor={theme.textTertiary}
+                    placeholderTextColor={COLORS.textGray}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
-                    style={[styles.textInput, { color: theme.text }]}
+                    style={styles.textInput}
                   />
                   <TouchableOpacity
                     onPress={() => setShowPassword(!showPassword)}
                     style={styles.passwordToggle}
                     activeOpacity={0.7}
                   >
-                    <Ionicons 
-                      name={showPassword ? 'eye-off-outline' : 'eye-outline'} 
-                      size={18} 
-                      color={theme.textSecondary} 
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={18}
+                      color={COLORS.textGray}
                     />
                   </TouchableOpacity>
                 </View>
@@ -333,63 +373,53 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 >
                   <View style={[
                     styles.checkbox,
-                    { borderColor: theme.border },
-                    rememberMe && { backgroundColor: theme.primary, borderColor: theme.primary }
+                    rememberMe && styles.checkboxActive
                   ]}>
-                    {rememberMe && <Ionicons name="checkmark" size={12} color="#ffffff" style={{ fontWeight: 'bold' }} />}
+                    {rememberMe && <Ionicons name="checkmark" size={12} color={COLORS.white} style={{ fontWeight: 'bold' }} />}
                   </View>
-                  <Text style={[styles.rememberMeText, { color: theme.textSecondary }]}>Save Credentials</Text>
+                  <Text style={styles.rememberMeText}>Save Credentials</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.7}>
-                  <Text style={[styles.forgotPasswordText, { color: theme.primary }]}>Reset Password?</Text>
+                  <Text style={styles.forgotPasswordText}>Reset Password?</Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Login Button with Premium Linear Gradient */}
+              {/* Professional Error Message Inline */}
+              {errorMsg && (
+                <View style={styles.inlineErrorContainer}>
+                  <Ionicons name="warning" size={16} color="#ef4444" style={{ marginRight: scale(6) }} />
+                  <Text style={styles.inlineErrorText}>{errorMsg}</Text>
+                </View>
+              )}
+
+              {/* Login Button */}
               <TouchableOpacity
                 onPress={handleLogin}
                 disabled={isLoading}
                 activeOpacity={0.85}
-                style={styles.loginButtonWrapper}
+                style={[styles.primaryBtn, isLoading && styles.loginButtonDisabled]}
               >
-                <LinearGradient
-                  colors={[theme.primaryDark || '#7c3aed', theme.primary || '#8b5cf6']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[
-                    styles.loginButtonGradient,
-                    isLoading && styles.loginButtonDisabled
-                  ]}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#ffffff" size="small" />
-                  ) : (
-                    <View style={styles.loginButtonContent}>
-                      <Ionicons name="log-in-outline" size={18} color="#ffffff" style={{ marginRight: 8 }} />
-                      <Text style={styles.loginButtonText}>SIGN IN</Text>
-                    </View>
-                  )}
-                </LinearGradient>
+                {isLoading ? (
+                  <ActivityIndicator color={COLORS.white} size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="log-in-outline" size={18} color={COLORS.white} style={styles.btnIcon} />
+                    <Text style={styles.primaryBtnText}>SIGN IN</Text>
+                  </>
+                )}
               </TouchableOpacity>
-            </View>
 
-            {/* Professional Academic Footer */}
-            <View style={styles.footerContainer}>
-              <View style={styles.dividerRow}>
-                <View style={[styles.footerLine, { backgroundColor: theme.border }]} />
-                <Ionicons name="book-outline" size={14} color="#d4af37" style={{ marginHorizontal: 10 }} />
-                <View style={[styles.footerLine, { backgroundColor: theme.border }]} />
-              </View>
-
-              <Text style={[styles.securityMotto, { color: theme.textSecondary }]}>
-                KNOWLEDGE  •  INTEGRITY  •  LEADERSHIP
-              </Text>
-              <View style={styles.securityStatusRow}>
-                <Ionicons name="shield-checkmark" size={11} color={theme.success} style={{ marginRight: 4 }} />
-                <Text style={[styles.securityText, { color: theme.textTertiary }]}>
-                  Official Student Information Portal • Secure Connection
-                </Text>
+              {/* Contact Support */}
+              <View style={styles.supportRow}>
+                <Ionicons name="headset-outline" size={16} color={COLORS.textGray} />
+                <Text style={styles.supportText}>Need help? </Text>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => Linking.openURL('https://wa.link/330h0s')}
+                >
+                  <Text style={styles.supportLink}>Contact Support &gt;</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </ScrollView>
@@ -399,209 +429,319 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  mainContainer: {
     flex: 1,
+    backgroundColor: COLORS.white,
+  },
+  backgroundGraphic: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: -500,
+    zIndex: 0,
+  },
+  safeArea: {
+    flex: 1,
+    zIndex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 18,
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingHorizontal: isSmall ? 16 : 24,
+    paddingTop: isSmall ? 5 : 10,
     paddingBottom: 0,
   },
 
-  /* ── Logo Section ── */
-  logoOuterContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+  /* ── Top Section ── */
+  topSection: {
+    alignItems: "center",
+    width: "100%",
+    marginBottom: isSmall ? 10 : 14,
+    zIndex: 1,
   },
-  logoImage: {
-    width: 100,
-    height: 100,
-    marginBottom: 8,
+  mainTitle: {
+    fontSize: isSmall ? 22 : 26,
+    fontWeight: "900",
+    color: COLORS.darkBlue,
+    letterSpacing: 1,
   },
-  crestStarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "80%",
+    marginVertical: scale(8),
+  },
+  thinLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.lineGray,
+  },
+  hatIcon: {
+    marginHorizontal: scale(12),
+  },
+  topSubtitle: {
+    fontSize: isSmall ? 12 : 13,
+    color: COLORS.textGray,
+    fontWeight: "500",
   },
 
-  /* ── Academic Header ── */
-  headerContainer: {
-    alignItems: 'center',
-    marginBottom: 16,
+  /* ── Logo Section ── */
+  logoSection: {
+    alignItems: "center",
+    width: "100%",
+    marginBottom: isSmall ? 10 : 16,
+    zIndex: 1,
+  },
+  logoContainer: {
+    marginBottom: isSmall ? 4 : 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoImage: {
+    width: isSmall ? 75 : 95,
+    height: isSmall ? 75 : 95,
+  },
+  starsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: isSmall ? 6 : 10,
+  },
+  centerStar: {
+    marginHorizontal: scale(4),
+    marginTop: -4,
   },
   academyTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: isSmall ? 18 : 22,
+    fontWeight: "800",
+    color: COLORS.darkBlue,
     letterSpacing: 1,
-    textAlign: 'center',
+    marginBottom: isSmall ? 4 : 6,
   },
-  academyMotto: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 8,
-    marginTop: 2,
-    textAlign: 'center',
-    textTransform: 'uppercase',
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: scale(12),
   },
-  headerSubtitle: {
-    fontSize: 9,
-    fontWeight: '600',
-    letterSpacing: 1.5,
-    marginTop: 4,
-    textAlign: 'center',
-    textTransform: 'uppercase',
+  locationLine: {
+    width: scale(30),
+    height: 1,
+    backgroundColor: COLORS.lineGray,
+    marginHorizontal: scale(10),
+  },
+  locationText: {
+    fontSize: scale(11),
+    fontWeight: "700",
+    color: COLORS.gold,
+    letterSpacing: 4,
   },
 
   /* ── Form Card ── */
   formCard: {
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    ...Platform.select({
-      ios: {
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.06,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
+    width: "100%",
+    backgroundColor: COLORS.white,
+    borderRadius: scale(16),
+    paddingHorizontal: isSmall ? 16 : 22,
+    paddingVertical: isSmall ? 16 : 22,
+    marginBottom: scale(12),
+    zIndex: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
   },
   inputGroup: {
-    marginBottom: 12,
+    marginBottom: scale(12),
   },
   inputLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    marginBottom: 6,
-    textTransform: 'uppercase',
+    fontSize: scale(10),
+    fontWeight: "700",
+    color: COLORS.darkBlue,
+    marginBottom: scale(6),
+    textTransform: "uppercase",
     letterSpacing: 0.6,
   },
   inputContainer: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    height: 42,
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.lineGray,
+    backgroundColor: COLORS.white,
+    borderRadius: scale(10),
+    paddingHorizontal: scale(12),
+    height: isSmall ? 42 : 46,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  inputContainerFocused: {
+    borderColor: COLORS.darkBlue,
   },
   inputIcon: {
-    marginRight: 8,
+    marginRight: scale(8),
   },
   textInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: scale(13),
     padding: 0,
-    fontWeight: '500',
+    fontWeight: "500",
+    color: COLORS.darkBlue,
   },
   passwordToggle: {
-    paddingLeft: 6,
+    paddingLeft: scale(6),
   },
 
   /* ── Options Row ── */
   optionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 2,
-    marginBottom: 14,
+    marginBottom: scale(16),
   },
   rememberMeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   checkbox: {
-    width: 16,
-    height: 16,
-    borderRadius: 5,
+    width: scale(16),
+    height: scale(16),
+    borderRadius: scale(5),
     borderWidth: 1.5,
-    marginRight: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: COLORS.lineGray,
+    marginRight: scale(6),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxActive: {
+    backgroundColor: COLORS.darkBlue,
+    borderColor: COLORS.darkBlue,
   },
   rememberMeText: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: scale(12),
+    fontWeight: "500",
+    color: COLORS.textGray,
   },
   forgotPasswordText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: scale(12),
+    fontWeight: "600",
+    color: "#2563eb",
+  },
+
+  /* ── Welcome Section ── */
+  welcomeSection: {
+    alignItems: "center",
+    marginBottom: isSmall ? 14 : 20,
+    marginTop: isSmall ? 0 : 4,
+  },
+  welcomeTitle: {
+    fontSize: isSmall ? 18 : 20,
+    fontWeight: "800",
+    color: COLORS.darkBlue,
+    marginBottom: scale(4),
+  },
+  welcomeSubtitle: {
+    fontSize: scale(12),
+    color: COLORS.textGray,
+    fontWeight: "500",
+  },
+
+  /* ── Error Message Display ── */
+  inlineErrorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(239, 68, 68, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.2)",
+    borderRadius: scale(8),
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(8),
+    marginBottom: scale(16),
+  },
+  inlineErrorText: {
+    color: "#ef4444",
+    fontSize: scale(12),
+    fontWeight: "600",
+    flex: 1,
   },
 
   /* ── Sign In Button ── */
-  loginButtonWrapper: {
-    borderRadius: 10,
-    overflow: 'hidden',
+  primaryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.darkBlue,
+    borderRadius: scale(10),
+    height: isSmall ? 42 : 48, // Compacted
+    elevation: 4,
   },
-  loginButtonGradient: {
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
+  primaryBtnText: {
+    color: COLORS.white,
+    fontSize: scale(14),
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
-  loginButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
+  btnIcon: {
+    marginRight: scale(8),
   },
   loginButtonDisabled: {
     opacity: 0.75,
   },
-  loginButtonText: {
-    color: '#ffffff',
-    fontWeight: '800',
-    fontSize: 13,
-    letterSpacing: 0.8,
+
+  /* ── OR Divider ── */
+  orDividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: scale(18),
+  },
+  orLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.lineGray,
+    opacity: 0.5,
+  },
+  orText: {
+    marginHorizontal: scale(12),
+    fontSize: scale(11),
+    color: COLORS.textGray,
+    fontWeight: "600",
   },
 
-  /* ── Academic Footer ── */
-  footerContainer: {
-    marginTop: 16,
-    alignItems: 'center',
+  /* ── Secondary Button ── */
+  secondaryBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.white,
+    borderRadius: scale(10),
+    borderWidth: 1.2,
+    borderColor: COLORS.lineGray,
+    height: isSmall ? 44 : 48,
+    marginBottom: scale(16),
   },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    justifyContent: 'center',
-    marginBottom: 10,
+  secondaryBtnText: {
+    color: COLORS.darkBlue,
+    fontSize: scale(14),
+    fontWeight: "700",
   },
-  footerLine: {
-    height: 1,
-    flex: 0.35,
+
+  /* ── Support Row ── */
+  supportRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: scale(4),
+    marginBottom: scale(4),
   },
-  securityMotto: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 2,
-    marginBottom: 6,
+  supportText: {
+    fontSize: scale(12),
+    color: COLORS.textGray,
+    marginLeft: scale(6),
   },
-  motivationalQuote: {
-    fontSize: 11,
-    fontStyle: 'italic',
-    textAlign: 'center',
-    marginBottom: 10,
-    lineHeight: 16,
-    paddingHorizontal: 20,
-    fontWeight: '500',
-  },
-  securityStatusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  securityText: {
-    fontSize: 9,
-    fontWeight: '600',
-    textAlign: 'center',
-    lineHeight: 14,
-    letterSpacing: 0.1,
+  supportLink: {
+    fontSize: scale(12),
+    color: "#2563eb",
+    fontWeight: "600",
   },
 });

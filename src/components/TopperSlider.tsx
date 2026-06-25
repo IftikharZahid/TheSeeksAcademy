@@ -57,21 +57,22 @@ const TopperSliderSkeleton: React.FC<{ theme: any; isDark: boolean }> = ({ theme
             </View>
             <View style={{ flexDirection: 'row', gap: scale(10) }}>
                 {[1].map((i) => (
-                    <View key={i} style={[styles.listItem, { backgroundColor: theme.card, borderColor: theme.border, elevation: 0, shadowOpacity: 0 }]}>
-                        <View style={[styles.positionBadge, { backgroundColor: skeletonColor }]} />
-                        <View style={styles.studentSection}>
-                            <View style={{ width: '55%', height: scale(14), backgroundColor: skeletonColor, borderRadius: scale(3) }} />
-                            <View style={{ width: '40%', height: scale(10), backgroundColor: skeletonColor, borderRadius: scale(2), marginTop: scale(4) }} />
-                            <View style={{ width: '60%', height: scale(10), backgroundColor: skeletonColor, borderRadius: scale(2), marginTop: scale(4) }} />
-                        </View>
-                        <View style={styles.marksSection}>
-                            <View style={{ flexDirection: 'row', gap: scale(4) }}>
-                                <View style={{ width: scale(40), height: scale(14), backgroundColor: skeletonColor, borderRadius: scale(4) }} />
-                                <View style={{ width: scale(30), height: scale(14), backgroundColor: skeletonColor, borderRadius: scale(3) }} />
+                    <View key={i} style={[styles.studentCard, { backgroundColor: theme.card, borderColor: theme.border, elevation: 0, shadowOpacity: 0 }]}>
+                        <View style={styles.studentCardContent}>
+                            <View style={styles.studentCardLeft}>
+                                <View style={[styles.studentInitialsContainer, { backgroundColor: skeletonColor, borderColor: 'transparent' }]}>
+                                    <View style={[styles.studentRankBadge, { backgroundColor: skeletonColor, borderColor: 'transparent' }]} />
+                                </View>
+                                <View style={styles.studentDetails}>
+                                    <View style={{ width: '55%', height: scale(14), backgroundColor: skeletonColor, borderRadius: scale(3) }} />
+                                    <View style={{ width: '40%', height: scale(10), backgroundColor: skeletonColor, borderRadius: scale(2), marginTop: scale(4) }} />
+                                    <View style={{ width: '60%', height: scale(10), backgroundColor: skeletonColor, borderRadius: scale(2), marginTop: scale(4) }} />
+                                </View>
                             </View>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(6), marginTop: scale(8) }}>
-                                <View style={{ width: scale(20), height: scale(10), backgroundColor: skeletonColor, borderRadius: scale(2) }} />
-                                <View style={{ width: scale(50), height: scale(6), backgroundColor: skeletonColor, borderRadius: scale(3) }} />
+                            <View style={styles.studentCardDivider} />
+                            <View style={styles.studentCardRight}>
+                                <View style={{ width: scale(40), height: scale(14), backgroundColor: skeletonColor, borderRadius: scale(4) }} />
+                                <View style={{ width: scale(30), height: scale(14), backgroundColor: skeletonColor, borderRadius: scale(3), marginTop: scale(4) }} />
                             </View>
                         </View>
                     </View>
@@ -140,68 +141,59 @@ export const TopperSlider: React.FC = () => {
     };
 
     const renderTopperItem = ({ item }: { item: TopperData }) => {
-        const percentageValue = (item.obtainedMarks / item.totalMarks) * 100;
+        const percentageValue = (item.obtainedMarks / item.totalMarks) * 100 || 0;
         const percentage = percentageValue.toFixed(0);
 
+        const getInitials = (name: string) => {
+            if (!name) return 'S';
+            const parts = name.split(' ').filter(Boolean);
+            if (parts.length > 1) return (parts[0][0] + parts[1][0]).toUpperCase();
+            return name.substring(0, 2).toUpperCase();
+        };
+
         return (
-            <View style={[styles.listItem, { backgroundColor: theme.card }]}>
-                {/* Left: Position Badge */}
-                <View style={styles.positionBadgeWrapper}>
-                    <View style={styles.positionBadge}>
-                        <Text style={styles.positionEmoji}>{getPositionEmoji(item.position)}</Text>
-                    </View>
-                </View>
-
-                {/* Center: Student Info */}
-                <View style={styles.studentSection}>
-                    <Text style={[styles.studentName, { color: theme.text }]} numberOfLines={1}>
-                        {item.studentName}
-                    </Text>
-
-                    {item.rollNo ? (
-                        <View style={styles.testInfo}>
-                            <Ionicons name="id-card-outline" size={12} color={theme.textSecondary} />
-                            <Text style={[styles.testText, { color: theme.textSecondary }]}>
-                                Roll: {item.rollNo}
-                            </Text>
+            <LinearGradient
+                colors={['#1e3a8a', '#1e40af']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.studentCard}
+            >
+                <View style={styles.studentCardContent}>
+                    <View style={styles.studentCardLeft}>
+                        <View style={styles.studentInitialsContainer}>
+                            <Text style={styles.studentInitials}>{getInitials(item.studentName)}</Text>
+                            <View style={styles.studentRankBadge}>
+                                <Text style={styles.studentRankText}>{item.position}</Text>
+                            </View>
                         </View>
-                    ) : null}
-
-                    <View style={styles.testInfo}>
-                        <Ionicons name="calendar-outline" size={12} color={theme.textSecondary} />
-                        <Text style={[styles.testText, { color: theme.textSecondary }]}>
-                            {item.testNo} • {item.testDate}
-                        </Text>
-                    </View>
-                </View>
-
-                {/* Right: Marks & Percentage */}
-                <View style={styles.marksSection}>
-                    <View style={styles.marksHeaderRow}>
-                        <View style={[styles.classBadge, { backgroundColor: theme.primary + '15' }]}>
-                            <Text style={[styles.classText, { color: theme.primary }]}>
-                                {item.className}
-                            </Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={10} color={theme.textTertiary || '#cbd5e1'} style={{ marginHorizontal: scale(2) }} />
-                        <View style={styles.marksBox}>
-                            <Text style={[styles.marksValue, { color: '#10b981' }]}>
-                                {item.obtainedMarks}
-                            </Text>
-                            <Text style={[styles.marksTotal, { color: theme.textSecondary }]}>
-                                /{item.totalMarks}
-                            </Text>
+                        <View style={styles.studentDetails}>
+                            <Text style={styles.studentCardName} numberOfLines={1}>{item.studentName}</Text>
+                            <View style={styles.studentDetailRow}>
+                                <Ionicons name="id-card-outline" size={scale(10)} color="rgba(255,255,255,0.7)" />
+                                <Text style={styles.studentDetailText}>Roll: {item.rollNo || 'N/A'}</Text>
+                            </View>
+                            <View style={styles.studentDetailRow}>
+                                <Ionicons name="calendar-outline" size={scale(10)} color="rgba(255,255,255,0.7)" />
+                                <Text style={styles.studentDetailText}>{item.testNo} • {item.testDate}</Text>
+                            </View>
                         </View>
                     </View>
-
-                    <View style={styles.progressRow}>
-                        <Text style={[styles.percentage, { color: theme.primary }]}>{percentage}%</Text>
-                        <View style={styles.progressBarBg}>
-                            <View style={[styles.progressBarFill, { backgroundColor: theme.primary, width: `${Math.min(percentageValue, 100)}%` }]} />
+                    <View style={styles.studentCardDivider} />
+                    <View style={styles.studentCardRight}>
+                        <View style={styles.yearBadge}>
+                            <Text style={styles.yearBadgeText}>{item.className}</Text>
+                        </View>
+                        <Text style={styles.progressScore}>{item.obtainedMarks}<Text style={styles.progressScoreTotal}>/{item.totalMarks}</Text></Text>
+                        <View style={styles.progressTextRow}>
+                            <Text style={styles.progressLabelText}>Progress</Text>
+                            <Text style={styles.progressPercentText}>{percentage}%</Text>
+                        </View>
+                        <View style={styles.studentProgressBarBg}>
+                            <View style={[styles.studentProgressBarFill, { width: `${Math.min(percentageValue, 100)}%` }]} />
                         </View>
                     </View>
                 </View>
-            </View>
+            </LinearGradient>
         );
     };
 
@@ -312,111 +304,139 @@ const styles = StyleSheet.create({
         paddingLeft: scale(4),
         paddingBottom: scale(8),
     },
-    listItem: {
+    studentCard: {
         width: LIST_ITEM_WIDTH,
+        borderRadius: scale(16),
+        padding: scale(16),
+        marginBottom: scale(6),
+        shadowColor: '#1e3a8a',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    studentCardContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: scale(10),
-        paddingHorizontal: scale(10),
-        borderRadius: scale(12),
-        backgroundColor: '#ffffff',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 4,
-        elevation: 2,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.02)',
     },
-    positionBadgeWrapper: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: scale(10),
-    },
-    positionBadge: {
-        width: scale(36),
-        height: scale(36),
-        borderRadius: scale(18),
-        backgroundColor: '#f1f5f9',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    positionEmoji: {
-        fontSize: scale(18),
-    },
-    studentSection: {
+    studentCardLeft: {
         flex: 1.2,
-        gap: scale(2),
+        flexDirection: 'row',
+        alignItems: 'center',
     },
-    studentName: {
+    studentInitialsContainer: {
+        width: scale(44),
+        height: scale(44),
+        borderRadius: scale(22),
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: scale(12),
+        position: 'relative',
+    },
+    studentInitials: {
+        color: '#fff',
+        fontSize: scale(16),
+        fontWeight: '700',
+    },
+    studentRankBadge: {
+        position: 'absolute',
+        bottom: -scale(4),
+        backgroundColor: '#94a3b8',
+        width: scale(16),
+        height: scale(16),
+        borderRadius: scale(8),
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: '#1e40af',
+    },
+    studentRankText: {
+        color: '#fff',
+        fontSize: scale(9),
+        fontWeight: '800',
+    },
+    studentDetails: {
+        flex: 1,
+    },
+    studentCardName: {
+        color: '#fff',
         fontSize: scale(13),
         fontWeight: '700',
-        marginBottom: scale(1),
-        letterSpacing: -0.2,
+        marginBottom: scale(4),
     },
-    testInfo: {
+    studentDetailRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: scale(4),
+        marginBottom: scale(2),
     },
-    testText: {
-        fontSize: scale(9.5),
-        fontWeight: '500',
-    },
-    marksSection: {
-        flex: 1,
-        alignItems: 'flex-end',
-        justifyContent: 'center',
-    },
-    marksHeaderRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: scale(8),
-    },
-    classBadge: {
-        paddingHorizontal: scale(6),
-        paddingVertical: scale(2),
-        borderRadius: scale(4),
-    },
-    classText: {
+    studentDetailText: {
+        color: 'rgba(255,255,255,0.8)',
         fontSize: scale(9),
-        fontWeight: '700',
-        letterSpacing: 0.1,
+        marginLeft: scale(4),
     },
-    marksBox: {
-        flexDirection: 'row',
-        alignItems: 'baseline',
+    studentCardDivider: {
+        width: 1,
+        height: scale(44),
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        marginHorizontal: scale(12),
     },
-    marksValue: {
-        fontSize: scale(15),
-        fontWeight: '800',
-        letterSpacing: -0.5,
+    studentCardRight: {
+        flex: 0.8,
+        alignItems: 'flex-start',
     },
-    marksTotal: {
-        fontSize: scale(9.5),
+    yearBadge: {
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: scale(8),
+        paddingVertical: scale(2),
+        borderRadius: scale(8),
+        marginBottom: scale(4),
+    },
+    yearBadgeText: {
+        color: '#fff',
+        fontSize: scale(9),
         fontWeight: '600',
     },
-    progressRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        width: '100%',
-        justifyContent: 'flex-end',
-        gap: scale(4),
-    },
-    percentage: {
-        fontSize: scale(10),
+    progressScore: {
+        color: '#fff',
+        fontSize: scale(20),
         fontWeight: '800',
     },
-    progressBarBg: {
-        width: scale(40),
-        height: scale(5),
-        backgroundColor: '#f1f5f9',
-        borderRadius: scale(2.5),
+    progressScoreTotal: {
+        fontSize: scale(12),
+        fontWeight: '600',
+        color: 'rgba(255,255,255,0.8)',
+    },
+    progressTextRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '100%',
+        marginTop: scale(2),
+        marginBottom: scale(4),
+    },
+    progressLabelText: {
+        color: '#fff',
+        fontSize: scale(8),
+        fontWeight: '600',
+    },
+    progressPercentText: {
+        color: '#fff',
+        fontSize: scale(8),
+        fontWeight: '800',
+    },
+    studentProgressBarBg: {
+        width: '100%',
+        height: scale(4),
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        borderRadius: scale(2),
         overflow: 'hidden',
     },
-    progressBarFill: {
+    studentProgressBarFill: {
         height: '100%',
-        borderRadius: scale(2.5),
+        backgroundColor: '#a78bfa',
+        borderRadius: scale(2),
     },
     offlineBadge: {
         flexDirection: 'row',

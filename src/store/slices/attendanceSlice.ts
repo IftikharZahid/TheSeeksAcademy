@@ -49,8 +49,16 @@ export const fetchAttendance = createAsyncThunk(
             const snap = await getDoc(doc(db, 'attendance', uid));
             if (snap.exists()) {
                 const d = snap.data();
+                const dr = d.dailyRecords || {};
+                const norm: Record<string, string> = {};
+                if (typeof dr === 'object' && !Array.isArray(dr)) {
+                    Object.keys(dr).forEach(k => {
+                        const v = dr[k];
+                        norm[k] = typeof v === 'string' ? v : (v?.status ?? '');
+                    });
+                }
                 return {
-                    dailyRecords: d.dailyRecords || {},
+                    dailyRecords: norm,
                     records:      d.records      || [],
                     totalPresent: d.totalPresent || 0,
                     totalAbsent:  d.totalAbsent  || 0,
@@ -157,8 +165,16 @@ export const initAttendanceListener = (dispatch: Dispatch, uid: string) => {
         snap => {
             if (snap.exists()) {
                 const d = snap.data();
+                const dr = d.dailyRecords || {};
+                const norm: Record<string, string> = {};
+                if (typeof dr === 'object' && !Array.isArray(dr)) {
+                    Object.keys(dr).forEach(k => {
+                        const v = dr[k];
+                        norm[k] = typeof v === 'string' ? v : (v?.status ?? '');
+                    });
+                }
                 dispatch(setAttendanceData({
-                    dailyRecords: d.dailyRecords || {},
+                    dailyRecords: norm,
                     records:      d.records      || [],
                     totalPresent: d.totalPresent || 0,
                     totalAbsent:  d.totalAbsent  || 0,

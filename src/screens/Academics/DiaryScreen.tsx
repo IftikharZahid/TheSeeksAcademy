@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +37,7 @@ export const DiaryScreen: React.FC = () => {
   
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [refreshing, setRefreshing] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const weekDays = React.useMemo(() => generateWeekDays(), []);
 
   const onRefresh = useCallback(async () => {
@@ -70,43 +71,68 @@ export const DiaryScreen: React.FC = () => {
   );
 
   // Mark Diaries as Read
-  useEffect(() => {
-    const newIds: string[] = [];
-    entries.forEach((doc) => {
-      if (!readDiaryIds.includes(doc.id)) {
-        dispatch(markDiaryAsRead(doc.id));
-        newIds.push(doc.id);
-      }
-    });
-    if (newIds.length > 0) {
-      persistReadDiaryIds([...readDiaryIds, ...newIds]).catch(() => {});
+  const handleViewDiary = (docId: string) => {
+    setExpandedId(expandedId === docId ? null : docId);
+    if (!readDiaryIds.includes(docId)) {
+      dispatch(markDiaryAsRead(docId));
+      persistReadDiaryIds([...readDiaryIds, docId]).catch(() => {});
     }
-  }, [entries, readDiaryIds, dispatch]);
+  };
 
-  const renderEntry = ({ item }: { item: DiaryEntry }) => (
-    <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardHeaderLeft}>
-          <View style={[styles.iconWrap, { backgroundColor: isDark ? '#8b5cf620' : '#e0e7ff' }]}>
-            <Ionicons name="book-outline" size={scale(18)} color="#8b5cf6" />
+  const renderEntry = ({ item }: { item: DiaryEntry }) => {
+    const isUnread = !readDiaryIds.includes(item.id);
+    const isExpanded = expandedId === item.id;
+    return (
+      <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardHeaderLeft}>
+            <View style={[styles.iconWrap, { backgroundColor: isDark ? '#8b5cf620' : '#e0e7ff' }]}>
+              <Ionicons name="book-outline" size={scale(18)} color="#8b5cf6" />
+            </View>
+            <View>
+              <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>{item.title}</Text>
+              <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
+                {item.subject}
+              </Text>
+            </View>
           </View>
-          <View>
-            <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>{item.title}</Text>
-            <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
-              {item.subject}
-            </Text>
-          </View>
+          <Text style={[styles.cardDate, { color: theme.textTertiary }]}>
+            {item.date ? new Date(item.date).toLocaleDateString() : ''}
+          </Text>
         </View>
-        <Text style={[styles.cardDate, { color: theme.textTertiary }]}>
-          {item.date ? new Date(item.date).toLocaleDateString() : ''}
-        </Text>
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        
+        {isExpanded ? (
+          <>
+            <Text style={[styles.cardDetails, { color: theme.text }]} selectable>
+              {item.details}
+            </Text>
+            <TouchableOpacity 
+              style={[styles.viewButton, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1, marginTop: scale(10) }]}
+              onPress={() => handleViewDiary(item.id)}
+            >
+              <Text style={[styles.viewButtonText, { color: theme.text }]}>Close</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <View style={styles.viewRow}>
+            <Text style={[styles.cardDetails, { color: theme.textSecondary, flex: 1 }]} numberOfLines={2}>
+              {item.details}
+            </Text>
+            <TouchableOpacity 
+              style={[
+                styles.viewButton, 
+                { backgroundColor: isUnread ? '#22c55e' : theme.primary }
+              ]}
+              onPress={() => handleViewDiary(item.id)}
+            >
+              <Text style={[styles.viewButtonText, { color: '#fff' }]}>View</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
-      <View style={[styles.divider, { backgroundColor: theme.border }]} />
-      <Text style={[styles.cardDetails, { color: theme.text }]} selectable>
-        {item.details}
-      </Text>
-    </View>
-  );
+    );
+  };
 
   const filteredEntries = entries.filter(entry => {
     if (!entry.date) return false;
@@ -115,6 +141,7 @@ export const DiaryScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+      <StatusBar backgroundColor={theme.background} barStyle={isDark ? 'light-content' : 'dark-content'} />
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -284,6 +311,24 @@ const styles = StyleSheet.create({
   cardDate: { fontSize: scale(10), fontWeight: '500', marginTop: scale(2) },
   divider: { height: 1, marginVertical: scale(8) },
   cardDetails: { fontSize: scale(12), lineHeight: scale(18) },
+  viewRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: scale(4),
+  },
+  viewButton: {
+    paddingHorizontal: scale(16),
+    paddingVertical: scale(6),
+    borderRadius: scale(6),
+    marginLeft: scale(10),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewButtonText: {
+    fontSize: scale(11),
+    fontWeight: '600',
+  },
 });
 
 export default DiaryScreen;

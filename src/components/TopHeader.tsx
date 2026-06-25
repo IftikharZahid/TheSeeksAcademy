@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Modal, TouchableWithoutFeedback, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Modal, TouchableWithoutFeedback, Image, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useAppSelector } from '../store/hooks';
@@ -27,7 +27,8 @@ const formatRelativeTime = (timeMs: number): string => {
 
 export const TopHeader: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { theme, isDark, toggleTheme } = useTheme();
   const { unreadCount: notificationCount } = useNotifications();
   const unreadMessagesCount = useAppSelector(selectUnreadMessagesCount);
   const user = useAppSelector((state) => state.auth.user);
@@ -68,10 +69,6 @@ export const TopHeader: React.FC = () => {
   const topUpdates = recentUpdates.slice(0, 4);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Fallback logic
-  const displayName = profile?.fullname || user?.displayName || 'Student';
-  const displayImage = (profile?.image && profile.image.trim() !== '') ? profile.image : (user?.photoURL && user.photoURL.trim() !== '' ? user.photoURL : null);
-
   // Time-based academic greeting
   const getGreeting = (): string => {
     const hour = new Date().getHours();
@@ -98,44 +95,29 @@ export const TopHeader: React.FC = () => {
     };
   }, []);
 
-  const playSound = async () => {
+  const ringBell = async () => {
+    // Animate
+    Animated.sequence([
+      Animated.timing(bellRotate, { toValue: 1, duration: 100, useNativeDriver: true }),
+      Animated.timing(bellRotate, { toValue: -1, duration: 100, useNativeDriver: true }),
+      Animated.timing(bellRotate, { toValue: 1, duration: 100, useNativeDriver: true }),
+      Animated.timing(bellRotate, { toValue: -1, duration: 100, useNativeDriver: true }),
+      Animated.timing(bellRotate, { toValue: 0, duration: 100, useNativeDriver: true }),
+    ]).start();
+
+    // Play Sound
     try {
-      // Unload any previously playing sound before creating a new one
       if (soundRef.current) {
         await soundRef.current.unloadAsync().catch(() => {});
-        soundRef.current = null;
       }
-
       const { sound } = await Audio.Sound.createAsync(
         require('../assets/bell.wav')
       );
       soundRef.current = sound;
       await sound.playAsync();
-
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          sound.unloadAsync().catch(() => {});
-          soundRef.current = null;
-        }
-      });
     } catch (e) {
       console.log('Error playing bell sound:', e);
     }
-  };
-
-  const ringBell = () => {
-    playSound();
-    bellRotate.setValue(0);
-    // Swing: right → left → right → left → center  (realistic ring)
-    Animated.sequence([
-      Animated.timing(bellRotate, { toValue: 1, duration: 80, useNativeDriver: true }),
-      Animated.timing(bellRotate, { toValue: -1, duration: 80, useNativeDriver: true }),
-      Animated.timing(bellRotate, { toValue: 0.7, duration: 70, useNativeDriver: true }),
-      Animated.timing(bellRotate, { toValue: -0.7, duration: 70, useNativeDriver: true }),
-      Animated.timing(bellRotate, { toValue: 0.4, duration: 60, useNativeDriver: true }),
-      Animated.timing(bellRotate, { toValue: -0.4, duration: 60, useNativeDriver: true }),
-      Animated.timing(bellRotate, { toValue: 0, duration: 50, useNativeDriver: true }),
-    ]).start();
   };
 
   // Trigger ring when notification count goes UP
@@ -171,153 +153,120 @@ export const TopHeader: React.FC = () => {
   return (
     <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        {/* Left Section - Welcome + Name + Greeting */}
-        <View style={styles.leftSection}>
-          <Text style={[styles.helloText, { color: theme.textSecondary }]}>Welcome 🎓</Text>
-          <Text style={[styles.userName, { color: theme.text }]}>{displayName}</Text>
-          <Text style={[styles.greetingText, { color: theme.primary }]}>{getGreeting()}</Text>
-        </View>
-
-        {/* Middle Section - Logo */}
+        {/* Left Section - Logo & Title */}
         <View style={styles.middleSection}>
           <Image
-            source={require('../../assets/icon.png')}
+            source={require('../../assets/the-seeks-logo.png')}
             style={styles.logoImage}
             resizeMode="contain"
           />
+          <View style={styles.academyTextContainer}>
+            <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1}>
+              THE SEEKS ACADEMY
+            </Text>
+            <Text style={[styles.headerSubtitle, { color: theme.primary }]} numberOfLines={1}>
+              FORT ABBAS
+            </Text>
+          </View>
         </View>
 
-        {/* Right Section - Notification Bell + Avatar */}
+        {/* Right Section - Mod Button + Notification Bell */}
         <View style={styles.rightSection}>
           <TouchableOpacity
-            style={[styles.notificationButton, { backgroundColor: theme.card }]}
-            onPress={() => setShowDropdown(!showDropdown)}
+            style={[styles.modButton, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}
+            onPress={toggleTheme}
             activeOpacity={0.7}
           >
-            {/* Animated bell icon — pivots from top centre */}
-            <Animated.View style={{ transform: [{ rotate: bellRotateInterpolated }], transformOrigin: 'top' }}>
-              <Ionicons
-                name={totalUnreadCount > 0 ? 'notifications' : 'notifications-outline'}
-                size={scale(22)}
-                color={totalUnreadCount > 0 ? '#F59E0B' : theme.text}
-              />
-            </Animated.View>
-
-            {/* Badge — shows combined unread count */}
-            {totalUnreadCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
-                  {totalUnreadCount > 9 ? '9+' : totalUnreadCount}
-                </Text>
-              </View>
-            )}
+            <Ionicons name={isDark ? 'sunny' : 'moon'} size={scale(16)} color={isDark ? '#fbbf24' : '#64748b'} />
           </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.7}>
-            <View style={styles.avatar}>
-              <Image
-                source={displayImage ? { uri: displayImage } : require('../assets/default-profile.png')}
-                defaultSource={require('../assets/default-profile.png')}
-                style={[styles.avatarImage, (!displayImage && isDark) ? { tintColor: '#fff' } : null]}
-                resizeMode="cover"
-              />
-            </View>
+          <TouchableOpacity
+            style={[styles.notificationButton, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}
+            onPress={() => setShowDropdown(true)}
+            activeOpacity={0.7}
+          >
+            <Animated.View style={{ transform: [{ rotate: bellRotateInterpolated }] }}>
+              <Ionicons name="notifications-outline" size={scale(18)} color={theme.text} />
+              {(notificationCount > 0 || unreadMessagesCount > 0 || unreadDiariesCount > 0) && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {notificationCount + unreadMessagesCount + unreadDiariesCount}
+                  </Text>
+                </View>
+              )}
+            </Animated.View>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Notifications Dropdown Overlay */}
-      <Modal visible={showDropdown} transparent animationType="fade" onRequestClose={() => setShowDropdown(false)}>
-        <TouchableWithoutFeedback onPress={() => setShowDropdown(false)}>
-          <View style={styles.dropdownOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={[styles.dropdownContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <View style={[styles.dropdownHeader, { borderBottomColor: theme.border }]}>
-                  <Text style={[styles.dropdownTitle, { color: theme.text }]}>Recent Updates</Text>
-                  <TouchableOpacity onPress={() => { setShowDropdown(false); navigation.navigate('Home', { screen: 'NoticesScreen' }) }}>
-                    <Text style={[styles.viewAllText, { color: theme.primary }]}>View All</Text>
-                  </TouchableOpacity>
-                </View>
+      {/* Notifications Dropdown Modal */}
+      <Modal
+        visible={showDropdown}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDropdown(false)}
+      >
+        <TouchableOpacity
+          style={styles.dropdownOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDropdown(false)}
+        >
+          <View style={[styles.dropdownWrapper, { top: insets.top + scale(46), right: scale(16) }]}>
+            {/* Caret pointing up */}
+            <View style={[styles.caret, { borderBottomColor: theme.border }]} />
+            <View style={[styles.caretInner, { borderBottomColor: theme.card }]} />
 
-                {/* Dynamic Updates List */}
-                {topUpdates.length > 0 ? (
-                  topUpdates.map(update => {
-                    if (update.type === 'notice') {
-                      const n = update.item;
-                      return (
-                        <TouchableOpacity
-                          key={update.id}
-                          style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
-                          onPress={() => { setShowDropdown(false); navigation.navigate('Home', { screen: 'NoticesScreen', params: { noticeId: n.id } }) }}
-                          activeOpacity={0.7}
-                        >
-                          <View style={[styles.iconBox, { backgroundColor: n.iconBgColor || 'rgba(139,92,246,0.1)' }]}>
-                            <Ionicons name={(n.iconName as any) || 'notifications'} size={18} color={n.iconColor || theme.primary} />
-                          </View>
-                          <View style={styles.dropdownContent}>
-                            <View style={styles.itemTitleRow}>
-                              <Text style={[styles.itemTitle, { color: theme.text }]} numberOfLines={1}>{n.title}</Text>
-                              <Text style={[styles.itemTime, { color: theme.textTertiary }]}>{formatRelativeTime(update.timeMs)}</Text>
-                            </View>
-                            <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={1}>{n.message}</Text>
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    } else if (update.type === 'diary') {
-                      const d = update.item;
-                      const isUnread = !readDiaryIds.includes(d.id);
-                      return (
-                        <TouchableOpacity
-                          key={update.id}
-                          style={[styles.dropdownItem, { borderBottomColor: theme.border, backgroundColor: isUnread ? theme.primary + '0A' : 'transparent' }]}
-                          onPress={() => { setShowDropdown(false); navigation.navigate('Home', { screen: 'DiaryScreen' }) }}
-                          activeOpacity={0.7}
-                        >
-                          <View style={[styles.iconBox, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
-                            <Ionicons name="book" size={18} color="#F59E0B" />
-                          </View>
-                          <View style={styles.dropdownContent}>
-                            <View style={styles.itemTitleRow}>
-                              <Text style={[styles.itemTitle, { color: theme.text, fontWeight: isUnread ? '700' : '600' }]} numberOfLines={1}>Diary: {d.subject}</Text>
-                              <Text style={[styles.itemTime, { color: theme.textTertiary }]}>{formatRelativeTime(update.timeMs)}</Text>
-                            </View>
-                            <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={1}>{d.title}</Text>
-                          </View>
-                          {isUnread && <View style={[styles.unreadDot, { backgroundColor: theme.primary }]} />}
-                        </TouchableOpacity>
-                      );
-                    } else {
-                      const m = update.item;
-                      return (
-                        <TouchableOpacity
-                          key={update.id}
-                          style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
-                          onPress={() => { setShowDropdown(false); navigation.navigate('Home', { screen: 'MessagesScreen', params: { groupId: m.groupId } }) }}
-                          activeOpacity={0.7}
-                        >
-                          <View style={[styles.iconBox, { backgroundColor: 'rgba(6,182,212,0.1)' }]}>
-                            <Ionicons name="chatbubbles" size={18} color={theme.accent} />
-                          </View>
-                          <View style={styles.dropdownContent}>
-                            <View style={styles.itemTitleRow}>
-                              <Text style={[styles.itemTitle, { color: theme.text }]} numberOfLines={1}>Groups: {m.senderName}</Text>
-                              <Text style={[styles.itemTime, { color: theme.textTertiary }]}>{formatRelativeTime(update.timeMs)}</Text>
-                            </View>
-                            <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={1}>{m.text}</Text>
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    }
-                  })
-                ) : (
-                  <View style={styles.emptyDropdown}>
-                    <Text style={{ color: theme.textSecondary, fontSize: scale(13) }}>No recent updates</Text>
-                  </View>
-                )}
+            <View style={[styles.dropdownContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={[styles.dropdownHeader, { borderBottomColor: theme.border }]}>
+                <Text style={[styles.dropdownTitle, { color: theme.text }]}>Recent Updates</Text>
               </View>
-            </TouchableWithoutFeedback>
+            <ScrollView style={styles.dropdownContent} showsVerticalScrollIndicator={false}>
+              {topUpdates.length > 0 ? (
+                topUpdates.map((update, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
+                    onPress={() => {
+                      setShowDropdown(false);
+                      if (update.type === 'diary') {
+                        navigation.navigate('Diary' as never);
+                      } else if (update.type === 'message') {
+                        navigation.navigate('Messages' as never);
+                      }
+                      // Notices were removed, so we do nothing for 'notice' type
+                    }}
+                  >
+                    <View style={[styles.iconBox, { backgroundColor: isDark ? '#334155' : '#f1f5f9' }]}>
+                      <Ionicons
+                        name={
+                          update.type === 'notice' ? 'megaphone-outline' :
+                          update.type === 'diary' ? 'book-outline' : 'chatbubbles-outline'
+                        }
+                        size={scale(16)}
+                        color={theme.primary}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.itemTitle, { color: theme.text }]} numberOfLines={1}>
+                        {update.item.title || update.item.subject || update.item.teacherName || 'Update'}
+                      </Text>
+                      <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={1}>
+                        {update.item.content || update.item.message || update.item.description || ''}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.emptyDropdown}>
+                  <Ionicons name="notifications-off-outline" size={scale(24)} color={theme.textSecondary} />
+                  <Text style={{ color: theme.textSecondary, marginTop: scale(8), fontSize: scale(12) }}>
+                    No recent updates.
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
           </View>
-        </TouchableWithoutFeedback>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </SafeAreaView>
   );
@@ -332,54 +281,64 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: scale(16),
-    paddingVertical: scale(4),
-  },
-  leftSection: {
-    flexDirection: 'column',
+    paddingVertical: scale(6),
   },
   middleSection: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    marginRight: scale(10),
   },
   logoImage: {
-    width: scale(55),
-    height: scale(55),
+    width: scale(44),
+    height: scale(44),
+    marginLeft: scale(4),
   },
-  helloText: {
-    fontSize: scale(10),
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    color: '#6b7280',
+  academyTextContainer: {
+    flexShrink: 1,
+    minWidth: 0,
+    justifyContent: 'center',
+    marginLeft: scale(8),
   },
-  userName: {
+  headerTitle: {
     fontSize: scale(16),
-    fontWeight: '800',
-    color: '#1f2937',
-    marginTop: 0,
+    fontFamily: 'Arial',
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+    marginBottom: -2,
   },
-  greetingText: {
-    fontSize: scale(10.5),
-    fontWeight: '600',
-    marginTop: 0,
-    letterSpacing: 0.2,
-  },
-  avatar: {
-    width: scale(38),
-    height: scale(38),
-    borderRadius: scale(19),
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
+  headerSubtitle: {
+    fontSize: scale(12),
+    fontFamily: 'Arial',
+    fontWeight: 'bold',
+    letterSpacing: 1,
+    alignSelf:'flex-end'
+ 
   },
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(12),
+    justifyContent: 'flex-end',
+    flexShrink: 0,
+    gap: scale(10),
+  },
+  modButton: {
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   notificationButton: {
     width: scale(36),
@@ -392,6 +351,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+  },
+  avatar: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
   },
   badge: {
     position: 'absolute',
@@ -415,11 +382,40 @@ const styles = StyleSheet.create({
   dropdownOverlay: {
     flex: 1,
   },
-  dropdownContainer: {
+  dropdownWrapper: {
     position: 'absolute',
-    top: scale(55), // Just below header
-    right: scale(10), // moved closer to corner
-    width: scale(260), // more compact
+    alignItems: 'flex-end',
+    width: scale(280),
+  },
+  caret: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: scale(8),
+    borderRightWidth: scale(8),
+    borderBottomWidth: scale(8),
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    marginRight: scale(10), // align with the center of the notification bell
+  },
+  caretInner: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: scale(7),
+    borderRightWidth: scale(7),
+    borderBottomWidth: scale(7),
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    marginRight: scale(11),
+    position: 'absolute',
+    top: scale(1.5),
+    zIndex: 2,
+  },
+  dropdownContainer: {
+    width: '100%',
     borderRadius: scale(12),
     borderWidth: 1,
     shadowColor: '#000',

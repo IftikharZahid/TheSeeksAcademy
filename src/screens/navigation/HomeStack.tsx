@@ -12,10 +12,11 @@ import { StaffInfoScreen } from '../Teachers/TeacherDetailsScreen';
 import { FeeDetailScreen } from '../Finance/FeeDetailScreen';
 import { VideoLecturesScreen } from '../Lectures/VideoLecturesScreen';
 import { VideoGalleryScreen } from '../Lectures/VideoGalleryScreen';
-import { NoticesScreen } from '../Communication/NoticeScreen';
+
 import { MessagesScreen } from '../Communication/MessagesScreen';
 import { LikedVideosScreen } from '../Lectures/LikedVideosScreen';
 import { LikedTeachersScreen } from '../Teachers/LikedTeachersScreen';
+import { LibraryScreen } from '../Academics/LibraryScreen';
 
 // NOTE: HelpCenterScreen, AboutScreen, PrivacyPolicyScreen,
 // and TeacherDashboardScreen have been moved to the root AppNavigator stack so they
@@ -52,10 +53,11 @@ export type HomeStackParamList = {
     }>;
   };
   VideoGalleryScreen: undefined;
-  NoticesScreen: undefined;
+
   MessagesScreen: undefined;
   LikedVideosScreen: undefined;
   LikedTeachersScreen: undefined;
+  LibraryScreen: undefined;
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -74,10 +76,11 @@ export const HomeStack: React.FC = () => {
       <Stack.Screen name="FeeDetailScreen" component={FeeDetailScreen} />
       <Stack.Screen name="VideoLecturesScreen" component={VideoLecturesScreen} />
       <Stack.Screen name="VideoGalleryScreen" component={VideoGalleryScreen} />
-      <Stack.Screen name="NoticesScreen" component={NoticesScreen} />
+
       <Stack.Screen name="MessagesScreen" component={MessagesScreen} />
       <Stack.Screen name="LikedVideosScreen" component={LikedVideosScreen} />
       <Stack.Screen name="LikedTeachersScreen" component={LikedTeachersScreen} />
+      <Stack.Screen name="LibraryScreen" component={LibraryScreen} />
     </Stack.Navigator>
   );
 };
