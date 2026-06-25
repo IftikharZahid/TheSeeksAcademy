@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   logoContainer: {
-    marginBottom: isSmall ? 2 : 4,
+    marginBottom: scale(-15),
     alignItems: "center",
     justifyContent: "center",
   },
