@@ -21,6 +21,7 @@ export interface Video {
     youtubeUrl: string;
     duration?: string;
     chapterNo?: string;
+    chapterName?: string;
 }
 
 interface VideosState {

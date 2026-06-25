@@ -1007,10 +1007,18 @@ export const MessagesScreen: React.FC = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundSecondary }]} edges={['top', 'left', 'right']}>
       {/* Header — onLayout tracks real height so KAV offset is exact */}
       <View
-        style={[styles.headerNoticeStyle, { backgroundColor: theme.card, justifyContent: 'center' }]}
+        style={[styles.headerNoticeStyle, { backgroundColor: theme.card, justifyContent: 'flex-start' }]}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       >
-        <View style={{ alignItems: 'center' }}>
+        <TouchableOpacity onPress={() => setActiveGroup(null)} style={[styles.backButtonNoticeStyle, { marginRight: scale(8) }]}>
+          <Ionicons name="arrow-back" size={scale(24)} color={theme.text} />
+        </TouchableOpacity>
+        
+        <View style={{ width: scale(36), height: scale(36), borderRadius: scale(18), backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', justifyContent: 'center', alignItems: 'center', marginRight: scale(10), overflow: 'hidden', borderWidth: 1, borderColor: theme.border }}>
+          <Image source={require('../../assets/the-seeks-logo.png')} style={{ width: '70%', height: '70%', resizeMode: 'contain' }} />
+        </View>
+
+        <View style={{ flex: 1, justifyContent: 'center' }}>
           <Text style={{ fontSize: scale(16), fontWeight: '800', color: theme.text }} numberOfLines={1}>
             {groupObj?.name || 'Chat'}
           </Text>

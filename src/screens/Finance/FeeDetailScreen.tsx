@@ -13,6 +13,7 @@ import {
   Image,
   Dimensions,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -537,6 +538,10 @@ export const FeeDetailScreen: React.FC = () => {
     const skelBg = isDark ? '#1e293b' : '#f1f5f9';
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom', 'left', 'right']}>
+        <StatusBar 
+          backgroundColor={theme.card} 
+          barStyle={isDark ? 'light-content' : 'dark-content'} 
+        />
         {/* Header Skeleton */}
         <View style={{ flexDirection: 'row', alignItems: 'center', padding: scale(16), borderBottomWidth: 1, borderBottomColor: theme.border }}>
           <View style={{ width: scale(22), height: scale(22), borderRadius: scale(11), backgroundColor: skelBg }} />
@@ -589,6 +594,10 @@ export const FeeDetailScreen: React.FC = () => {
   if (!feeData) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom', 'left', 'right']}>
+        <StatusBar 
+          backgroundColor={theme.card} 
+          barStyle={isDark ? 'light-content' : 'dark-content'} 
+        />
         <TouchableOpacity
           style={{ padding: scale(16) }}
           onPress={() => navigation.goBack()}
@@ -609,6 +618,10 @@ export const FeeDetailScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom', 'left', 'right']}>
+      <StatusBar 
+        backgroundColor={theme.card} 
+        barStyle={isDark ? 'light-content' : 'dark-content'} 
+      />
       {/* Floating Header */}
       <Animated.View
         style={[

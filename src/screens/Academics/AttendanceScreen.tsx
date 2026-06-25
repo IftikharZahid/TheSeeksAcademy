@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Ionicons } from '@expo/vector-icons';
-import { View, Text, StyleSheet, ScrollView, Animated, TouchableOpacity, Modal, Dimensions, Easing, RefreshControl } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Animated, TouchableOpacity, Modal, Dimensions, Easing, RefreshControl, StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTheme } from '../../context/ThemeContext';
@@ -359,6 +359,10 @@ export const AttendanceScreen: React.FC = () => {
   ------------------------------ */
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={["top", "left", "right"]}>
+      <StatusBar 
+        backgroundColor={theme.card} 
+        barStyle={isDark ? 'light-content' : 'dark-content'} 
+      />
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>

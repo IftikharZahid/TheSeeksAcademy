@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, StatusBar, Dimensions, RefreshControl, FlatList } from 'react-native';
 import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
@@ -29,6 +29,7 @@ const { width } = Dimensions.get('window');
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -248,23 +249,29 @@ export const HomeScreen: React.FC = () => {
       <StatusBar backgroundColor="transparent" translucent={true} barStyle="light-content" />
 
       {/* Fixed Curved Background */}
-      <View style={styles.headerBackground}>
+      <LinearGradient 
+        colors={['#1e3a8a', '#1e40af']} 
+        start={{ x: 0, y: 0 }} 
+        end={{ x: 1, y: 1 }} 
+        style={styles.headerBackground}
+      >
         <Image 
           source={require('../../assets/the-seeks-logo.png')} 
           style={styles.headerWatermark} 
           contentFit="contain" 
         />
-      </View>
+      </LinearGradient>
 
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={{ paddingBottom: scale(80), paddingTop: scale(100) }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
-        }
-      >
-        <View style={styles.content}>
+      <View style={{ flex: 1, marginTop: insets.top + scale(50) }}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={{ paddingBottom: scale(80), paddingTop: scale(10) }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+          }
+        >
+          <View style={styles.content}>
           {/* Profile Card Section */}
           <StudentProfileCard
             name={displayName}
@@ -338,16 +345,19 @@ export const HomeScreen: React.FC = () => {
                         </View>
                         <Text style={[styles.continueTitle, { color: theme.text }]} numberOfLines={1}>{item.title || 'Video Title'}</Text>
                         {item.chapterNo && (
-                          <Text style={[styles.continueSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>{item.chapterNo}</Text>
+                          <Text style={[styles.continueSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+                            Chapter# {Number(item.chapterNo) < 10 ? `0${item.chapterNo}` : item.chapterNo}{item.chapterName ? `: ${item.chapterName}` : ''}
+                          </Text>
                         )}
                         
-                        <View style={styles.continueFooter}>
-                          <View style={styles.continueStats}>
-                            <View style={styles.statItem}>
-                              <Ionicons name="eye-outline" size={12} color={theme.textSecondary} />
-                              <Text style={[styles.statText, { color: theme.textSecondary }]}>{item.views || '0'} Views</Text>
-                            </View>
-                          </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: scale(4), gap: scale(4) }}>
+                          <Ionicons name="person-circle-outline" size={12} color={theme.textTertiary || '#94a3b8'} />
+                          <Text style={{ fontSize: scale(10), color: theme.textTertiary || '#94a3b8', fontWeight: '500' }} numberOfLines={1}>
+                            {galleries.find(g => g.id === item.galleryId)?.teacherName || item.teacherName || 'Subject Teacher'}
+                          </Text>
+                        </View>
+                        
+                        <View style={[styles.continueFooter, { justifyContent: 'flex-end' }]}>
                           <TouchableOpacity style={styles.resumeButton} onPress={() => handleVideoPress(item)}>
                             <Ionicons name="play" size={12} color={theme.primary} />
                             <Text style={[styles.resumeButtonText, { color: theme.primary }]}>Resume</Text>
@@ -467,7 +477,8 @@ export const HomeScreen: React.FC = () => {
             </View>
           </View>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };
@@ -482,7 +493,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: scale(230),
-    backgroundColor: '#3b2885', // Matches the screenshot dark blue color
     borderBottomLeftRadius: scale(40),
     borderBottomRightRadius: scale(40),
     overflow: 'hidden',

@@ -3,8 +3,8 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, StatusBar } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { db } from '../../api/firebaseConfig';
-import { getDoc, doc } from 'firebase/firestore';
+import { db, auth } from '../../api/firebaseConfig';
+import { getDoc, doc, deleteDoc } from 'firebase/firestore';
 import { useAppSelector } from '../../store/hooks';
 import { useTheme } from '../../context/ThemeContext';
 import { scale } from '../../utils/responsive';
@@ -41,8 +41,53 @@ const SkeletonRowVideoCard: React.FC<{ theme: any; isDark: boolean }> = ({ theme
 export const LikedVideosScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const { theme, isDark } = useTheme();
-    const likedVideos = useAppSelector((state) => state.videos.likedVideos);
+    const likedVideosRaw = useAppSelector((state) => state.videos.likedVideos);
+    const galleries = useAppSelector((state) => state.videos.galleries);
     const loading = useAppSelector((state) => state.videos.favoritesLoading);
+
+    // Auto-cleanup: remove liked videos that no longer exist in any gallery
+    const [likedVideos, setLikedVideos] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (!likedVideosRaw || likedVideosRaw.length === 0) {
+            setLikedVideos([]);
+            return;
+        }
+
+        if (!galleries || galleries.length === 0) {
+            setLikedVideos(likedVideosRaw); // Fallback until galleries load
+            return;
+        }
+
+        const validIds = new Set<string>();
+        galleries.forEach(g => {
+            if (g.videos) {
+                g.videos.forEach(v => validIds.add(v.id));
+            }
+        });
+
+        const user = auth.currentUser;
+        const valid: any[] = [];
+        const toDelete: any[] = [];
+
+        likedVideosRaw.forEach(video => {
+            if (validIds.has(video.id)) {
+                valid.push(video);
+            } else {
+                toDelete.push(video);
+            }
+        });
+
+        setLikedVideos(valid);
+
+        // Remove stale favorites from Firebase to clean up cache
+        if (toDelete.length > 0 && user) {
+            toDelete.forEach(video => {
+                deleteDoc(doc(db, 'users', user.uid, 'favorites', video.id))
+                    .catch(e => console.log('Error cleaning up favorite:', e));
+            });
+        }
+    }, [likedVideosRaw, galleries]);
 
     // Hide TopHeader and tab bar — restoration is handled by MainTabs hiddenRoutes logic
     useFocusEffect(

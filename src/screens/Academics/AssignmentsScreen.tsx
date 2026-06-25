@@ -142,6 +142,10 @@ export const AssignmentsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar 
+        backgroundColor={theme.card} 
+        barStyle={isDark ? 'light-content' : 'dark-content'} 
+      />
 
       {/* ── Header ─────────────────────────────────────────────────── */}
       <View style={[styles.header, { backgroundColor: theme.card }]}>

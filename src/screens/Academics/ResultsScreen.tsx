@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, TextInput, Alert, Platform, Image, Dimensions, Modal, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, TextInput, Alert, Platform, Image, Dimensions, Modal, Keyboard, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
@@ -52,7 +52,7 @@ const getGradeAndRemarks = (percentage: number): { grade: string; remarks: strin
 
 export const ResultsScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { isDark } = useTheme();
+  const { theme, isDark } = useTheme();
 
   const [activeTab, setActiveTab] = useState('All');
   const [activeCategory, setActiveCategory] = useState('All');
@@ -329,6 +329,10 @@ export const ResultsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0f172a' : '#f8fafc' }]} edges={['top', 'left', 'right']}>
+      <StatusBar 
+        backgroundColor={theme.card} 
+        barStyle={isDark ? 'light-content' : 'dark-content'} 
+      />
       <View style={[styles.header, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
           <Ionicons name="chevron-back" size={20} color={isDark ? '#e2e8f0' : '#1e293b'} />

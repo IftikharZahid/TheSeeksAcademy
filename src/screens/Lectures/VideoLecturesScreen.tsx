@@ -38,6 +38,7 @@ interface VideoItem {
     duration: string;
     youtubeId: string;
     chapterNo: number;
+    chapterName?: string;
 }
 
 // Helper to extract YouTube video ID from URL
@@ -72,14 +73,15 @@ const convertToVideoItems = (videos: Video[]): VideoItem[] => {
             seenIds.add(yId);
 
             return {
-                id: video.id,
-                title: video.title,
+                id: video.id || '',
+                title: video.title || 'Untitled',
                 duration: video.duration || '',
                 youtubeId: yId,
                 chapterNo: parseInt(video.chapterNo || '1') || 1,
+                chapterName: (video as any).chapterName,
                 // Temp number, will re-index below
                 number: 0
-            };
+            } as Omit<VideoItem, 'number'> & { number: number };
         })
         .filter((item): item is Omit<VideoItem, 'number'> & { number: number } => item !== null)
         .map((item, index) => ({
@@ -196,10 +198,14 @@ export const VideoLecturesScreen: React.FC = () => {
         // Sort chapters by number
         return Object.entries(grouped)
             .sort(([a], [b]) => Number(a) - Number(b))
-            .map(([chapterNo, videos]) => ({
-                chapterNo: Number(chapterNo),
-                videos,
-            }));
+            .map(([chapterNo, videos]) => {
+                const chapterName = videos.find(v => v.chapterName)?.chapterName || '';
+                return {
+                    chapterNo: Number(chapterNo),
+                    chapterName,
+                    videos,
+                };
+            });
     }, [allVideos]);
 
     const [currentVideo, setCurrentVideo] = useState<VideoItem | null>(allVideos[0] || null);
@@ -574,7 +580,9 @@ export const VideoLecturesScreen: React.FC = () => {
                             </View>
                             <View style={[styles.metaBadge, { backgroundColor: isDark ? theme.backgroundSecondary : '#f3f4f6', marginLeft: scale(8) }]}>
                                 <Ionicons name="bookmark" size={12} color={theme.textSecondary} />
-                                <Text style={[styles.metaText, { color: theme.textSecondary }]}>Chapter {currentVideo.chapterNo}</Text>
+                                <Text style={[styles.metaText, { color: theme.textSecondary }]}>
+                                    Chapter {currentVideo.chapterNo}{currentVideo.chapterName ? ` - ${currentVideo.chapterName}` : ''}
+                                </Text>
                             </View>
                             {currentVideo.duration && (
                                 <Text style={[styles.videoDuration, { color: theme.textSecondary, marginLeft: scale(10) }]}>
@@ -617,7 +625,7 @@ export const VideoLecturesScreen: React.FC = () => {
                             </View>
                             <View style={styles.chapterInfo}>
                                 <Text style={[styles.chapterTitle, { color: theme.text }]}>
-                                    Chapter {chapter.chapterNo}
+                                    Chapter {chapter.chapterNo}{chapter.chapterName ? ` - ${chapter.chapterName}` : ''}
                                 </Text>
                                 <Text style={[styles.chapterMeta, { color: theme.textSecondary }]}>
                                     {chapter.videos.length} {chapter.videos.length === 1 ? 'video' : 'videos'}
