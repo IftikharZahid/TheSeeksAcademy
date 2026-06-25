@@ -151,8 +151,8 @@ export const TopHeader: React.FC = () => {
   });
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: theme.background }]}>
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: 'transparent' }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         {/* Left Section - Logo & Title */}
         <View style={styles.middleSection}>
           <Image
@@ -161,10 +161,10 @@ export const TopHeader: React.FC = () => {
             resizeMode="contain"
           />
           <View style={styles.academyTextContainer}>
-            <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1}>
+            <Text style={[styles.headerTitle, { color: '#ffffff' }]} numberOfLines={1}>
               THE SEEKS ACADEMY
             </Text>
-            <Text style={[styles.headerSubtitle, { color: theme.primary }]} numberOfLines={1}>
+            <Text style={[styles.headerSubtitle, { color: '#fbbf24' }]} numberOfLines={1}>
               FORT ABBAS
             </Text>
           </View>
@@ -173,19 +173,19 @@ export const TopHeader: React.FC = () => {
         {/* Right Section - Mod Button + Notification Bell */}
         <View style={styles.rightSection}>
           <TouchableOpacity
-            style={[styles.modButton, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}
+            style={[styles.modButton, { backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.4)', borderWidth: 1 }]}
             onPress={toggleTheme}
             activeOpacity={0.7}
           >
-            <Ionicons name={isDark ? 'sunny' : 'moon'} size={scale(16)} color={isDark ? '#fbbf24' : '#64748b'} />
+            <Ionicons name={isDark ? 'sunny' : 'moon'} size={scale(16)} color={'#ffffff'} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.notificationButton, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}
+            style={[styles.notificationButton, { backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.4)', borderWidth: 1 }]}
             onPress={() => setShowDropdown(true)}
             activeOpacity={0.7}
           >
             <Animated.View style={{ transform: [{ rotate: bellRotateInterpolated }] }}>
-              <Ionicons name="notifications-outline" size={scale(18)} color={theme.text} />
+              <Ionicons name="notifications-outline" size={scale(18)} color={'#ffffff'} />
               {(notificationCount > 0 || unreadMessagesCount > 0 || unreadDiariesCount > 0) && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>

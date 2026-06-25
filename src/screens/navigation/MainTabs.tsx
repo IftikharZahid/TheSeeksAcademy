@@ -40,6 +40,7 @@ export const MainTabs: React.FC = () => {
 
           return {
             headerShown: !isHidden,
+            headerTransparent: true,
             tabBarStyle: isHidden ? { display: 'none' } : undefined,
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="home" size={size} color={color} />

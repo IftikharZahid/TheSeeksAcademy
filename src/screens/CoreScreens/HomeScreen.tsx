@@ -22,6 +22,7 @@ import { initAttendanceListener } from '../../store/slices/attendanceSlice';
 import { CourseCategories } from '../../components/QuickActions';
 import { CourseList } from '../../components/CourseList';
 import { TopperSlider } from '../../components/TopperSlider';
+import { StudentProfileCard } from '../../components/StudentProfileCard';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
@@ -244,34 +245,38 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['left', 'right']}>
-      <StatusBar backgroundColor={theme.background} barStyle={isDark ? "light-content" : "dark-content"} />
+      <StatusBar backgroundColor="transparent" translucent={true} barStyle="light-content" />
+
+      {/* Fixed Curved Background */}
+      <View style={styles.headerBackground}>
+        <Image 
+          source={require('../../assets/the-seeks-logo.png')} 
+          style={styles.headerWatermark} 
+          contentFit="contain" 
+        />
+      </View>
+
       <ScrollView
         style={styles.container}
-        contentContainerStyle={{ paddingBottom: scale(80) }}
+        contentContainerStyle={{ paddingBottom: scale(80), paddingTop: scale(100) }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
       >
         <View style={styles.content}>
-          {/* Greeting Section */}
-          <View style={styles.greetingContainer}>
-            <Text style={[styles.greetingText, { color: theme.textSecondary }]}>{getGreeting()}</Text>
-            <View style={styles.nameRow}>
-              <Text style={[styles.userName, { color: theme.text }]}>{displayName}</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Profile' as never)} activeOpacity={0.7} style={{ marginLeft: 'auto' }}>
-                <View style={[styles.avatar, { borderColor: isDark ? theme.border : '#e5e7eb' }]}>
-                  <Image
-                    source={profile?.image ? { uri: profile.image } : (user?.photoURL ? { uri: user.photoURL } : require('../../assets/default-profile.png'))}
-                    defaultSource={require('../../assets/default-profile.png')}
-                    style={[styles.avatarImage, (!profile?.image && !user?.photoURL && isDark) ? { tintColor: '#fff' } : null]}
-                    resizeMode="cover"
-                  />
-                </View>
-              </TouchableOpacity>
-            </View>
-            <Text style={[styles.motivationalText, { color: theme.primary }]}>Keep learning, keep growing!</Text>
-          </View>
+          {/* Profile Card Section */}
+          <StudentProfileCard
+            name={displayName}
+            role={profile?.role === 'admin' ? 'Admin' : profile?.role === 'teacher' ? 'Teacher' : 'Student'}
+            studentId={profile?.rollno || (user as any)?.uid || 'N/A'}
+            className={profile?.class || 'Not Assigned'}
+            gender={profile?.gender ? profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1).toLowerCase() : 'N/A'}
+            rollNo={profile?.rollno || 'N/A'}
+            email={user?.email || profile?.email || 'N/A'}
+            avatarUrl={profile?.image || user?.photoURL || undefined}
+          />
+
 
           {/* Topper Slider */}
           <TopperSlider />
@@ -470,6 +475,25 @@ export const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: scale(230),
+    backgroundColor: '#3b2885', // Matches the screenshot dark blue color
+    borderBottomLeftRadius: scale(40),
+    borderBottomRightRadius: scale(40),
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerWatermark: {
+    width: scale(300),
+    height: scale(300),
+    opacity: 0.04, // Very subtle
+    transform: [{ translateY: scale(-10) }],
   },
   content: {
     paddingHorizontal: scale(14),
