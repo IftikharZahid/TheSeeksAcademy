@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Dimensions } from "react-native";
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Dimensions, StatusBar } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../navigation/HomeStack';
@@ -91,9 +90,8 @@ export const TeachersScreen: React.FC = () => {
       onPress={() => navigation.navigate('StaffInfoScreen', { teacher })}
       activeOpacity={0.9}
     >
-      {/* Teacher Image & Rating overlay */}
       <View style={[styles.imageWrapper, { backgroundColor: teacher.color }]}>
-        {teacher.image ? (
+        {teacher.image && teacher.image.trim() !== '' ? (
           <Image source={{ uri: teacher.image }} style={styles.teacherImage} />
         ) : (
           <View style={[styles.teacherImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#e5e7eb' }]}>
@@ -137,7 +135,7 @@ export const TeachersScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={theme.background} />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: theme.border, borderBottomWidth: 1 }]}>
         <TouchableOpacity

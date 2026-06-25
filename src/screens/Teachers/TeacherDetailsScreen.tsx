@@ -112,7 +112,7 @@ export const StaffInfoScreen: React.FC = () => {
             <View style={styles.profileMainRow}>
               <View style={styles.imageWrapper}>
                 <View style={[styles.imageRing, { borderColor: theme.primary }]}>
-                  {teacher.image ? (
+                  {teacher.image && teacher.image.trim() !== '' ? (
                     <Image
                       source={{ uri: teacher.image }}
                       style={styles.profileImage}

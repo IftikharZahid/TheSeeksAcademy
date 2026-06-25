@@ -97,9 +97,18 @@ export const LikedTeachersScreen: React.FC = () => {
             onPress={() => navigation.navigate('StaffInfoScreen', { teacher })}
             activeOpacity={0.9}
         >
-            {/* Teacher Image */}
             <View style={styles.imageWrapper}>
-                <Image source={{ uri: teacher.image }} style={styles.teacherImage} />
+                {teacher.image && teacher.image.trim() !== '' ? (
+                    <Image source={{ uri: teacher.image }} style={styles.teacherImage} />
+                ) : (
+                    <View style={[styles.teacherImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#e5e7eb' }]}>
+                        <Ionicons 
+                            name={(teacher as any).gender?.toLowerCase() === 'female' ? "woman" : "man"} 
+                            size={scale(30)} 
+                            color="#9ca3af" 
+                        />
+                    </View>
+                )}
                 <View style={styles.heartBadge}>
                     <Ionicons name="heart" size={scale(12)} color="#ef4444" />
                 </View>
