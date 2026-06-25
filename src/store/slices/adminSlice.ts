@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction, createSelector } from '@reduxjs/toolkit';
 import { db } from '../../api/firebaseConfig';
 import { collection, onSnapshot, query, orderBy, getDocs, doc, updateDoc, deleteDoc, getDoc, setDoc } from 'firebase/firestore';
 import type { Dispatch, Unsubscribe } from '@reduxjs/toolkit';
@@ -231,119 +231,131 @@ export const updateFeeRecordAsync = createAsyncThunk(
 
 export const selectAdminExams = (state: any) => state.admin.exams;
 
-let lastExamsRef: AdminExam[] | null = null;
-let cachedToppers: any[] = [];
-
-export const selectToppersData = (state: any) => {
-    const exams: AdminExam[] = state.admin.exams;
-    
-    if (exams === lastExamsRef) {
-        return cachedToppers;
-    }
-    
-    lastExamsRef = exams;
-
-    if (!exams || exams.length === 0) {
-        cachedToppers = [];
-        return cachedToppers;
-    }
-
-    const classTestGroups: Record<string, Record<string, {
-        studentName: string;
-        rollNo: string;
-        obtainedMarks: number;
-        totalMarks: number;
-        testDate: string;
-    }>> = {};
-
-    exams.forEach(exam => {
-        if (exam.status === 'Absent') return;
-        const className = exam.studentClass || 'Unknown Class';
-        const testTitle = exam.title || 'Unknown Test';
-        const groupKey = `${className}_${testTitle}`;
-
-        if (!classTestGroups[groupKey]) {
-            classTestGroups[groupKey] = {};
+export const selectToppersData = createSelector(
+    [
+        (state: any) => state.admin.exams as AdminExam[],
+        (state: any) => state.admin.students as AdminStudent[],
+    ],
+    (exams: AdminExam[], students: AdminStudent[]) => {
+        if (!exams || exams.length === 0) {
+            return [];
         }
 
-        const studentKey = exam.rollNo || exam.studentName || 'unknown';
-        if (!studentKey) return;
+        // Build a Set of active student roll numbers / emails for fast lookup
+        const activeStudentRollNos = new Set<string>(
+            students.map(s => s.rollno || '').filter(Boolean)
+        );
+        const activeStudentEmails = new Set<string>(
+            students.map(s => s.email || '').filter(Boolean)
+        );
 
-        let obtained = 0;
-        let total = 0;
+        const classTestGroups: Record<string, Record<string, {
+            studentName: string;
+            rollNo: string;
+            obtainedMarks: number;
+            totalMarks: number;
+            testDate: string;
+        }>> = {};
 
-        if (exam.books && exam.books.length > 0) {
-            exam.books.forEach(b => {
-                obtained += parseFloat(b.obtainedMarks || '0');
-                total += parseFloat(b.totalMarks || '0');
-            });
-        } else {
-            obtained += parseFloat(exam.obtainedMarks || '0');
-            total += parseFloat(exam.totalMarks || '0');
-        }
+        exams.forEach(exam => {
+            if (exam.status === 'Absent') return;
 
-        if (!classTestGroups[groupKey][studentKey]) {
-            classTestGroups[groupKey][studentKey] = {
-                studentName: exam.studentName || 'Unknown Student',
-                rollNo: exam.rollNo || '',
-                obtainedMarks: 0,
-                totalMarks: 0,
-                testDate: exam.date || '',
-            };
-        }
-
-        classTestGroups[groupKey][studentKey].obtainedMarks += obtained;
-        classTestGroups[groupKey][studentKey].totalMarks += total;
-
-        if (exam.date && (!classTestGroups[groupKey][studentKey].testDate || new Date(exam.date) > new Date(classTestGroups[groupKey][studentKey].testDate))) {
-            classTestGroups[groupKey][studentKey].testDate = exam.date;
-        }
-    });
-
-    const allToppers: any[] = [];
-
-    Object.keys(classTestGroups).forEach(groupKey => {
-        const [className, testTitle] = groupKey.split('_');
-        const students = Object.values(classTestGroups[groupKey]);
-
-        students.sort((a, b) => b.obtainedMarks - a.obtainedMarks);
-
-        let currentRank = 1;
-        let previousMarks = -1;
-
-        students.forEach((student, index) => {
-            if (index > 0 && student.obtainedMarks < previousMarks) {
-                currentRank = index + 1;
+            // Skip exam if student was deleted — only filter when we have student data loaded
+            if (students.length > 0) {
+                const examRollNo = exam.rollNo || '';
+                const examEmail = exam.studentEmail || '';
+                const isActive =
+                    (examRollNo && activeStudentRollNos.has(examRollNo)) ||
+                    (examEmail && activeStudentEmails.has(examEmail));
+                if (!isActive) return; // Student was deleted, skip their exam
             }
-            previousMarks = student.obtainedMarks;
 
-            if (currentRank <= 3 && student.totalMarks > 0) {
-                allToppers.push({
-                    id: `${student.rollNo}_${groupKey}_${index}`,
-                    studentName: student.studentName,
-                    rollNo: student.rollNo,
-                    testNo: testTitle,
-                    testDate: student.testDate,
-                    obtainedMarks: student.obtainedMarks,
-                    totalMarks: student.totalMarks,
-                    position: currentRank,
-                    className: className
+            const className = exam.studentClass || 'Unknown Class';
+            const testTitle = exam.title || 'Unknown Test';
+            const groupKey = `${className}_${testTitle}`;
+
+            if (!classTestGroups[groupKey]) {
+                classTestGroups[groupKey] = {};
+            }
+
+            const studentKey = exam.rollNo || exam.studentName || 'unknown';
+            if (!studentKey) return;
+
+            let obtained = 0;
+            let total = 0;
+
+            if (exam.books && exam.books.length > 0) {
+                exam.books.forEach(b => {
+                    obtained += parseFloat(b.obtainedMarks || '0');
+                    total += parseFloat(b.totalMarks || '0');
                 });
+            } else {
+                obtained += parseFloat(exam.obtainedMarks || '0');
+                total += parseFloat(exam.totalMarks || '0');
+            }
+
+            if (!classTestGroups[groupKey][studentKey]) {
+                classTestGroups[groupKey][studentKey] = {
+                    studentName: exam.studentName || 'Unknown Student',
+                    rollNo: exam.rollNo || '',
+                    obtainedMarks: 0,
+                    totalMarks: 0,
+                    testDate: exam.date || '',
+                };
+            }
+
+            classTestGroups[groupKey][studentKey].obtainedMarks += obtained;
+            classTestGroups[groupKey][studentKey].totalMarks += total;
+
+            if (exam.date && (!classTestGroups[groupKey][studentKey].testDate || new Date(exam.date) > new Date(classTestGroups[groupKey][studentKey].testDate))) {
+                classTestGroups[groupKey][studentKey].testDate = exam.date;
             }
         });
-    });
 
-    allToppers.sort((a, b) => {
-        const dateA = new Date(a.testDate).getTime();
-        const dateB = new Date(b.testDate).getTime();
-        if (dateB !== dateA) return dateB - dateA;
-        if (a.position !== b.position) return a.position - b.position;
-        return b.obtainedMarks - a.obtainedMarks;
-    });
+        const allToppers: any[] = [];
 
-    cachedToppers = allToppers;
-    return cachedToppers;
-};
+        Object.keys(classTestGroups).forEach(groupKey => {
+            const [className, testTitle] = groupKey.split('_');
+            const students = Object.values(classTestGroups[groupKey]);
+
+            students.sort((a, b) => b.obtainedMarks - a.obtainedMarks);
+
+            let currentRank = 1;
+            let previousMarks = -1;
+
+            students.forEach((student, index) => {
+                if (index > 0 && student.obtainedMarks < previousMarks) {
+                    currentRank = index + 1;
+                }
+                previousMarks = student.obtainedMarks;
+
+                if (currentRank <= 3 && student.totalMarks > 0) {
+                    allToppers.push({
+                        id: `${student.rollNo}_${groupKey}_${index}`,
+                        studentName: student.studentName,
+                        rollNo: student.rollNo,
+                        testNo: testTitle,
+                        testDate: student.testDate,
+                        obtainedMarks: student.obtainedMarks,
+                        totalMarks: student.totalMarks,
+                        position: currentRank,
+                        className: className
+                    });
+                }
+            });
+        });
+
+        allToppers.sort((a, b) => {
+            const dateA = new Date(a.testDate).getTime();
+            const dateB = new Date(b.testDate).getTime();
+            if (dateB !== dateA) return dateB - dateA;
+            if (a.position !== b.position) return a.position - b.position;
+            return b.obtainedMarks - a.obtainedMarks;
+        });
+
+        return allToppers;
+    }
+);
 
 // ── Slice ──────────────────────────────────────────────
 const adminSlice = createSlice({

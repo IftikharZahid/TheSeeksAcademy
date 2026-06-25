@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNetInfo } from '@react-native-community/netinfo';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { initExamsListener, selectToppersData } from '../store/slices/adminSlice';
+import { initExamsListener, initStudentsListener, selectToppersData } from '../store/slices/adminSlice';
 
 const { width } = Dimensions.get('window');
 
@@ -95,8 +95,12 @@ export const TopperSlider: React.FC = () => {
     const examsLoading = useAppSelector((state) => state.admin.examsLoading);
 
     useEffect(() => {
-        const unsub = initExamsListener(dispatch);
-        return () => unsub();
+        const unsubExams = initExamsListener(dispatch);
+        const unsubStudents = initStudentsListener(dispatch);
+        return () => {
+            unsubExams();
+            unsubStudents();
+        };
     }, [dispatch]);
 
 

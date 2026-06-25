@@ -20,7 +20,7 @@ import timetableReducer from './slices/timetableSlice';
 const persistConfig = {
     key: 'root',
     storage: AsyncStorage,
-    whitelist: ['auth', 'videos', 'theme', 'admin'], // Only persist these slices
+    whitelist: ['auth', 'videos', 'theme'], // Only persist these slices — admin data is always fresh from Firebase
 };
 
 const rootReducer = combineReducers({
