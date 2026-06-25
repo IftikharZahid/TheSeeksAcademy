@@ -1015,7 +1015,7 @@ export const MessagesScreen: React.FC = () => {
         </TouchableOpacity>
         
         <View style={{ width: scale(36), height: scale(36), borderRadius: scale(18), backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', justifyContent: 'center', alignItems: 'center', marginRight: scale(10), overflow: 'hidden', borderWidth: 1, borderColor: theme.border }}>
-          <Image source={require('../../assets/the-seeks-logo.png')} style={{ width: '70%', height: '70%', resizeMode: 'contain' }} />
+          <Image source={require('../../assets/the-seeks-logo.jpg')} style={{ width: '70%', height: '70%', resizeMode: 'contain' }} />
         </View>
 
         <View style={{ flex: 1, justifyContent: 'center' }}>

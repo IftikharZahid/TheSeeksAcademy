@@ -253,13 +253,11 @@ export const HomeScreen: React.FC = () => {
         colors={['#1e3a8a', '#1e40af']} 
         start={{ x: 0, y: 0 }} 
         end={{ x: 1, y: 1 }} 
-        style={styles.headerBackground}
+        style={[styles.headerBackground, { backgroundColor: isDark ? theme.card : '#1e3a8a' }]}
       >
         <Image 
-          source={require('../../assets/the-seeks-logo.png')} 
-          style={styles.headerWatermark} 
-          contentFit="contain" 
-        />
+          source={require('../../assets/the-seeks-logo.jpg')} 
+          style={{ position: 'absolute', right: -scale(135), top: scale(40), width: scale(430), height: scale(90), opacity: 0.15, resizeMode: 'contain' }}        />
       </LinearGradient>
 
       <View style={{ flex: 1, marginTop: insets.top + scale(50) }}>
