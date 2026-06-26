@@ -45,7 +45,7 @@ export const AboutScreen: React.FC = () => {
           style={styles.heroSection}
         >
           <View style={styles.heroTop}>
-            <Image source={require('../../../assets/icon.png')} style={styles.appLogo} resizeMode="contain" />
+            <Image source={require('../../../assets/HomeScreenLogo.png')} style={styles.appLogo} resizeMode="contain" />
             <View style={styles.heroInfo}>
               <Text style={styles.heroName}>The Seeks Academy</Text>
               <Text style={styles.heroLocation}>Fort Abbas, Bahawalnagar</Text>
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  appLogo: { width: scale(52), height: scale(52), borderRadius: scale(12), marginRight: scale(14) },
+  appLogo: { width: scale(64), height: scale(64), borderRadius: scale(12), marginRight: scale(5) },
   heroInfo: { flex: 1, justifyContent: 'center' },
   heroName: { fontSize: scale(16), fontWeight: '700', color: '#fff', letterSpacing: 0.1 },
   heroLocation: { fontSize: scale(12), color: 'rgba(255,255,255,0.8)', marginTop: scale(4) },

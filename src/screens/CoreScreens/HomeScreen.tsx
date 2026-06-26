@@ -183,8 +183,39 @@ export const HomeScreen: React.FC = () => {
       return matchClass && matchGender;
     };
 
+    const groupClasses = (classes: any[]) => {
+      const grouped: any[] = [];
+      classes.forEach(c => {
+        const cTimes = getMinutes(c);
+        const existing = grouped.find(g => getMinutes(g).start === cTimes.start && getMinutes(g).end === cTimes.end);
+        if (existing) {
+          let s1 = existing.subject || existing.subjectName || '';
+          let s2 = c.subject || c.subjectName || '';
+          if (!s1) s1 = 'TBD';
+          if (!s2) s2 = 'TBD';
+          
+          let i1 = existing.instructor || '';
+          let i2 = c.instructor || '';
+          if (!i1) i1 = 'Teacher TBD';
+          if (!i2) i2 = 'Teacher TBD';
+          
+          if (s1 !== s2 && !s1.includes(s2)) {
+            existing.subject = `${s1} & ${s2}`;
+            existing.subjectName = existing.subject;
+          }
+          if (i1 !== i2 && !i1.includes(i2)) {
+            existing.instructor = `${i1} & ${i2}`;
+          }
+        } else {
+          grouped.push({ ...c });
+        }
+      });
+      return grouped;
+    };
+
     let todayClasses = timetableEntries.filter((c: any) => compareDay(c.day, currentDayName) && isMatch(c));
     todayClasses.sort((a, b) => getMinutes(a).start - getMinutes(b).start);
+    todayClasses = groupClasses(todayClasses);
     
     if (todayClasses.length > 0) {
       let activeIndex = todayClasses.findIndex(c => getMinutes(c).end > currentTimeMinutes);
@@ -204,6 +235,7 @@ export const HomeScreen: React.FC = () => {
       let nextDayClasses = timetableEntries.filter((c: any) => compareDay(c.day, nextDayName) && isMatch(c));
       if (nextDayClasses.length > 0) {
         nextDayClasses.sort((a, b) => getMinutes(a).start - getMinutes(b).start);
+        nextDayClasses = groupClasses(nextDayClasses);
         return { 
           classes: nextDayClasses.map(c => {
             const startStr = c.startTime || (c.time ? c.time.split('-')[0] : '');
@@ -244,6 +276,11 @@ export const HomeScreen: React.FC = () => {
     return name.substring(0, 2).toUpperCase();
   };
 
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const startYear = currentMonth >= 3 ? currentYear : currentYear - 1;
+  const academicYearText = `Academic Year ${startYear}-${(startYear + 1).toString().slice(-2)}`;
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['left', 'right']}>
       <StatusBar backgroundColor="transparent" translucent={true} barStyle="light-content" />
@@ -263,7 +300,7 @@ export const HomeScreen: React.FC = () => {
       <View style={{ flex: 1, marginTop: insets.top + scale(50) }}>
         <ScrollView
           style={styles.container}
-          contentContainerStyle={{ paddingBottom: scale(80), paddingTop: scale(10) }}
+          contentContainerStyle={{ paddingBottom: scale(10), paddingTop: scale(10) }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
@@ -403,7 +440,7 @@ export const HomeScreen: React.FC = () => {
           {/* Upcoming Section */}
           <View style={styles.upcomingSection}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Lecture Schedule</Text>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Schedule</Text>
               <TouchableOpacity onPress={() => navigation.navigate('TimetableScreen')}>
                 <Text style={[styles.seeAllText, { color: theme.primary }]}>View Calendar</Text>
               </TouchableOpacity>
@@ -425,27 +462,35 @@ export const HomeScreen: React.FC = () => {
                   const isActive = idx === scheduleData.activeIndex;
                   
                   return (
-                    <View 
-                      key={idx} 
-                      style={[
-                        styles.scheduleCard, 
-                        { backgroundColor: theme.card, borderColor: theme.border },
-                        isActive && [
-                          styles.activeScheduleCard, 
-                          { 
-                            backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : '#eff6ff',
-                            borderColor: theme.primary 
-                          }
-                        ]
-                      ]}
-                    >
-                      <View style={[styles.scheduleLectureBox, isActive && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
-                        <Text style={[styles.scheduleLectureLabel, isActive && { color: '#fff' }]}>Lec</Text>
-                        <Text style={[styles.scheduleLectureNumber, isActive && { color: '#fff' }]}>{idx + 1}</Text>
+                    <View key={idx} style={{ flexDirection: 'row', alignItems: 'stretch' }}>
+                      <View style={{ width: scale(20), alignItems: 'center', marginRight: scale(6) }}>
+                        <View style={[{ width: scale(10), height: scale(10), borderRadius: scale(5), marginTop: scale(24), zIndex: 2 }, isActive ? { backgroundColor: '#f97316', transform: [{ scale: 1.3 }], shadowColor: '#f97316', shadowOffset: {width: 0, height: 0}, shadowOpacity: 0.6, shadowRadius: 4, elevation: 3 } : { backgroundColor: isDark ? '#9a3412' : '#fdba74' }]} />
+                        {idx < scheduleData.classes.length - 1 && (
+                          <View style={{ position: 'absolute', top: scale(34), bottom: -scale(12), width: 2, backgroundColor: isActive ? theme.primary : (isDark ? 'rgba(59,130,246,0.3)' : 'rgba(59,130,246,0.3)'), opacity: isActive ? 0.8 : 1 }} />
+                        )}
                       </View>
+                      
+                      <View style={{ flex: 1 }}>
+                        <View 
+                          style={[
+                            styles.scheduleCard, 
+                            { backgroundColor: theme.card, borderColor: theme.border },
+                            isActive && [
+                              styles.activeScheduleCard, 
+                              { 
+                                backgroundColor: isDark ? 'rgba(59,130,246,0.1)' : '#eff6ff',
+                                borderColor: theme.primary 
+                              }
+                            ]
+                          ]}
+                        >
+                          <View style={[styles.scheduleLectureBox, isActive && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
+                            <Text style={[styles.scheduleLectureLabel, isActive && { color: '#fff' }]}>Lec</Text>
+                            <Text style={[styles.scheduleLectureNumber, isActive && { color: '#fff' }]}>{idx + 1}</Text>
+                          </View>
                       <View style={styles.scheduleInfo}>
                         <View style={styles.scheduleRow}>
-                          <Text style={[styles.scheduleSubject, { color: theme.text }, isActive && { color: theme.primary }]} numberOfLines={1}>
+                          <Text style={[styles.scheduleSubject, { color: theme.text }, isActive && { color: theme.primary }]} numberOfLines={2}>
                             {session.subject || session.subjectName || 'N/A'}
                           </Text>
                           <View style={[styles.scheduleTimeWrap, { backgroundColor: isDark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.1)' }]}>
@@ -455,9 +500,9 @@ export const HomeScreen: React.FC = () => {
                             </Text>
                           </View>
                         </View>
-                        <View style={styles.scheduleRow}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: scale(6) }}>
-                            <Text style={[styles.scheduleInstructor, { color: theme.textSecondary }]} numberOfLines={1}>
+                        <View style={[styles.scheduleRow, { alignItems: 'center' }]}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: scale(6), paddingRight: scale(8) }}>
+                            <Text style={[styles.scheduleInstructor, { color: theme.textSecondary, flexShrink: 1 }]} numberOfLines={2}>
                               {session.instructor || 'Teacher TBD'}
                             </Text>
                           </View>
@@ -467,6 +512,8 @@ export const HomeScreen: React.FC = () => {
                             </View>
                           )}
                         </View>
+                        </View>
+                        </View>
                       </View>
                     </View>
                   );
@@ -475,6 +522,14 @@ export const HomeScreen: React.FC = () => {
             </View>
           </View>
         </View>
+
+        {/* Footer Banner */}
+        <View style={[styles.footerBanner, { backgroundColor: isDark ? theme.card : '#0f172a', borderColor: isDark ? theme.border : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+          <Ionicons name="ribbon" size={16} color="#fbbf24" />
+          <Text style={[styles.footerText, { color: isDark ? theme.textSecondary : '#e2e8f0' }]}>Empowering Education, Inspiring Futures.</Text>
+          <Text style={styles.footerYearText}>{academicYearText}</Text>
+        </View>
+
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -707,7 +762,7 @@ const styles = StyleSheet.create({
   scheduleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: scale(10),
+    padding: scale(8),
     borderRadius: scale(10),
     borderWidth: 1,
     shadowColor: '#000',
@@ -717,17 +772,17 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   activeScheduleCard: {
-    borderTopRightRadius: scale(30),
-    borderBottomLeftRadius: scale(30),
-    borderTopLeftRadius: scale(10),
-    borderBottomRightRadius: scale(10),
+    borderTopRightRadius: scale(24),
+    borderBottomLeftRadius: scale(24),
+    borderTopLeftRadius: scale(8),
+    borderBottomRightRadius: scale(8),
     borderWidth: 1.5,
   },
   scheduleLectureBox: {
     backgroundColor: '#eff6ff',
-    paddingVertical: scale(8),
-    paddingHorizontal: scale(14),
-    borderRadius: scale(10),
+    paddingVertical: scale(6),
+    paddingHorizontal: scale(12),
+    borderRadius: scale(8),
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: scale(12),
@@ -752,7 +807,7 @@ const styles = StyleSheet.create({
   scheduleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: scale(4),
   },
   scheduleSubject: {
@@ -826,5 +881,29 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: scale(11),
     fontWeight: '600',
+  },
+  footerBanner: {
+    backgroundColor: '#0f172a',
+    marginHorizontal: scale(16),
+    marginTop: scale(4),
+    marginBottom: scale(5),
+    borderRadius: scale(12),
+    paddingVertical: scale(16),
+    paddingHorizontal: scale(20),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  footerText: {
+    color: '#e2e8f0',
+    fontSize: scale(10),
+    fontWeight: '500',
+    flex: 1,
+    marginLeft: scale(10),
+  },
+  footerYearText: {
+    color: '#fbbf24',
+    fontSize: scale(11),
+    fontWeight: '700',
   },
 });

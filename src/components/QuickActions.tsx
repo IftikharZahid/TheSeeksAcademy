@@ -175,6 +175,20 @@ export const CourseCategories: React.FC = () => {
         return <Ionicons name={item.icon as any} size={iconSize} color={item.color} />;
     };
 
+    // Group categories into rows of 2
+    const rows: (typeof categories)[] = [];
+    for (let i = 0; i < categories.length; i += 2) {
+        rows.push(categories.slice(i, i + 2));
+    }
+
+    // Helper: pick connector color from the bottom-right of top row (or top-left bottom row)
+    const getConnectorColor = (rowIndex: number) => {
+        const topRow = rows[rowIndex];
+        const bottomRow = rows[rowIndex + 1];
+        // Use the color from the bottom of the top-left card as a blend reference
+        return topRow[0]?.color ?? bottomRow?.[0]?.color ?? '#3b82f6';
+    };
+
     return (
         <View style={styles.container}>
             <View style={styles.headerRow}>
@@ -183,47 +197,92 @@ export const CourseCategories: React.FC = () => {
                     <Text style={[styles.viewAllText, { color: theme.primary }]}>View All</Text>
                 </TouchableOpacity>
             </View>
-            <View style={styles.grid}>
-                {categories.map((item) => (
-                    <TouchableOpacity
-                        key={item.key}
-                        style={[styles.categoryCard, { backgroundColor: theme.card }]}
-                        onPress={() => handlePress(item.key)}
-                        activeOpacity={0.7}
-                    >
-                        <View style={[styles.iconContainer, { backgroundColor: isDark ? item.color + '15' : item.bgColor }]}>
-                            {renderIcon(item)}
+
+            <View>
+                {rows.map((row, rowIndex) => {
+                    const lineColor = getConnectorColor(rowIndex);
+                    const prevLineColor = rowIndex > 0 ? getConnectorColor(rowIndex - 1) : lineColor;
+                    const hasNext = rowIndex < rows.length - 1;
+                    const hasPrev = rowIndex > 0;
+
+                    return (
+                    <React.Fragment key={rowIndex}>
+                        {/* Card row — with vertical line passing through center gap */}
+                        <View style={[styles.row, { overflow: 'visible', position: 'relative' }]}>
+                            {/* Vertical line through this row (behind cards, in the gap) */}
+                            {(hasNext || hasPrev) && (
+                                <View style={{
+                                    position: 'absolute',
+                                    left: '50%',
+                                    marginLeft: -1,
+                                    top: hasPrev ? 0 : '50%',
+                                    bottom: hasNext ? 0 : '50%',
+                                    width: 2,
+                                    backgroundColor: hasPrev ? prevLineColor + '50' : lineColor + '50',
+                                    zIndex: 0,
+                                }} />
+                            )}
+
+                            {row.map((item) => (
+                                <TouchableOpacity
+                                    key={item.key}
+                                    style={[styles.categoryCard, { backgroundColor: theme.card, zIndex: 1 }]}
+                                    onPress={() => handlePress(item.key)}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={[styles.iconContainer, { backgroundColor: isDark ? item.color + '15' : item.bgColor }]}>
+                                        {renderIcon(item)}
+                                    </View>
+                                    <View style={styles.textContainer}>
+                                        <Text style={[styles.categoryLabel, { color: theme.text }]} numberOfLines={1}>{item.label}</Text>
+                                        <Text style={[styles.categorySubtitle, { color: theme.textSecondary }]} numberOfLines={1}>{item.subtitle}</Text>
+                                    </View>
+                                    {/* Unread dot indicators */}
+                                    {item.key === 'diary' && unreadDiariesCount > 0 && <View style={styles.topRightDot} />}
+                                    {item.key === 'assignments' && unreadAssignmentsCount > 0 && <View style={styles.topRightDot} />}
+                                    {item.key === 'library' && unreadLibraryCount > 0 && <View style={styles.topRightDot} />}
+                                    {item.key === 'results' && unreadResultsCount > 0 && <View style={styles.topRightDot} />}
+                                </TouchableOpacity>
+                            ))}
+                            {/* Fill empty slot if last row has 1 card */}
+                            {row.length === 1 && <View style={styles.categoryCard} />}
                         </View>
-                        <View style={styles.textContainer}>
-                            <Text style={[styles.categoryLabel, { color: theme.text }]} numberOfLines={1}>{item.label}</Text>
-                            <Text style={[styles.categorySubtitle, { color: theme.textSecondary }]} numberOfLines={1}>{item.subtitle}</Text>
-                        </View>
-                        
-                        {/* Top right green dot indicator */}
-                        {item.key === 'diary' && unreadDiariesCount > 0 && (
-                            <View style={styles.topRightDot} />
+
+                        {/* Connector dot + line through separator */}
+                        {hasNext && (
+                            <View style={[styles.rowSeparator, { overflow: 'visible' }]}>
+                                {/* Line segment through the separator */}
+                                <View style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    bottom: 0,
+                                    width: 2,
+                                    backgroundColor: lineColor + '50',
+                                    zIndex: 0,
+                                }} />
+                                {/* Connector dot on top */}
+                                <View style={[styles.connectorOuter, {
+                                    backgroundColor: lineColor + '22',
+                                    borderColor: lineColor + '90',
+                                    shadowColor: lineColor,
+                                }]}>
+                                    <View style={[styles.connectorInner, { backgroundColor: lineColor }]} />
+                                </View>
+                            </View>
                         )}
-                        {item.key === 'assignments' && unreadAssignmentsCount > 0 && (
-                            <View style={styles.topRightDot} />
-                        )}
-                        {item.key === 'library' && unreadLibraryCount > 0 && (
-                            <View style={styles.topRightDot} />
-                        )}
-                        {item.key === 'results' && unreadResultsCount > 0 && (
-                            <View style={styles.topRightDot} />
-                        )}
-                    </TouchableOpacity>
-                ))}
+                    </React.Fragment>
+                )})}
             </View>
         </View>
     );
 };
 
-const GAP_SIZE = scale(8);
-const ITEMS_PER_ROW = 2; // Switched to 2 columns for better layout with subtitles
+const DOT_SIZE = scale(24);
+const ROW_GAP = scale(6);
+const COL_GAP = scale(6);
 const TOTAL_HORIZONTAL_PADDING = scale(14) * 2;
-const TOTAL_GAPS = GAP_SIZE * (ITEMS_PER_ROW - 1);
-const cardWidth = (width - TOTAL_HORIZONTAL_PADDING - TOTAL_GAPS) / ITEMS_PER_ROW;
+const cardWidth = (width - TOTAL_HORIZONTAL_PADDING - COL_GAP) / 2;
+const GAP_SIZE = COL_GAP;
 
 const styles = StyleSheet.create({
     container: {
@@ -314,5 +373,35 @@ const styles = StyleSheet.create({
         height: scale(8),
         borderRadius: scale(4),
         backgroundColor: '#22c55e',
+    },
+    row: {
+        flexDirection: 'row',
+        gap: COL_GAP,
+        marginBottom: 0,
+    },
+    rowSeparator: {
+        height: DOT_SIZE,
+        marginVertical: -(DOT_SIZE / 2),
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10,
+    },
+    connectorOuter: {
+        width: DOT_SIZE,
+        height: DOT_SIZE,
+        borderRadius: DOT_SIZE / 2,
+        borderWidth: 2,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 16,
+        zIndex: 20,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.7,
+        shadowRadius: 6,
+    },
+    connectorInner: {
+        width: scale(10),
+        height: scale(10),
+        borderRadius: scale(5),
     },
 });

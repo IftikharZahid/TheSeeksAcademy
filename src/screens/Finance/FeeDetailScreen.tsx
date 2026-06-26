@@ -938,7 +938,7 @@ export const FeeDetailScreen: React.FC = () => {
                 <View style={styles.feeSlipTopRow}>
                   <Text style={styles.feeSlipSerialLabel}>S No. <Text style={styles.feeSlipSerialValue}>{userData.serialNo}</Text></Text>
                   <Image
-                    source={require('../../../assets/icon.png')}
+                    source={require('../../../assets/HomeScreenLogo.png')}
                     style={styles.feeSlipLogo}
                     resizeMode="contain"
                   />
@@ -1427,8 +1427,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   feeSlipLogo: {
-    width: scale(130),
-    height: scale(38),
+    width: scale(50),
+    height: scale(50),
   },
   feeSlipDateText: {
     fontSize: scale(11),
