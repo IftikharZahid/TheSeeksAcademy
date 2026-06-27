@@ -63,16 +63,6 @@ export const TeachersScreen: React.FC = () => {
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
 
-  // Hide TopHeader and tab bar when this screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      navigation.getParent()?.setOptions({
-        tabBarStyle: { display: 'none' },
-        headerShown: false,
-      });
-    }, [navigation])
-  );
-
   const cardWidth = (width - scale(48)) / 2;
 
   // Modern compact card renderer

@@ -114,23 +114,6 @@ export const FeeDetailScreen: React.FC = () => {
   const cardsAnim = useRef(new Animated.Value(0)).current;
   const contentAnim = useRef(new Animated.Value(0)).current;
 
-  useFocusEffect(
-    React.useCallback(() => {
-      // Hide tab bar and header immediately when entering screen
-      navigation.getParent()?.setOptions({
-        tabBarStyle: { display: 'none' },
-        headerShown: false,
-      });
-
-      return () => {
-        // Restore tab bar and header when leaving screen
-        navigation.getParent()?.setOptions({
-          tabBarStyle: undefined,
-          headerShown: true,
-        });
-      };
-    }, [navigation])
-  );
 
   useEffect(() => {
     if (!feeData) {

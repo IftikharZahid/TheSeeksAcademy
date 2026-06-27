@@ -61,15 +61,6 @@ export const StaffInfoScreen: React.FC = () => {
     });
   };
 
-  // Hide TopHeader and tab bar when this screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      navigation.getParent()?.setOptions({
-        tabBarStyle: { display: 'none' },
-        headerShown: false,
-      });
-    }, [navigation])
-  );
 
   // Modern Header Background Color
   const headerBg = isDark ? theme.backgroundSecondary : theme.primary; // Dark mode: nice dark gray, Light mode: primary color

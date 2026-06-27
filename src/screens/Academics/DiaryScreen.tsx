@@ -53,22 +53,7 @@ export const DiaryScreen: React.FC = () => {
     }
   }, [dispatch, profile]);
 
-  // Hide TopHeader and tab bar when this screen is focused
-  useFocusEffect(
-    React.useCallback(() => {
-      navigation.getParent()?.setOptions({
-        tabBarStyle: { display: 'none' },
-        headerShown: false,
-      });
 
-      return () => {
-        navigation.getParent()?.setOptions({
-          tabBarStyle: undefined,
-          headerShown: true,
-        });
-      };
-    }, [navigation])
-  );
 
   // Mark Diaries as Read
   const handleViewDiary = (docId: string) => {

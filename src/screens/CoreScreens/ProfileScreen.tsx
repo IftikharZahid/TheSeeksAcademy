@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator, RefreshControl, Alert, Modal, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator, RefreshControl, Alert, Modal, StatusBar, TextInput } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -45,6 +45,12 @@ export const ProfileScreen: React.FC = () => {
   const [loggingOut, setLoggingOut] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [localImageUri, setLocalImageUri] = useState<string | null>(null);
+  
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editField, setEditField] = useState<'fathername' | 'phone' | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  
   const isOffline = netInfo.isConnected === false;
 
   React.useEffect(() => {
@@ -55,11 +61,7 @@ export const ProfileScreen: React.FC = () => {
     }
   }, [user?.uid]);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      navigation.getParent()?.setOptions({ headerShown: false });
-    }, [navigation])
-  );
+
 
   const ADMIN_EMAILS      = ['theseeksacademyfta@gmail.com', 'iftikharzahid@outlook.com'];
   const currentUserEmail  = auth.currentUser?.email?.toLowerCase() || '';
@@ -89,6 +91,30 @@ export const ProfileScreen: React.FC = () => {
       setLoggingOut(false);
       Alert.alert('Error', 'Failed to logout. Please try again.'); 
     }
+  };
+
+  const openEditModal = (field: 'fathername' | 'phone') => {
+    if (isOffline) {
+      Alert.alert('Offline', 'Please connect to the internet to update your profile.');
+      return;
+    }
+    setEditField(field);
+    setEditValue(profileData?.[field] || '');
+    setEditModalVisible(true);
+  };
+
+  const saveEdit = async () => {
+    if (!user?.uid || !editField) return;
+    setSavingEdit(true);
+    try {
+      const docRef = doc(db, 'users', user.uid);
+      await updateDoc(docRef, { [editField]: editValue.trim() });
+      await dispatch(fetchUserProfile({ uid: user.uid, email: user.email }));
+      setEditModalVisible(false);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update profile.');
+    }
+    setSavingEdit(false);
   };
 
   const handleMenuPress = (key: string) => {
@@ -256,8 +282,22 @@ export const ProfileScreen: React.FC = () => {
               <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>INFORMATION</Text>
               <View style={styles.gridRow}>
                 <CompactCard icon="person" label="Full Name" value={profileData?.fullname} color="#6366f1" />
-                <CompactCard icon="people" label="Father Name" value={profileData?.fathername} color="#f59e0b" />
-                <CompactCard icon="call" label="Phone" value={profileData?.phone} color="#3b82f6" />
+                <CompactCard 
+                  icon="people" 
+                  label="Father Name" 
+                  value={profileData?.fathername} 
+                  color="#f59e0b" 
+                  editable={true}
+                  onEdit={() => openEditModal('fathername')}
+                />
+                <CompactCard 
+                  icon="call" 
+                  label="Phone" 
+                  value={profileData?.phone} 
+                  color="#3b82f6" 
+                  editable={true}
+                  onEdit={() => openEditModal('phone')}
+                />
                 <CompactCard icon="school" label={isTeacher ? 'Subject' : 'Class'} value={profileData?.class} color="#ec4899" />
                 <CompactCard icon="albums" label={isTeacher ? 'Qual.' : 'Session'} value={profileData?.session} color="#8b5cf6" />
                 <CompactCard icon="id-card" label="ID / Roll No" value={profileData?.rollno} color="#10b981" />
@@ -316,6 +356,54 @@ export const ProfileScreen: React.FC = () => {
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
                   <Text style={[styles.modalBtnText, { color: '#fff' }]}>Sign Out</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Edit Modal ──────────────────────────────────────────────────────── */}
+      <Modal visible={editModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
+            <View style={[styles.modalIconWrap, { backgroundColor: 'rgba(59,130,246,0.15)' }]}>
+              <Ionicons name="pencil-outline" size={scale(20)} color="#3b82f6" />
+            </View>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              Edit {editField === 'fathername' ? 'Father Name' : 'Phone'}
+            </Text>
+            
+            <TextInput
+              style={[styles.editInput, { backgroundColor: theme.background, color: theme.text, borderColor: theme.border }]}
+              value={editValue}
+              onChangeText={setEditValue}
+              placeholder={`Enter ${editField === 'fathername' ? 'Father Name' : 'Phone'}`}
+              placeholderTextColor={theme.textSecondary}
+              autoCapitalize={editField === 'fathername' ? 'words' : 'none'}
+              keyboardType={editField === 'phone' ? 'phone-pad' : 'default'}
+            />
+            
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnCancel, { borderColor: theme.border, borderWidth: 1 }]}
+                onPress={() => setEditModalVisible(false)}
+                disabled={savingEdit}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.modalBtnText, { color: theme.textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnConfirm, { backgroundColor: theme.primary }]}
+                onPress={saveEdit}
+                disabled={savingEdit}
+                activeOpacity={0.7}
+              >
+                {savingEdit ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={[styles.modalBtnText, { color: '#fff' }]}>Save</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -417,6 +505,14 @@ const styles = StyleSheet.create({
   modalBtn: { flex: 1, height: scale(36), borderRadius: scale(10), justifyContent: 'center', alignItems: 'center' },
   modalBtnCancel: { backgroundColor: 'transparent' },
   modalBtnConfirm: { },
-  modalBtnText: { fontSize: scale(11), fontWeight: '700' },
+  modalBtnText: { fontSize: scale(13), fontWeight: '700' },
+  editInput: {
+    width: '100%',
+    height: scale(40),
+    borderWidth: 1,
+    borderRadius: scale(8),
+    paddingHorizontal: scale(12),
+    marginBottom: scale(16),
+    fontSize: scale(12),
+  },
 });
-

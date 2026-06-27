@@ -202,15 +202,12 @@ export const VideoGalleryScreen: React.FC = () => {
 
     const handleGalleryPress = (gallery: Gallery, index: number) => {
         const colorScheme = GALLERY_COLORS[index % GALLERY_COLORS.length];
-        // Navigate to Home tab first, then to VideoLecturesScreen within HomeStack
-        navigation.navigate('Home', {
-            screen: 'VideoLecturesScreen',
-            params: {
-                galleryId: gallery.id,
-                galleryName: gallery.name,
-                galleryColor: colorScheme.color,
-                videos: gallery.videos,
-            },
+        // Navigate within the VideoStack — natural, clean stack navigation
+        navigation.navigate('VideoLecturesScreen', {
+            galleryId: gallery.id,
+            galleryName: gallery.name,
+            galleryColor: colorScheme.color,
+            videos: gallery.videos,
         });
     };
 

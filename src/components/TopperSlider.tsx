@@ -162,34 +162,41 @@ export const TopperSlider: React.FC = () => {
                 end={{ x: 1, y: 1 }}
                 style={styles.studentCard}
             >
+                {/* Trophy watermark */}
+                <Text style={{ position: 'absolute', right: scale(10), top: scale(6), fontSize: scale(32), opacity: 1 }}>{getPositionEmoji(item.position)}</Text>
+
                 <View style={styles.studentCardContent}>
+                    {/* LEFT: Avatar + Name */}
                     <View style={styles.studentCardLeft}>
                         <View style={styles.studentInitialsContainer}>
                             <Text style={styles.studentInitials}>{getInitials(item.studentName)}</Text>
-                            <View style={styles.studentRankBadge}>
+                            <View style={[styles.studentRankBadge, { backgroundColor: getPositionColor(item.position) }]}>
                                 <Text style={styles.studentRankText}>{item.position}</Text>
                             </View>
                         </View>
                         <View style={styles.studentDetails}>
                             <Text style={styles.studentCardName} numberOfLines={1}>{item.studentName}</Text>
                             <View style={styles.studentDetailRow}>
-                                <Ionicons name="id-card-outline" size={scale(10)} color="rgba(255,255,255,0.7)" />
+                                <Ionicons name="id-card-outline" size={scale(9)} color="rgba(255,255,255,0.65)" />
                                 <Text style={styles.studentDetailText}>Roll: {item.rollNo || 'N/A'}</Text>
                             </View>
                             <View style={styles.studentDetailRow}>
-                                <Ionicons name="calendar-outline" size={scale(10)} color="rgba(255,255,255,0.7)" />
+                                <Ionicons name="calendar-outline" size={scale(9)} color="rgba(255,255,255,0.65)" />
                                 <Text style={styles.studentDetailText}>{item.testNo} • {item.testDate}</Text>
                             </View>
                         </View>
                     </View>
+
                     <View style={styles.studentCardDivider} />
+
+                    {/* RIGHT: Score */}
                     <View style={styles.studentCardRight}>
                         <View style={styles.yearBadge}>
                             <Text style={styles.yearBadgeText}>{item.className}</Text>
                         </View>
                         <Text style={styles.progressScore}>{item.obtainedMarks}<Text style={styles.progressScoreTotal}>/{item.totalMarks}</Text></Text>
                         <View style={styles.progressTextRow}>
-                            <Text style={styles.progressLabelText}>Progress</Text>
+                            <Text style={styles.progressLabelText}>Score</Text>
                             <Text style={styles.progressPercentText}>{percentage}%</Text>
                         </View>
                         <View style={styles.studentProgressBarBg}>
@@ -310,14 +317,16 @@ const styles = StyleSheet.create({
     },
     studentCard: {
         width: LIST_ITEM_WIDTH,
-        borderRadius: scale(16),
-        padding: scale(16),
-        marginBottom: scale(6),
+        borderRadius: scale(14),
+        paddingVertical: scale(10),
+        paddingHorizontal: scale(14),
+        marginBottom: scale(4),
         shadowColor: '#1e3a8a',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 6,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+        elevation: 5,
+        overflow: 'hidden',
     },
     studentCardContent: {
         flexDirection: 'row',
@@ -329,29 +338,29 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     studentInitialsContainer: {
-        width: scale(44),
-        height: scale(44),
-        borderRadius: scale(22),
-        backgroundColor: 'transparent',
+        width: scale(38),
+        height: scale(38),
+        borderRadius: scale(19),
+        backgroundColor: 'rgba(255,255,255,0.12)',
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.4)',
+        borderColor: 'rgba(255,255,255,0.3)',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: scale(12),
+        marginRight: scale(10),
         position: 'relative',
     },
     studentInitials: {
         color: '#fff',
-        fontSize: scale(16),
+        fontSize: scale(14),
         fontWeight: '700',
     },
     studentRankBadge: {
         position: 'absolute',
-        bottom: -scale(4),
-        backgroundColor: '#94a3b8',
-        width: scale(16),
-        height: scale(16),
-        borderRadius: scale(8),
+        bottom: -scale(3),
+        right: -scale(3),
+        width: scale(14),
+        height: scale(14),
+        borderRadius: scale(7),
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1.5,
@@ -359,7 +368,7 @@ const styles = StyleSheet.create({
     },
     studentRankText: {
         color: '#fff',
-        fontSize: scale(9),
+        fontSize: scale(8),
         fontWeight: '800',
     },
     studentDetails: {
@@ -367,25 +376,25 @@ const styles = StyleSheet.create({
     },
     studentCardName: {
         color: '#fff',
-        fontSize: scale(13),
+        fontSize: scale(12),
         fontWeight: '700',
-        marginBottom: scale(4),
+        marginBottom: scale(2),
     },
     studentDetailRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: scale(2),
+        marginBottom: scale(1),
     },
     studentDetailText: {
-        color: 'rgba(255,255,255,0.8)',
-        fontSize: scale(9),
-        marginLeft: scale(4),
+        color: 'rgba(255,255,255,0.75)',
+        fontSize: scale(8.5),
+        marginLeft: scale(3),
     },
     studentCardDivider: {
         width: 1,
-        height: scale(44),
+        height: scale(38),
         backgroundColor: 'rgba(255,255,255,0.2)',
-        marginHorizontal: scale(12),
+        marginHorizontal: scale(10),
     },
     studentCardRight: {
         flex: 0.8,
@@ -405,13 +414,14 @@ const styles = StyleSheet.create({
     },
     progressScore: {
         color: '#fff',
-        fontSize: scale(20),
+        fontSize: scale(18),
         fontWeight: '800',
+        lineHeight: scale(22),
     },
     progressScoreTotal: {
-        fontSize: scale(12),
+        fontSize: scale(11),
         fontWeight: '600',
-        color: 'rgba(255,255,255,0.8)',
+        color: 'rgba(255,255,255,0.75)',
     },
     progressTextRow: {
         flexDirection: 'row',

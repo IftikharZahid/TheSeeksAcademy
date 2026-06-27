@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
@@ -48,6 +48,24 @@ const categories = [
         bgColor: '#eff6ff',
     },
     {
+        key: 'videos',
+        label: 'Video Lectures',
+        subtitle: 'Watch video tutorials',
+        icon: 'play-circle',
+        iconType: 'Ionicons',
+        color: '#8b5cf6', // Violet
+        bgColor: '#f3e8ff',
+    },
+    {
+        key: 'library',
+        label: 'e-Library',
+        subtitle: 'Study materials & resources',
+        icon: 'library-outline',
+        iconType: 'Ionicons',
+        color: '#f59e0b', // Amber
+        bgColor: '#fffbeb',
+    },
+    {
         key: 'results',
         label: 'Results',
         subtitle: 'Check your results',
@@ -73,15 +91,6 @@ const categories = [
         iconType: 'Ionicons',
         color: '#14b8a6', // Teal
         bgColor: '#f0fdfa',
-    },
-    {
-        key: 'library',
-        label: 'e-Library',
-        subtitle: 'Study materials & resources',
-        icon: 'library-outline',
-        iconType: 'Ionicons',
-        color: '#f59e0b', // Amber
-        bgColor: '#fffbeb',
     },
     {
         key: 'complaints',
@@ -157,6 +166,9 @@ export const CourseCategories: React.FC = () => {
             case 'complaints':
                 navigation.navigate('HelpCenterScreen');
                 break;
+            case 'videos':
+                navigation.navigate('VideoGallery');
+                break;
             case 'diary':
                 navigation.navigate('DiaryScreen');
                 break;
@@ -175,10 +187,13 @@ export const CourseCategories: React.FC = () => {
         return <Ionicons name={item.icon as any} size={iconSize} color={item.color} />;
     };
 
+    const [showAll, setShowAll] = useState(false);
+    const displayCategories = showAll ? categories : categories.slice(0, 6);
+
     // Group categories into rows of 2
     const rows: (typeof categories)[] = [];
-    for (let i = 0; i < categories.length; i += 2) {
-        rows.push(categories.slice(i, i + 2));
+    for (let i = 0; i < displayCategories.length; i += 2) {
+        rows.push(displayCategories.slice(i, i + 2));
     }
 
     // Helper: pick connector color from the bottom-right of top row (or top-left bottom row)
@@ -193,9 +208,11 @@ export const CourseCategories: React.FC = () => {
         <View style={styles.container}>
             <View style={styles.headerRow}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Access</Text>
-                <TouchableOpacity onPress={() => console.log('View All pressed')}>
-                    <Text style={[styles.viewAllText, { color: theme.primary }]}>View All</Text>
-                </TouchableOpacity>
+                {categories.length > 6 && (
+                    <TouchableOpacity onPress={() => setShowAll(!showAll)}>
+                        <Text style={[styles.viewAllText, { color: theme.primary }]}>{showAll ? 'Show Less' : 'View All'}</Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
             <View>

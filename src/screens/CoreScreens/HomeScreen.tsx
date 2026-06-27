@@ -45,16 +45,6 @@ export const HomeScreen: React.FC = () => {
   const user = useAppSelector((state) => state.auth.user);
   const profile = useAppSelector((state) => state.auth.profile);
 
-  // Restore TopHeader and tab bar when HomeScreen gains focus
-  useFocusEffect(
-    React.useCallback(() => {
-      navigation.getParent()?.setOptions({
-        headerShown: true,
-        tabBarStyle: undefined,
-      });
-    }, [navigation])
-  );
-
   const displayName = profile?.fullname || user?.displayName || 'Student';
   const getGreeting = (): string => {
     const hour = new Date().getHours();
@@ -194,17 +184,21 @@ export const HomeScreen: React.FC = () => {
           if (!s1) s1 = 'TBD';
           if (!s2) s2 = 'TBD';
           
-          let i1 = existing.instructor || '';
-          let i2 = c.instructor || '';
-          if (!i1) i1 = 'Teacher TBD';
-          if (!i2) i2 = 'Teacher TBD';
-          
           if (s1 !== s2 && !s1.includes(s2)) {
             existing.subject = `${s1} & ${s2}`;
             existing.subjectName = existing.subject;
           }
-          if (i1 !== i2 && !i1.includes(i2)) {
-            existing.instructor = `${i1} & ${i2}`;
+
+          if (!existing.combinedDetails) {
+            existing.combinedDetails = [{ instructor: existing.instructor || 'Teacher TBD', room: existing.room || existing.roomNo || 'TBA' }];
+          }
+          
+          const newInstructor = c.instructor || 'Teacher TBD';
+          const newRoom = c.room || c.roomNo || 'TBA';
+          
+          const hasDetail = existing.combinedDetails.find((d: any) => d.instructor === newInstructor && d.room === newRoom);
+          if (!hasDetail) {
+            existing.combinedDetails.push({ instructor: newInstructor, room: newRoom });
           }
         } else {
           grouped.push({ ...c });
@@ -218,7 +212,10 @@ export const HomeScreen: React.FC = () => {
     todayClasses = groupClasses(todayClasses);
     
     if (todayClasses.length > 0) {
-      let activeIndex = todayClasses.findIndex(c => getMinutes(c).end > currentTimeMinutes);
+      let activeIndex = todayClasses.findIndex(c => {
+        const times = getMinutes(c);
+        return currentTimeMinutes >= times.start && currentTimeMinutes <= times.end;
+      });
       return { 
         classes: todayClasses.map(c => {
           const startStr = c.startTime || (c.time ? c.time.split('-')[0] : '');
@@ -242,7 +239,7 @@ export const HomeScreen: React.FC = () => {
             const endStr = c.endTime || (c.time ? c.time.split('-')[1] : '');
             return { ...c, startTime: formatTo12Hour(startStr), endTime: formatTo12Hour(endStr) };
           }), 
-          activeIndex: 0, 
+          activeIndex: -1, 
           label: i === 1 ? 'Tomorrow' : nextDayName 
         };
       }
@@ -256,12 +253,16 @@ export const HomeScreen: React.FC = () => {
       if (!video.galleryId) return;
       const galleryData = galleries.find(g => g.id === video.galleryId);
       if (galleryData) {
-        navigation.navigate('VideoLecturesScreen', {
-          galleryId: video.galleryId,
-          galleryName: galleryData.name,
-          galleryColor: galleryData.color || '#6366f1',
-          videos: galleryData.videos || [],
-          initialVideoId: video.id
+        // Navigate to VideoGallery tab → VideoLecturesScreen within VideoStack
+        navigation.navigate('VideoGallery', {
+          screen: 'VideoLecturesScreen',
+          params: {
+            galleryId: video.galleryId,
+            galleryName: galleryData.name,
+            galleryColor: galleryData.color || '#6366f1',
+            videos: galleryData.videos || [],
+            initialVideoId: video.id
+          }
         });
       }
     } catch (e) {
@@ -311,7 +312,7 @@ export const HomeScreen: React.FC = () => {
           <StudentProfileCard
             name={displayName}
             role={profile?.role === 'admin' ? 'Admin' : profile?.role === 'teacher' ? 'Teacher' : 'Student'}
-            studentId={profile?.rollno || (user as any)?.uid || 'N/A'}
+            studentId={profile?.studentId || 'N/A'}
             className={profile?.class || 'Not Assigned'}
             gender={profile?.gender ? profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1).toLowerCase() : 'N/A'}
             rollNo={profile?.rollno || 'N/A'}
@@ -330,7 +331,7 @@ export const HomeScreen: React.FC = () => {
           <View style={styles.topCoursesSection}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Continue Learning</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('LikedVideosScreen')}>
+              <TouchableOpacity onPress={() => navigation.navigate('VideoGallery', { screen: 'LikedVideosScreen' })}>
                 <Text style={[styles.seeAllText, { color: theme.primary }]}>See All</Text>
               </TouchableOpacity>
             </View>
@@ -345,12 +346,16 @@ export const HomeScreen: React.FC = () => {
                   onScroll={handleScroll}
                   scrollEventThrottle={16}
                   keyExtractor={(item, index) => item.id || index.toString()}
+                  initialNumToRender={2}
+                  maxToRenderPerBatch={2}
+                  windowSize={3}
                   renderItem={({ item }) => (
                     <TouchableOpacity
                       style={[styles.continueCard, { backgroundColor: theme.card, width: width - scale(28) }]}
                       onPress={() => handleVideoPress(item)}
-                      activeOpacity={0.9}
+                      activeOpacity={0.88}
                     >
+                      {/* Compact Thumbnail */}
                       <View style={styles.continueImageContainer}>
                         <Image
                           source={{ uri: item.thumbnail || `https://img.youtube.com/vi/${item.youtubeId}/hqdefault.jpg` }}
@@ -358,43 +363,53 @@ export const HomeScreen: React.FC = () => {
                           contentFit="cover"
                         />
                         <View style={styles.playOverlay}>
-                          <Ionicons name="play" size={24} color="#fff" />
+                          <Ionicons name="play" size={16} color="#fff" />
                         </View>
                         <View style={styles.durationBadge}>
                           <Text style={styles.durationText}>{item.duration || '00:00'}</Text>
                         </View>
                       </View>
+
+                      {/* Compact Info */}
                       <View style={styles.continueInfo}>
-                        <View style={styles.continueHeaderRow}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                              <Ionicons name="videocam-outline" size={12} color={theme.textSecondary} />
-                              <Text style={[styles.statText, { color: theme.textSecondary }]}>Video Lecture</Text>
-                            </View>
-                            <Text style={{ fontSize: 10, color: theme.textTertiary || '#94a3b8' }}>•</Text>
-                            <Text style={[styles.continueCategory, { color: theme.primary }]} numberOfLines={1}>{item.galleryName || 'Subject'}</Text>
+                        {/* Category chip */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: scale(2) }}>
+                          <View style={[styles.chipTag, { backgroundColor: (theme.primary || '#3b82f6') + '15' }]}>
+                            <Text style={[styles.chipTagText, { color: theme.primary }]} numberOfLines={1}>
+                              {item.galleryName || 'Subject'}
+                            </Text>
                           </View>
-                          <TouchableOpacity>
-                            <Ionicons name="ellipsis-vertical" size={16} color={theme.textTertiary || '#94a3b8'} />
-                          </TouchableOpacity>
                         </View>
-                        <Text style={[styles.continueTitle, { color: theme.text }]} numberOfLines={1}>{item.title || 'Video Title'}</Text>
-                        {item.chapterNo && (
-                          <Text style={[styles.continueSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
-                            Chapter# {Number(item.chapterNo) < 10 ? `0${item.chapterNo}` : item.chapterNo}{item.chapterName ? `: ${item.chapterName}` : ''}
-                          </Text>
-                        )}
-                        
-                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: scale(4), gap: scale(4) }}>
-                          <Ionicons name="person-circle-outline" size={12} color={theme.textTertiary || '#94a3b8'} />
-                          <Text style={{ fontSize: scale(10), color: theme.textTertiary || '#94a3b8', fontWeight: '500' }} numberOfLines={1}>
-                            {galleries.find(g => g.id === item.galleryId)?.teacherName || item.teacherName || 'Subject Teacher'}
+
+                        {/* Title */}
+                        <Text style={[styles.continueTitle, { color: theme.text }]} numberOfLines={2}>
+                          {item.title || 'Video Title'}
+                        </Text>
+
+                        {/* Teacher Name */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: scale(4), marginTop: scale(4) }}>
+                          <Ionicons name="person-circle-outline" size={scale(11)} color={theme.textSecondary} />
+                          <Text style={[styles.teacherText, { color: theme.textSecondary }]} numberOfLines={1}>
+                            {galleries.find(g => g.id === item.galleryId)?.teacherName || item.teacherName || 'Teacher'}
                           </Text>
                         </View>
-                        
-                        <View style={[styles.continueFooter, { justifyContent: 'flex-end' }]}>
-                          <TouchableOpacity style={styles.resumeButton} onPress={() => handleVideoPress(item)}>
-                            <Ionicons name="play" size={12} color={theme.primary} />
+
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', flex: 1, marginTop: scale(2) }}>
+                          {/* Chapter info */}
+                          <View style={{ flex: 1, paddingRight: scale(6), justifyContent: 'flex-end', paddingBottom: scale(2) }}>
+                            {item.chapterNo && (
+                              <Text style={[styles.continueSubtitle, { color: theme.textSecondary }]} numberOfLines={2}>
+                                Chapter {Number(item.chapterNo) < 10 ? `0${item.chapterNo}` : item.chapterNo}{item.chapterName ? `: ${item.chapterName}` : ''}
+                              </Text>
+                            )}
+                          </View>
+
+                          {/* Resume button */}
+                          <TouchableOpacity
+                            style={[styles.resumeButton, { backgroundColor: (theme.primary || '#3b82f6') + '15' }]}
+                            onPress={() => handleVideoPress(item)}
+                          >
+                            <Ionicons name="play" size={scale(9)} color={theme.primary} />
                             <Text style={[styles.resumeButtonText, { color: theme.primary }]}>Resume</Text>
                           </TouchableOpacity>
                         </View>
@@ -463,10 +478,10 @@ export const HomeScreen: React.FC = () => {
                   
                   return (
                     <View key={idx} style={{ flexDirection: 'row', alignItems: 'stretch' }}>
-                      <View style={{ width: scale(20), alignItems: 'center', marginRight: scale(6) }}>
-                        <View style={[{ width: scale(10), height: scale(10), borderRadius: scale(5), marginTop: scale(24), zIndex: 2 }, isActive ? { backgroundColor: '#f97316', transform: [{ scale: 1.3 }], shadowColor: '#f97316', shadowOffset: {width: 0, height: 0}, shadowOpacity: 0.6, shadowRadius: 4, elevation: 3 } : { backgroundColor: isDark ? '#9a3412' : '#fdba74' }]} />
+                      <View style={{ width: scale(16), alignItems: 'center', marginRight: scale(6) }}>
+                        <View style={[{ width: scale(8), height: scale(8), borderRadius: scale(4), marginTop: scale(18), zIndex: 2 }, isActive ? { backgroundColor: '#f97316', transform: [{ scale: 1.3 }], shadowColor: '#f97316', shadowOffset: {width: 0, height: 0}, shadowOpacity: 0.6, shadowRadius: 4, elevation: 3 } : { backgroundColor: isDark ? '#9a3412' : '#fdba74' }]} />
                         {idx < scheduleData.classes.length - 1 && (
-                          <View style={{ position: 'absolute', top: scale(34), bottom: -scale(12), width: 2, backgroundColor: isActive ? theme.primary : (isDark ? 'rgba(59,130,246,0.3)' : 'rgba(59,130,246,0.3)'), opacity: isActive ? 0.8 : 1 }} />
+                          <View style={{ position: 'absolute', top: scale(26), bottom: -scale(6), width: 2, backgroundColor: isActive ? theme.primary : (isDark ? 'rgba(59,130,246,0.3)' : 'rgba(59,130,246,0.3)'), opacity: isActive ? 0.8 : 1 }} />
                         )}
                       </View>
                       
@@ -494,24 +509,51 @@ export const HomeScreen: React.FC = () => {
                             {session.subject || session.subjectName || 'N/A'}
                           </Text>
                           <View style={[styles.scheduleTimeWrap, { backgroundColor: isDark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.1)' }]}>
-                            <Ionicons name="time" size={14} color={theme.primary || '#3b82f6'} style={{marginRight: scale(4)}} />
+                            <Ionicons name="time" size={scale(10)} color={theme.primary || '#3b82f6'} style={{marginRight: scale(3)}} />
                             <Text style={[styles.scheduleTimeRight, { color: theme.primary || '#3b82f6' }]}>
                               {session.startTime} - {session.endTime}
                             </Text>
                           </View>
                         </View>
-                        <View style={[styles.scheduleRow, { alignItems: 'center' }]}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: scale(6), paddingRight: scale(8) }}>
-                            <Text style={[styles.scheduleInstructor, { color: theme.textSecondary, flexShrink: 1 }]} numberOfLines={2}>
-                              {session.instructor || 'Teacher TBD'}
-                            </Text>
-                          </View>
-                          {isActive && (
-                            <View style={[styles.todayBadge, { backgroundColor: theme.primary }]}>
-                              <Text style={[styles.todayBadgeText, { color: '#fff' }]}>Ongoing / Next</Text>
+                        {session.combinedDetails ? (
+                          session.combinedDetails.map((detail: any, idx: number) => (
+                            <View key={idx} style={[styles.scheduleRow, { alignItems: 'flex-start', marginBottom: idx === session.combinedDetails.length - 1 ? 0 : scale(2) }]}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: scale(8) }}>
+                                <Text style={[styles.scheduleInstructor, { color: theme.textSecondary, flexShrink: 1 }]} numberOfLines={1}>
+                                  {detail.instructor}
+                                </Text>
+                              </View>
+                              <View style={{ alignItems: 'flex-end' }}>
+                                <Text style={[{ color: theme.textSecondary, fontSize: scale(10), fontWeight: '500' }]}>
+                                  Room: {detail.room}
+                                </Text>
+                                {isActive && idx === session.combinedDetails.length - 1 && (
+                                  <View style={[styles.todayBadge, { backgroundColor: theme.primary, marginTop: scale(4) }]}>
+                                    <Text style={[styles.todayBadgeText, { color: '#fff' }]}>Ongoing / Next</Text>
+                                  </View>
+                                )}
+                              </View>
                             </View>
-                          )}
-                        </View>
+                          ))
+                        ) : (
+                          <View style={[styles.scheduleRow, { alignItems: 'flex-start' }]}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: scale(8) }}>
+                              <Text style={[styles.scheduleInstructor, { color: theme.textSecondary, flexShrink: 1 }]} numberOfLines={2}>
+                                {session.instructor || 'Teacher TBD'}
+                              </Text>
+                            </View>
+                            <View style={{ alignItems: 'flex-end' }}>
+                              <Text style={[{ color: theme.textSecondary, fontSize: scale(10), fontWeight: '500' }]}>
+                                Room: {session.room || session.roomNo || 'TBA'}
+                              </Text>
+                              {isActive && (
+                                <View style={[styles.todayBadge, { backgroundColor: theme.primary, marginTop: scale(4) }]}>
+                                  <Text style={[styles.todayBadgeText, { color: '#fff' }]}>Ongoing / Next</Text>
+                                </View>
+                              )}
+                            </View>
+                          </View>
+                        )}
                         </View>
                         </View>
                       </View>
@@ -631,23 +673,25 @@ const styles = StyleSheet.create({
   },
   continueCard: {
     flexDirection: 'row',
-    borderRadius: scale(14),
+    borderRadius: scale(12),
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.02)',
-    padding: scale(10),
+    borderColor: 'rgba(0,0,0,0.03)',
+    padding: scale(8),
+    gap: scale(10),
   },
   continueImageContainer: {
-    width: scale(120),
-    height: scale(90),
-    borderRadius: scale(10),
+    width: scale(100),
+    height: scale(75),
+    borderRadius: scale(8),
     overflow: 'hidden',
     position: 'relative',
+    flexShrink: 0,
   },
   continueImage: {
     width: '100%',
@@ -658,11 +702,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '50%',
     left: '50%',
-    transform: [{ translateX: -scale(16) }, { translateY: -scale(16) }],
-    width: scale(32),
-    height: scale(32),
-    borderRadius: scale(16),
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    transform: [{ translateX: -scale(13) }, { translateY: -scale(13) }],
+    width: scale(26),
+    height: scale(26),
+    borderRadius: scale(13),
+    backgroundColor: 'rgba(0,0,0,0.55)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -682,27 +726,33 @@ const styles = StyleSheet.create({
   },
   continueInfo: {
     flex: 1,
-    paddingLeft: scale(12),
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
-  continueHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  chipTag: {
+    paddingHorizontal: scale(6),
+    paddingVertical: scale(2),
+    borderRadius: scale(6),
   },
-  continueCategory: {
-    fontSize: scale(10),
+  chipTagText: {
+    fontSize: scale(9),
     fontWeight: '700',
   },
+  teacherText: {
+    fontSize: scale(9),
+    fontWeight: '700',
+    flex: 1,
+  },
   continueTitle: {
-    fontSize: scale(14),
-    fontWeight: '800',
-    marginTop: scale(2),
+    fontSize: scale(12),
+    fontWeight: '700',
+    marginTop: scale(1),
     letterSpacing: -0.2,
+    lineHeight: scale(16),
   },
   continueSubtitle: {
-    fontSize: scale(10),
+    fontSize: scale(9),
     marginTop: scale(2),
+    fontWeight: '500',
   },
   continueFooter: {
     flexDirection: 'row',
@@ -726,14 +776,13 @@ const styles = StyleSheet.create({
   resumeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eff6ff',
-    paddingHorizontal: scale(10),
-    paddingVertical: scale(6),
-    borderRadius: scale(8),
-    gap: scale(4),
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: scale(6),
+    gap: scale(3),
   },
   resumeButtonText: {
-    fontSize: scale(10),
+    fontSize: scale(9),
     fontWeight: '700',
   },
   dotsContainer: {
@@ -762,7 +811,7 @@ const styles = StyleSheet.create({
   scheduleCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: scale(8),
+    padding: scale(6),
     borderRadius: scale(10),
     borderWidth: 1,
     shadowColor: '#000',
@@ -780,12 +829,12 @@ const styles = StyleSheet.create({
   },
   scheduleLectureBox: {
     backgroundColor: '#eff6ff',
-    paddingVertical: scale(6),
-    paddingHorizontal: scale(12),
-    borderRadius: scale(8),
+    paddingVertical: scale(4),
+    paddingHorizontal: scale(8),
+    borderRadius: scale(6),
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: scale(12),
+    marginRight: scale(10),
     borderWidth: 1,
     borderColor: '#dbeafe',
   },
@@ -797,7 +846,7 @@ const styles = StyleSheet.create({
   },
   scheduleLectureNumber: {
     color: '#3b82f6',
-    fontSize: scale(18),
+    fontSize: scale(14),
     fontWeight: '900',
   },
   scheduleInfo: {
@@ -811,33 +860,34 @@ const styles = StyleSheet.create({
     marginBottom: scale(4),
   },
   scheduleSubject: {
-    fontSize: scale(14),
+    fontSize: scale(12),
     fontWeight: '800',
     flex: 1,
     marginRight: scale(8),
+    lineHeight: scale(16),
   },
   scheduleTimeWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: scale(6),
-    paddingVertical: scale(3),
-    borderRadius: scale(6),
+    paddingVertical: scale(2),
+    borderRadius: scale(4),
   },
   scheduleTimeRight: {
-    fontSize: scale(10),
+    fontSize: scale(8.5),
     fontWeight: '700',
   },
   scheduleInstructor: {
-    fontSize: scale(11),
+    fontSize: scale(9.5),
     fontWeight: '600',
   },
   todayBadge: {
-    paddingHorizontal: scale(8),
-    paddingVertical: scale(4),
-    borderRadius: scale(6),
+    paddingHorizontal: scale(6),
+    paddingVertical: scale(3),
+    borderRadius: scale(4),
   },
   todayBadgeText: {
-    fontSize: scale(9),
+    fontSize: scale(8),
     fontWeight: '700',
   },
   emptyStateCard: {

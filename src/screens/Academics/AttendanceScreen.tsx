@@ -17,23 +17,7 @@ export const AttendanceScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const [refreshing, setRefreshing] = useState(false);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      // Hide tab bar and header immediately when entering screen
-      navigation.getParent()?.setOptions({
-        tabBarStyle: { display: 'none' },
-        headerShown: false,
-      });
 
-      return () => {
-        // Restore tab bar and header when leaving screen
-        navigation.getParent()?.setOptions({
-          tabBarStyle: undefined,
-          headerShown: true,
-        });
-      };
-    }, [navigation])
-  );
 
   // Real-time attendance via onSnapshot listener
   const user           = useAppSelector(s => s.auth.user);

@@ -165,15 +165,7 @@ export const LibraryScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const readIds = useAppSelector(state => state.notifications.readIds) as string[];
   
-  // Hide TopHeader and tab bar when LibraryScreen gains focus
-  useFocusEffect(
-    React.useCallback(() => {
-      navigation.getParent()?.setOptions({
-        headerShown: false,
-        tabBarStyle: { display: 'none' },
-      });
-    }, [navigation])
-  );
+
   
   const classRestrictedNotices = notices.filter((n: any) => {
     const targetClass = n.targetClass || n.class || 'All Classes';

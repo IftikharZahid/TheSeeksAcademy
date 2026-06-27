@@ -464,14 +464,9 @@ export const MessagesScreen: React.FC = () => {
 
   useFocusEffect(
     React.useCallback(() => {
-      navigation.getParent()?.setOptions({
-        tabBarStyle: { display: 'none' },
-        headerShown: false,
-      });
-
       // Clear global unread badge
       dispatch(updateLastReadTimestamp(Date.now()));
-    }, [navigation])
+    }, [navigation, dispatch])
   );
 
   // Load messaging settings & today's count via Redux

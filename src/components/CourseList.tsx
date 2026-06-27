@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
@@ -8,7 +8,9 @@ import { useAppSelector } from '../store/hooks';
 import { Ionicons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
-const cardWidth = width * 0.45;
+const CARD_GAP = scale(8);
+const HORIZONTAL_PAD = scale(14) * 2;
+const cardWidth = (width - HORIZONTAL_PAD - CARD_GAP) / 2.2;
 
 const CourseListSkeleton: React.FC<{ theme: any; isDark: boolean }> = ({ theme, isDark }) => {
     const skeletonColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
@@ -36,14 +38,24 @@ const CourseListSkeleton: React.FC<{ theme: any; isDark: boolean }> = ({ theme, 
 // Helper to get an icon based on subject name
 const getSubjectIcon = (name: string) => {
     const lower = name.toLowerCase();
-    if (lower.includes('math')) return { name: 'calculator', color: '#10b981', bgColor: '#ecfdf5', type: 'Ionicons' };
-    if (lower.includes('computer') || lower.includes('cs') || lower.includes('programming')) return { name: 'code-slash', color: '#3b82f6', bgColor: '#eff6ff', type: 'Ionicons' };
+    if (lower.includes('math')) return { name: 'calculator-outline', color: '#10b981', bgColor: '#ecfdf5', type: 'Ionicons' };
+    if (lower.includes('computer') || lower.includes('cs') || lower.includes('programming') || lower.includes('software')) 
+        return { name: 'laptop-outline', color: '#3b82f6', bgColor: '#eff6ff', type: 'Ionicons' };
     if (lower.includes('physics')) return { name: 'atom', color: '#8b5cf6', bgColor: '#f5f3ff', type: 'FontAwesome5' };
-    if (lower.includes('chemistry')) return { name: 'flask', color: '#ec4899', bgColor: '#fdf2f8', type: 'Ionicons' };
-    if (lower.includes('english')) return { name: 'book-open', color: '#f59e0b', bgColor: '#fffbeb', type: 'FontAwesome5' };
-    if (lower.includes('urdu')) return { name: 'language', color: '#14b8a6', bgColor: '#f0fdfa', type: 'Ionicons' };
-    if (lower.includes('islamic') || lower.includes('quran')) return { name: 'book', color: '#0ea5e9', bgColor: '#f0f9ff', type: 'Ionicons' };
-    return { name: 'library', color: '#6366f1', bgColor: '#eef2ff', type: 'Ionicons' };
+    if (lower.includes('chemistry')) return { name: 'beaker-outline', color: '#ec4899', bgColor: '#fdf2f8', type: 'Ionicons' };
+    if (lower.includes('bio') || lower.includes('botany') || lower.includes('zoology')) 
+        return { name: 'leaf-outline', color: '#22c55e', bgColor: '#f0fdf4', type: 'Ionicons' };
+    if (lower.includes('english')) return { name: 'language-outline', color: '#f59e0b', bgColor: '#fffbeb', type: 'Ionicons' };
+    if (lower.includes('urdu')) return { name: 'pencil-outline', color: '#14b8a6', bgColor: '#f0fdfa', type: 'Ionicons' };
+    if (lower.includes('islamic') || lower.includes('quran') || lower.includes('islamiat') || lower.includes('tarjuma')) 
+        return { name: 'moon-outline', color: '#0ea5e9', bgColor: '#f0f9ff', type: 'Ionicons' };
+    if (lower.includes('pak') || lower.includes('history') || lower.includes('geo')) 
+        return { name: 'earth-outline', color: '#d946ef', bgColor: '#fdf4ff', type: 'Ionicons' };
+    if (lower.includes('science')) return { name: 'planet-outline', color: '#06b6d4', bgColor: '#ecfeff', type: 'Ionicons' };
+    if (lower.includes('art') || lower.includes('draw')) return { name: 'color-palette-outline', color: '#f43f5e', bgColor: '#fff1f2', type: 'Ionicons' };
+    
+    // Default professional icon
+    return { name: 'book-outline', color: '#6366f1', bgColor: '#eef2ff', type: 'Ionicons' };
 };
 
 export const CourseList: React.FC = () => {
@@ -107,33 +119,44 @@ export const CourseList: React.FC = () => {
             <TouchableOpacity
                 style={[styles.courseCard, { backgroundColor: theme.card }]}
                 onPress={() => handleCoursePress(item)}
-                activeOpacity={0.7}
+                activeOpacity={0.75}
             >
-                <View style={[styles.cardIconContainer, { backgroundColor: isDark ? iconConfig.color + '20' : iconConfig.bgColor }]}>
-                    {iconConfig.type === 'FontAwesome5' ? (
-                        <FontAwesome5 name={iconConfig.name as any} size={22} color={iconConfig.color} />
-                    ) : (
-                        <Ionicons name={iconConfig.name as any} size={24} color={iconConfig.color} />
-                    )}
+                {/* Top row: icon + progress % */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: scale(8) }}>
+                    <View style={[styles.cardIconContainer, { backgroundColor: isDark ? iconConfig.color + '20' : iconConfig.bgColor }]}>
+                        {iconConfig.type === 'FontAwesome5' ? (
+                            <FontAwesome5 name={iconConfig.name as any} size={scale(16)} color={iconConfig.color} />
+                        ) : (
+                            <Ionicons name={iconConfig.name as any} size={scale(18)} color={iconConfig.color} />
+                        )}
+                    </View>
+                    <Text style={[styles.progressText, { color: iconConfig.color }]}>{progressPercentage}%</Text>
                 </View>
 
-                <View style={styles.cardInfo}>
-                    <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>
-                        {item.name}
-                    </Text>
-                    <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
-                        {className} • {section}
-                    </Text>
-                    <Text style={[styles.teacherName, { color: theme.textTertiary }]} numberOfLines={1}>
-                        {teacherName}
-                    </Text>
-                </View>
+                {/* Subject name */}
+                <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={2}>
+                    {item.name}
+                </Text>
 
-                <View style={styles.progressRow}>
+                {/* Class & teacher */}
+                <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+                    Class: {className}
+                </Text>
+                <Text style={[styles.teacherName, { color: theme.textSecondary }]} numberOfLines={1}>
+                    {teacherName}
+                </Text>
+
+                {/* Progress bar */}
+                <View style={[styles.progressRow, { marginTop: scale(8) }]}>
                     <View style={styles.progressBarBg}>
                         <View style={[styles.progressBarFill, { width: `${progressPercentage}%`, backgroundColor: iconConfig.color }]} />
                     </View>
-                    <Text style={[styles.progressText, { color: iconConfig.color }]}>{progressPercentage}%</Text>
+                </View>
+
+                {/* Video count chip */}
+                <View style={[styles.videoCountChip, { backgroundColor: iconConfig.color + '15' }]}>
+                    <Ionicons name="play-circle-outline" size={scale(10)} color={iconConfig.color} />
+                    <Text style={[styles.videoCountText, { color: iconConfig.color }]}>{videoCount} videos</Text>
                 </View>
             </TouchableOpacity>
         );
@@ -196,6 +219,9 @@ export const CourseList: React.FC = () => {
                 ItemSeparatorComponent={() => <View style={{ width: scale(12) }} />}
                 snapToInterval={cardWidth + scale(12)}
                 decelerationRate="fast"
+                initialNumToRender={3}
+                maxToRenderPerBatch={3}
+                windowSize={3}
             />
         </View>
     );
@@ -228,51 +254,53 @@ const styles = StyleSheet.create({
     },
     courseCard: {
         width: cardWidth,
-        padding: scale(12),
-        borderRadius: scale(14),
+        padding: scale(10),
+        borderRadius: scale(12),
         backgroundColor: '#ffffff',
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.02)',
+        borderColor: 'rgba(0,0,0,0.03)',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.04,
-        shadowRadius: 8,
-        elevation: 3,
+        shadowRadius: 6,
+        elevation: 2,
     },
     cardIconContainer: {
-        width: scale(44),
-        height: scale(44),
-        borderRadius: scale(12),
+        width: scale(36),
+        height: scale(36),
+        borderRadius: scale(10),
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: scale(14),
     },
     cardInfo: {
-        marginBottom: scale(12),
+        flex: 1,
+        marginBottom: scale(6),
     },
     cardTitle: {
-        fontSize: scale(13),
+        fontSize: scale(12),
         fontWeight: '800',
-        marginBottom: scale(4),
+        marginBottom: scale(3),
         letterSpacing: -0.2,
+        lineHeight: scale(16),
     },
     cardSubtitle: {
-        fontSize: scale(9.5),
+        fontSize: scale(9),
         fontWeight: '500',
         marginBottom: scale(2),
     },
     teacherName: {
-        fontSize: scale(9.5),
+        fontSize: scale(9),
         fontWeight: '500',
+        marginBottom: scale(2),
     },
     progressRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: scale(8),
+        gap: scale(6),
     },
     progressBarBg: {
         flex: 1,
-        height: scale(4),
+        height: scale(3),
         backgroundColor: '#f1f5f9',
         borderRadius: scale(2),
         overflow: 'hidden',
@@ -284,6 +312,20 @@ const styles = StyleSheet.create({
     progressText: {
         fontSize: scale(9),
         fontWeight: '700',
+    },
+    videoCountChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: scale(3),
+        paddingHorizontal: scale(6),
+        paddingVertical: scale(3),
+        borderRadius: scale(6),
+        marginTop: scale(6),
+        alignSelf: 'flex-start',
+    },
+    videoCountText: {
+        fontSize: scale(8.5),
+        fontWeight: '600',
     },
     offlineBadge: {
         flexDirection: 'row',

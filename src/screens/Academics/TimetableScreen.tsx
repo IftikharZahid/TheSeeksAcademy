@@ -69,26 +69,62 @@ export const TimetableScreen: React.FC = () => {
   const [scheduleData, setScheduleData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      // Hide tab bar and header immediately when entering screen
-      navigation.getParent()?.setOptions({
-        tabBarStyle: { display: 'none' },
-        headerShown: false,
-      });
 
-      return () => {
-        // Restore tab bar and header when leaving screen
-        navigation.getParent()?.setOptions({
-          tabBarStyle: undefined,
-          headerShown: true,
-        });
-      };
-    }, [navigation])
-  );
 
   const allEntries = useAppSelector(state => state.timetable.entries);
   const isTimetableLoading = useAppSelector(state => state.timetable.status === 'loading' || state.timetable.status === 'idle');
+
+  const parseTime = (t: string) => {
+    if (!t) return 0;
+    let [time, modifier] = t.trim().split(' ');
+    if (!time) return 0;
+    let [hours, minutes] = time.split(':');
+    if (hours === '12') hours = '00';
+    if (modifier && modifier.toUpperCase() === 'PM') hours = (parseInt(hours, 10) + 12).toString();
+    return parseInt(hours, 10) * 60 + (parseInt(minutes, 10) || 0);
+  };
+
+  const getMinutes = (c: any) => {
+    const startStr = c.startTime || (c.time ? c.time.split('-')[0] : '');
+    const endStr = c.endTime || (c.time ? c.time.split('-')[1] : '');
+    const start = parseTime(startStr);
+    const end = parseTime(endStr) || (start + 60);
+    return { start, end };
+  };
+
+  const groupClasses = (classes: any[]) => {
+    const grouped: any[] = [];
+    classes.forEach(c => {
+      const cTimes = getMinutes(c);
+      const existing = grouped.find(g => getMinutes(g).start === cTimes.start && getMinutes(g).end === cTimes.end);
+      if (existing) {
+        let s1 = existing.subject || existing.subjectName || '';
+        let s2 = c.subject || c.subjectName || '';
+        if (!s1) s1 = 'TBD';
+        if (!s2) s2 = 'TBD';
+        
+        if (s1 !== s2 && !s1.includes(s2)) {
+          existing.subject = `${s1} & ${s2}`;
+          existing.subjectName = existing.subject;
+        }
+
+        if (!existing.combinedDetails) {
+          existing.combinedDetails = [{ instructor: existing.instructor || 'Teacher TBD', room: existing.room || 'TBD' }];
+        }
+        
+        const newInstructor = c.instructor || 'Teacher TBD';
+        const newRoom = c.room || 'TBD';
+        
+        const hasDetail = existing.combinedDetails.find((d: any) => d.instructor === newInstructor && d.room === newRoom);
+        if (!hasDetail) {
+          existing.combinedDetails.push({ instructor: newInstructor, room: newRoom });
+        }
+      } else {
+        grouped.push({ ...c });
+      }
+    });
+    return grouped;
+  };
 
   useEffect(() => {
     if (!profile) {
@@ -103,7 +139,7 @@ export const TimetableScreen: React.FC = () => {
     const isMale = userGender === 'male' || userGender === 'boy' || userGender === 'boys';
     const isFemale = userGender === 'female' || userGender === 'girl' || userGender === 'girls';
 
-    const filteredClasses = rawClasses.filter((c: any) => {
+    let filteredClasses = rawClasses.filter((c: any) => {
       // 1. Filter by student class
       const matchClass = !studentClass || !c.class || c.class.toLowerCase().trim() === studentClass.toLowerCase().trim();
       
@@ -123,7 +159,11 @@ export const TimetableScreen: React.FC = () => {
       return matchClass && matchGender;
     });
 
-    setScheduleData(filteredClasses);
+    // Group concurrent classes and sort them chronologically
+    filteredClasses.sort((a: any, b: any) => getMinutes(a).start - getMinutes(b).start);
+    const groupedData = groupClasses(filteredClasses);
+
+    setScheduleData(groupedData);
   }, [allEntries, activeDay, profile]);
 
   const onRefresh = useCallback(() => {
@@ -222,21 +262,41 @@ export const TimetableScreen: React.FC = () => {
                         </View>
                       </View>
 
-                      <View style={styles.cardFooterRow}>
-                        <View style={styles.detailItem}>
-                          <Ionicons name="person-circle-outline" size={scale(14)} color={theme.textSecondary} />
-                          <Text style={[styles.detailsText, { color: theme.textSecondary }]} numberOfLines={1}>
-                            {classItem.instructor}
-                          </Text>
-                        </View>
+                      {classItem.combinedDetails ? (
+                        classItem.combinedDetails.map((detail: any, idx: number) => (
+                          <View key={idx} style={[styles.cardFooterRow, { marginTop: idx > 0 ? scale(4) : scale(2) }]}>
+                            <View style={[styles.detailItem, { flexShrink: 1, marginRight: scale(4) }]}>
+                              <Ionicons name="person-circle-outline" size={scale(14)} color={theme.textSecondary} />
+                              <Text style={[styles.detailsText, { color: theme.textSecondary, flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">
+                                {detail.instructor}
+                              </Text>
+                            </View>
 
-                        <View style={styles.detailItem}>
-                          <Text style={[styles.detailsText, { color: theme.textSecondary, fontWeight: '600' }]}>Class Room:</Text>
-                          <Text style={[styles.detailsText, { color: theme.textSecondary, marginLeft: 2 }]} numberOfLines={1}>
-                            {classItem.room}
-                          </Text>
+                            <View style={[styles.detailItem, { flexShrink: 0, maxWidth: '50%' }]}>
+                              <Text style={[styles.detailsText, { color: theme.textSecondary, fontWeight: '600' }]}>Room:</Text>
+                              <Text style={[styles.detailsText, { color: theme.textSecondary, marginLeft: 2 }]} ellipsizeMode="tail" numberOfLines={1}>
+                                {detail.room}
+                              </Text>
+                            </View>
+                          </View>
+                        ))
+                      ) : (
+                        <View style={styles.cardFooterRow}>
+                          <View style={[styles.detailItem, { flexShrink: 1, marginRight: scale(4) }]}>
+                            <Ionicons name="person-circle-outline" size={scale(14)} color={theme.textSecondary} />
+                            <Text style={[styles.detailsText, { color: theme.textSecondary, flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">
+                              {classItem.instructor}
+                            </Text>
+                          </View>
+
+                          <View style={[styles.detailItem, { flexShrink: 0, maxWidth: '50%' }]}>
+                            <Text style={[styles.detailsText, { color: theme.textSecondary, fontWeight: '600' }]}>Room:</Text>
+                            <Text style={[styles.detailsText, { color: theme.textSecondary, marginLeft: 2 }]} ellipsizeMode="tail" numberOfLines={1}>
+                              {classItem.room}
+                            </Text>
+                          </View>
                         </View>
-                      </View>
+                      )}
                       
                     </View>
                   </View>

@@ -93,20 +93,7 @@ export const AssignmentsScreen: React.FC = () => {
     }
   }, [assignmentsData, readAssignmentIds, dispatch, userProfile]);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      navigation.getParent()?.setOptions({
-        tabBarStyle: { display: "none" },
-        headerShown: false,
-      });
-      return () => {
-        navigation.getParent()?.setOptions({
-          tabBarStyle: undefined,
-          headerShown: true,
-        });
-      };
-    }, [navigation])
-  );
+
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

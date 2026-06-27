@@ -89,19 +89,6 @@ export const LikedVideosScreen: React.FC = () => {
         }
     }, [likedVideosRaw, galleries]);
 
-    // Hide TopHeader and tab bar — restoration is handled by MainTabs hiddenRoutes logic
-    useFocusEffect(
-        React.useCallback(() => {
-            navigation.getParent()?.setOptions({
-                tabBarStyle: { display: 'none' },
-                headerShown: false,
-            });
-            // No cleanup: MainTabs options function re-evaluates header/tabBar
-            // visibility based on hiddenRoutes whenever the focused route changes.
-            // Forcing headerShown:true here caused a flash when navigating forward
-            // to VideoLecturesScreen (also a hidden route).
-        }, [navigation])
-    );
 
     // Helper to parse duration string to seconds
     const parseDuration = (durationStr: string): number => {

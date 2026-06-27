@@ -10,6 +10,7 @@ import { selectUnreadDiariesCount } from '../store/slices/notificationsSlice';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { scale } from '../utils/responsive';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const formatRelativeTime = (timeMs: number): string => {
   if (!timeMs) return '';
@@ -281,7 +282,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: scale(16),
-    paddingVertical: scale(6),
+    paddingTop: scale(2),
+    paddingBottom: scale(2),
   },
   middleSection: {
     flex: 1,

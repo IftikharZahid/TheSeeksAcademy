@@ -83,23 +83,7 @@ export const ResultsScreen: React.FC = () => {
     }
   }, [entries, dispatch, readResultIds]);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      // Hide tab bar and header immediately when entering screen
-      navigation.getParent()?.setOptions({
-        tabBarStyle: { display: 'none' },
-        headerShown: false,
-      });
 
-      return () => {
-        // Restore tab bar and header when leaving screen
-        navigation.getParent()?.setOptions({
-          tabBarStyle: undefined,
-          headerShown: true,
-        });
-      };
-    }, [navigation])
-  );
 
   // Derive dynamic T-tabs from actual exam data (sorted numerically: T1, T2, T3...)
   const dynamicTabs = useMemo(() => {

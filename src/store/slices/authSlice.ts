@@ -148,6 +148,26 @@ export const fetchUserProfile = createAsyncThunk(
             }
 
             if (profileData) {
+                // Fetch studentId from students collection if missing
+                if (!profileData.studentId || profileData.studentId === '') {
+                    try {
+                        const qUid = query(collection(db, 'students'), where('uid', '==', uid));
+                        const snapUid = await getDocs(qUid);
+                        if (!snapUid.empty) {
+                            profileData.studentId = snapUid.docs[0].data().studentId || snapUid.docs[0].id;
+                        } else if (email) {
+                            const emailLower = email.toLowerCase();
+                            const qEmail = query(collection(db, 'students'), where('email', '==', emailLower));
+                            const snapEmail = await getDocs(qEmail);
+                            if (!snapEmail.empty) {
+                                profileData.studentId = snapEmail.docs[0].data().studentId || snapEmail.docs[0].id;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ Could not fetch studentId from students collection', e);
+                    }
+                }
+
                 try {
                     const localImage = await AsyncStorage.getItem(`profile_picture_${uid}`);
                     if (localImage) {

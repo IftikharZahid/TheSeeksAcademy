@@ -4,7 +4,7 @@ import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { HomeStack } from './HomeStack';
 import { ProfileStack } from './ProfileStack';
-import { VideoGalleryScreen } from '../Lectures/VideoGalleryScreen';
+import { VideoStack } from './VideoStack';
 import { MessagesScreen } from '../Communication/MessagesScreen';
 import { TopHeader } from '../../components/TopHeader';
 import { LibraryScreen } from '../Academics/LibraryScreen';
@@ -23,6 +23,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 export const MainTabs: React.FC = () => {
   return (
     <Tab.Navigator
+      backBehavior="initialRoute"
       tabBar={props => <EducationalTabBar {...props} />}
       screenOptions={({ route }) => ({
         headerShown: route.name !== 'Messages',
@@ -34,7 +35,7 @@ export const MainTabs: React.FC = () => {
         component={HomeStack}
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeScreen';
-          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'StaffInfoScreen', 'HelpCenterScreen', 'AdminTeachersScreen', 'FeeDetailScreen', 'VideoLecturesScreen', 'VideoGalleryScreen', 'LikedVideosScreen', 'LikedTeachersScreen', 'DiaryScreen'];
+          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'StaffInfoScreen', 'HelpCenterScreen', 'AdminTeachersScreen', 'FeeDetailScreen', 'LikedTeachersScreen', 'DiaryScreen', 'MessagesScreen', 'LibraryScreen'];
 
           const isHidden = hiddenRoutes.includes(routeName);
 
@@ -50,12 +51,17 @@ export const MainTabs: React.FC = () => {
       />
       <Tab.Screen
         name="VideoGallery"
-        component={VideoGalleryScreen}
-        options={{
-          headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="videocam" size={size} color={color} />
-          ),
+        component={VideoStack}
+        options={({ route }) => {
+          const routeName = getFocusedRouteNameFromRoute(route) ?? 'VideoGalleryScreen';
+          const isInLectures = routeName === 'VideoLecturesScreen';
+          return {
+            headerShown: false,
+            tabBarStyle: isInLectures ? { display: 'none' } : undefined,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="videocam" size={size} color={color} />
+            ),
+          };
         }}
       />
       <Tab.Screen

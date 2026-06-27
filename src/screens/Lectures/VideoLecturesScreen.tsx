@@ -10,7 +10,7 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import YoutubePlayer from 'react-native-youtube-iframe';
@@ -106,22 +106,6 @@ export const VideoLecturesScreen: React.FC = () => {
     const { theme, isDark } = useTheme();
     const playerRef = useRef<any>(null);
     const netInfo = useNetInfo();
-
-    // Hide TopHeader and tab bar when this screen is focused
-    useFocusEffect(
-        React.useCallback(() => {
-            navigation.getParent()?.setOptions({
-                tabBarStyle: { display: 'none' },
-                headerShown: false,
-            });
-            return () => {
-                navigation.getParent()?.setOptions({
-                    tabBarStyle: undefined,
-                    headerShown: true,
-                });
-            };
-        }, [navigation])
-    );
 
     // Get data from route params
     const galleryName = route.params?.galleryName || 'Video Lectures';
@@ -299,8 +283,10 @@ export const VideoLecturesScreen: React.FC = () => {
     React.useEffect(() => {
         if (!isPlaying || !currentVideo) return;
 
+        let isFetching = false;
         const interval = setInterval(async () => {
-            if (playerRef.current) {
+            if (playerRef.current && !isFetching) {
+                isFetching = true;
                 try {
                     const currentTime = await playerRef.current.getCurrentTime();
                     const duration = await playerRef.current.getDuration();
@@ -325,6 +311,8 @@ export const VideoLecturesScreen: React.FC = () => {
                     }
                 } catch (e) {
                     console.log("Error updating progress", e);
+                } finally {
+                    isFetching = false;
                 }
             }
         }, 5000); // Update every 5 seconds for better resume accuracy
@@ -407,7 +395,7 @@ export const VideoLecturesScreen: React.FC = () => {
                 }
             ]}>
                 <TouchableOpacity
-                    onPress={() => (navigation as any).navigate('VideoGallery')}
+                    onPress={() => navigation.goBack()}
                     style={[styles.backButton, { backgroundColor: isDark ? theme.backgroundSecondary : '#f3f4f6' }]}
                 >
                     <Ionicons name="chevron-back" size={20} color={theme.text} />

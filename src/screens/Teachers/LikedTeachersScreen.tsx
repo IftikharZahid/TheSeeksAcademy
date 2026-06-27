@@ -32,15 +32,6 @@ export const LikedTeachersScreen: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const globalStaff = useAppSelector(state => state.teachers.list);
 
-    // Hide TopHeader and tab bar — restoration is handled by MainTabs hiddenRoutes logic
-    useFocusEffect(
-        React.useCallback(() => {
-            navigation.getParent()?.setOptions({
-                tabBarStyle: { display: 'none' },
-                headerShown: false,
-            });
-        }, [navigation])
-    );
 
     useEffect(() => {
         const user = auth.currentUser;

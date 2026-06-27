@@ -4,13 +4,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { scale } from '../utils/responsive';
 
-export const CompactCard = ({ icon, label, value, color, width = '50%', copyable = false, onCopy }: any) => {
+export const CompactCard = ({ icon, label, value, color, width = '50%', copyable = false, onCopy, editable = false, onEdit }: any) => {
   const { theme } = useTheme();
   return (
     <View style={[styles.gridCol, { width }]}>
       <TouchableOpacity 
-        activeOpacity={copyable ? 0.65 : 1}
-        onPress={copyable ? onCopy : undefined}
+        activeOpacity={copyable || editable ? 0.65 : 1}
+        onPress={editable ? onEdit : (copyable ? onCopy : undefined)}
         style={[styles.gridInner, { backgroundColor: theme.card, borderColor: theme.border }]}
       >
         <View style={styles.gridHeader}>
@@ -20,9 +20,14 @@ export const CompactCard = ({ icon, label, value, color, width = '50%', copyable
           <Text style={[styles.gridLabel, { color: theme.textSecondary }]} numberOfLines={1}>{label}</Text>
         </View>
         <Text style={[styles.gridValue, { color: theme.text }]} numberOfLines={1}>{value || '—'}</Text>
-        {copyable && (
+        {copyable && !editable && (
           <View style={[styles.copyBadge, { backgroundColor: color + '16' }]}>
             <Ionicons name="copy-outline" size={scale(9)} color={color} />
+          </View>
+        )}
+        {editable && (
+          <View style={[styles.copyBadge, { backgroundColor: color + '16' }]}>
+            <Ionicons name="pencil-outline" size={scale(9)} color={color} />
           </View>
         )}
       </TouchableOpacity>
