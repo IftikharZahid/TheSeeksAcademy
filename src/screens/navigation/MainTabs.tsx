@@ -7,7 +7,7 @@ import { ProfileStack } from './ProfileStack';
 import { VideoStack } from './VideoStack';
 import { MessagesScreen } from '../Communication/MessagesScreen';
 import { TopHeader } from '../../components/TopHeader';
-import { LibraryScreen } from '../Academics/LibraryScreen';
+import { LibraryScreen } from '../Academics/StudentLibraryScreen';
 import { EducationalTabBar } from '../../components/CustomTabBar';
 
 type TabParamList = {
@@ -35,7 +35,7 @@ export const MainTabs: React.FC = () => {
         component={HomeStack}
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeScreen';
-          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'StaffInfoScreen', 'HelpCenterScreen', 'AdminTeachersScreen', 'FeeDetailScreen', 'LikedTeachersScreen', 'DiaryScreen', 'MessagesScreen', 'LibraryScreen'];
+          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'StaffInfoScreen', 'HelpCenterScreen', 'AdminTeachersScreen', 'FeeDetailScreen', 'LikedTeachersScreen', 'DiaryScreen', 'MessagesScreen', 'LibraryScreen', 'DocumentsScreen'];
 
           const isHidden = hiddenRoutes.includes(routeName);
 

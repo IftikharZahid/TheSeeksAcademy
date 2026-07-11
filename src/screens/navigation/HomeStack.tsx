@@ -13,7 +13,8 @@ import { FeeDetailScreen } from '../Finance/FeeDetailScreen';
 
 import { MessagesScreen } from '../Communication/MessagesScreen';
 import { LikedTeachersScreen } from '../Teachers/LikedTeachersScreen';
-import { LibraryScreen } from '../Academics/LibraryScreen';
+import { LibraryScreen } from '../Academics/StudentLibraryScreen';
+import { DocumentsScreen } from '../Academics/DocumentsScreen';
 
 // NOTE: HelpCenterScreen, AboutScreen, PrivacyPolicyScreen,
 // and TeacherDashboardScreen have been moved to the root AppNavigator stack so they
@@ -42,6 +43,7 @@ export type HomeStackParamList = {
   MessagesScreen: undefined;
   LikedTeachersScreen: undefined;
   LibraryScreen: undefined;
+  DocumentsScreen: { category: string };
 };
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
@@ -61,6 +63,7 @@ export const HomeStack: React.FC = () => {
       <Stack.Screen name="MessagesScreen" component={MessagesScreen} />
       <Stack.Screen name="LikedTeachersScreen" component={LikedTeachersScreen} />
       <Stack.Screen name="LibraryScreen" component={LibraryScreen} />
+      <Stack.Screen name="DocumentsScreen" component={DocumentsScreen} />
     </Stack.Navigator>
   );
 };

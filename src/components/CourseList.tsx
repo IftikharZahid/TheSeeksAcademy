@@ -85,11 +85,14 @@ export const CourseList: React.FC = () => {
         : [];
 
     const handleCoursePress = (gallery: any) => {
-        navigation.navigate('VideoLecturesScreen', {
-            galleryId: gallery.id,
-            galleryName: gallery.name,
-            galleryColor: '#3b82f6',
-            videos: gallery.videos || []
+        navigation.navigate('VideoGallery', {
+            screen: 'VideoLecturesScreen',
+            params: {
+                galleryId: gallery.id,
+                galleryName: gallery.name,
+                galleryColor: '#3b82f6',
+                videos: gallery.videos || []
+            }
         });
     };
 

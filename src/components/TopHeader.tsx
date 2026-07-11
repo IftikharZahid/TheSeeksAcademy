@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Modal, TouchableWithoutFeedback, Image, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Modal, TouchableWithoutFeedback, Image, ScrollView, StatusBar } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -153,6 +153,7 @@ export const TopHeader: React.FC = () => {
 
   return (
     <SafeAreaView edges={['top']} style={[styles.safeArea, { backgroundColor: 'transparent' }]}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
       <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         {/* Left Section - Logo & Title */}
         <View style={styles.middleSection}>
@@ -178,7 +179,7 @@ export const TopHeader: React.FC = () => {
             onPress={toggleTheme}
             activeOpacity={0.7}
           >
-            <Ionicons name={isDark ? 'sunny' : 'moon'} size={scale(16)} color={'#ffffff'} />
+            <Ionicons name={isDark ? 'sunny' : 'moon'} size={scale(18)} color={'#ffffff'} />
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.notificationButton, { backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.4)', borderWidth: 1 }]}
@@ -186,15 +187,15 @@ export const TopHeader: React.FC = () => {
             activeOpacity={0.7}
           >
             <Animated.View style={{ transform: [{ rotate: bellRotateInterpolated }] }}>
-              <Ionicons name="notifications-outline" size={scale(18)} color={'#ffffff'} />
-              {(notificationCount > 0 || unreadMessagesCount > 0 || unreadDiariesCount > 0) && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>
-                    {notificationCount + unreadMessagesCount + unreadDiariesCount}
-                  </Text>
-                </View>
-              )}
+              <Ionicons name="notifications-outline" size={scale(20)} color={'#ffffff'} />
             </Animated.View>
+            {totalUnreadCount > 0 && (
+              <View style={[styles.badge, { borderColor: isDark ? theme.background : '#1e3a8a' }]}>
+                <Text style={styles.badgeText}>
+                  {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -205,13 +206,14 @@ export const TopHeader: React.FC = () => {
         transparent={true}
         animationType="fade"
         onRequestClose={() => setShowDropdown(false)}
+        statusBarTranslucent={true}
       >
         <TouchableOpacity
           style={styles.dropdownOverlay}
           activeOpacity={1}
           onPress={() => setShowDropdown(false)}
         >
-          <View style={[styles.dropdownWrapper, { top: insets.top + scale(46), right: scale(16) }]}>
+          <View style={[styles.dropdownWrapper, { top: insets.top + scale(50), right: scale(16) }]}>
             {/* Caret pointing up */}
             <View style={[styles.caret, { borderBottomColor: theme.border }]} />
             <View style={[styles.caretInner, { borderBottomColor: theme.card }]} />
@@ -229,11 +231,12 @@ export const TopHeader: React.FC = () => {
                     onPress={() => {
                       setShowDropdown(false);
                       if (update.type === 'diary') {
-                        navigation.navigate('Diary' as never);
+                        navigation.navigate('DiaryScreen' as never);
                       } else if (update.type === 'message') {
                         navigation.navigate('Messages' as never);
+                      } else if (update.type === 'notice') {
+                        navigation.navigate('ELibrary' as never);
                       }
-                      // Notices were removed, so we do nothing for 'notice' type
                     }}
                   >
                     <View style={[styles.iconBox, { backgroundColor: isDark ? '#334155' : '#f1f5f9' }]}>
@@ -247,11 +250,18 @@ export const TopHeader: React.FC = () => {
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.itemTitle, { color: theme.text }]} numberOfLines={1}>
-                        {update.item.title || update.item.subject || update.item.teacherName || 'Update'}
-                      </Text>
-                      <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={1}>
-                        {update.item.content || update.item.message || update.item.description || ''}
+                      <View style={styles.itemTitleRow}>
+                        <Text style={[styles.itemTitle, { color: theme.text }]} numberOfLines={1}>
+                          {update.type === 'message'
+                            ? `${update.item.senderName || 'Student'}${update.item.senderClass ? ` (${update.item.senderClass})` : ''}`
+                            : (update.item.title || update.item.subject || update.item.teacherName || 'Update')}
+                        </Text>
+                        <Text style={[styles.itemTime, { color: theme.textSecondary }]}>
+                          {formatRelativeTime(update.timeMs)}
+                        </Text>
+                      </View>
+                      <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={2}>
+                        {update.item.content || update.item.message || update.item.details || update.item.description || update.item.text || 'No additional details'}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -369,17 +379,15 @@ const styles = StyleSheet.create({
     minWidth: scale(16),
     height: scale(16),
     borderRadius: scale(8),
-    backgroundColor: '#F44336',
+    backgroundColor: '#ef4444',
     borderWidth: 1.5,
-    borderColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 2,
   },
   badgeText: {
     color: '#fff',
-    fontSize: scale(9),
-    fontWeight: '700',
+    fontSize: scale(8),
+    fontWeight: 'bold',
   },
   dropdownOverlay: {
     flex: 1,
@@ -445,18 +453,19 @@ const styles = StyleSheet.create({
   },
   dropdownItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: scale(10),
+    alignItems: 'flex-start',
+    paddingVertical: scale(12),
     paddingHorizontal: scale(14),
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconBox: {
-    width: scale(32),
-    height: scale(32),
-    borderRadius: scale(16),
+    width: scale(36),
+    height: scale(36),
+    borderRadius: scale(18),
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: scale(10),
+    marginRight: scale(12),
+    marginTop: scale(2),
   },
   dropdownContent: {
     flex: 1,

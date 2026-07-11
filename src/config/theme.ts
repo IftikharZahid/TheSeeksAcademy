@@ -16,9 +16,9 @@ export const lightTheme = {
   textInverse: '#ffffff',
   
   // Primary Brand Color
-  primary: '#8b5cf6',
-  primaryLight: '#a78bfa',
-  primaryDark: '#7c3aed',
+  primary: '#1e3a8a',
+  primaryLight: '#2563eb',
+  primaryDark: '#172554',
   
   // Accent Colors
   accent: '#06b6d4',
@@ -70,9 +70,9 @@ export const darkTheme = {
   textInverse: '#0f172a',
   
   // Primary Brand Color
-  primary: '#a78bfa',
-  primaryLight: '#c4b5fd',
-  primaryDark: '#8b5cf6',
+  primary: '#1e3a8a',
+  primaryLight: '#3b82f6',
+  primaryDark: '#172554',
   
   // Accent Colors
   accent: '#22d3ee',

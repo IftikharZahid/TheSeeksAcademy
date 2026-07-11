@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet, ScrollView, Animated, TouchableOpacity, Modal, Dimensions, Easing, RefreshControl, StatusBar } from "react-native";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTheme } from '../../context/ThemeContext';
@@ -348,7 +349,7 @@ export const AttendanceScreen: React.FC = () => {
         barStyle={isDark ? 'light-content' : 'dark-content'} 
       />
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+      <View style={[styles.header, { borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomWidth: 0,  backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={theme.text} />
         </TouchableOpacity>

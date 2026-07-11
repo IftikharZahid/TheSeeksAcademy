@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
   KeyboardAvoidingView, Platform, Dimensions, Keyboard, FlatList, Image, Alert, Animated, RefreshControl,
-  Modal, Linking
+  Modal, Linking, StatusBar
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
@@ -750,7 +750,8 @@ export const MessagesScreen: React.FC = () => {
   if (!activeGroup) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-        <View style={[styles.headerNoticeStyle, { backgroundColor: theme.card }]}>
+        <StatusBar backgroundColor={theme.card} barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={[styles.headerNoticeStyle, { backgroundColor: theme.card, borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomColor: theme.border, borderBottomWidth: 0 }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonNoticeStyle}>
             <Ionicons name="arrow-back" size={scale(24)} color={theme.text} />
           </TouchableOpacity>
@@ -1000,9 +1001,10 @@ export const MessagesScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundSecondary }]} edges={['top', 'left', 'right']}>
+      <StatusBar backgroundColor={theme.card} barStyle={isDark ? 'light-content' : 'dark-content'} />
       {/* Header — onLayout tracks real height so KAV offset is exact */}
       <View
-        style={[styles.headerNoticeStyle, { backgroundColor: theme.card, justifyContent: 'flex-start' }]}
+        style={[styles.headerNoticeStyle, { backgroundColor: theme.card, justifyContent: 'flex-start', borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomColor: theme.border, borderBottomWidth: 0 }]}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       >
         <TouchableOpacity onPress={() => setActiveGroup(null)} style={[styles.backButtonNoticeStyle, { marginRight: scale(8) }]}>

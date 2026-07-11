@@ -127,7 +127,7 @@ export const TeachersScreen: React.FC = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.border, borderBottomWidth: 1 }]}>
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomColor: theme.border, borderBottomWidth: 0 }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('HomeScreen')}

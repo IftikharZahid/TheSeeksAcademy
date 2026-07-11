@@ -233,7 +233,7 @@ export default authSlice.reducer;
  * Initializes Firebase auth listener and dispatches to Redux.
  * Returns the unsubscribe function.
  */
-export const initAuthListener = (dispatch: ThunkDispatch<any, any, UnknownAction>) => {
+export const initAuthListener = (dispatch: ThunkDispatch<any, any, UnknownAction>, getState: () => any) => {
     return onAuthStateChanged(auth, async (firebaseUser: User | null) => {
         if (firebaseUser) {
             const actionResult = await dispatch(fetchUserProfile({ uid: firebaseUser.uid, email: firebaseUser.email }));
@@ -255,11 +255,25 @@ export const initAuthListener = (dispatch: ThunkDispatch<any, any, UnknownAction
                     if (token) savePushTokenToFirestore(firebaseUser.uid, token);
                 }).catch((e: any) => console.log('Push Token Error:', e));
             } else {
-                // Profile not found - User was likely deleted from dashboard
-                const { signOut } = require('firebase/auth');
-                await signOut(auth);
-                dispatch(setUser(null));
-                dispatch(clearAuth());
+                // Profile fetch failed (Likely due to no internet connection)
+                const state = getState();
+                if (state.auth && state.auth.profile) {
+                    console.log('🌐 Offline fallback: Using persisted profile for user', firebaseUser.uid);
+                    // User is offline, but we have their cached profile. Keep them logged in!
+                    const serializable: SerializableUser = {
+                        uid: firebaseUser.uid,
+                        email: firebaseUser.email,
+                        displayName: firebaseUser.displayName,
+                        photoURL: firebaseUser.photoURL,
+                    };
+                    dispatch(setUser(serializable));
+                } else {
+                    // Profile truly not found and no offline cache - User was likely deleted from dashboard
+                    const { signOut } = require('firebase/auth');
+                    await signOut(auth);
+                    dispatch(setUser(null));
+                    dispatch(clearAuth());
+                }
             }
         } else {
             dispatch(setUser(null));

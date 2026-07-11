@@ -317,7 +317,7 @@ export const ResultsScreen: React.FC = () => {
         backgroundColor={theme.card}
         barStyle={isDark ? 'light-content' : 'dark-content'}
       />
-      <View style={[styles.header, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
+      <View style={[styles.header, { borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomWidth: 0,  backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
           <Ionicons name="chevron-back" size={20} color={isDark ? '#e2e8f0' : '#1e293b'} />
         </TouchableOpacity>

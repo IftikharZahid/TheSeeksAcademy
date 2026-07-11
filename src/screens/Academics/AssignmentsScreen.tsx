@@ -135,7 +135,7 @@ export const AssignmentsScreen: React.FC = () => {
       />
 
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <View style={[styles.header, { backgroundColor: theme.card }]}>
+      <View style={[styles.header, { borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomWidth: 0,  backgroundColor: theme.card }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={scale(24)} color={theme.text} />
         </TouchableOpacity>

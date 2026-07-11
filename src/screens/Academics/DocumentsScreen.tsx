@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ScrollView, Modal, Dimensions, Linking, Image, KeyboardAvoidingView, Platform, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -153,9 +153,12 @@ const renderRichText = (text: string, theme: any, isDark: boolean) => {
     });
 };
 
-export const LibraryScreen: React.FC = () => {
+export const DocumentsScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const category = route.params?.category || 'All';
+
   const notices = useAppSelector(state => state.notifications.notices) as Notice[];
   const profile = useAppSelector((state: any) => state.auth.profile);
   const studentClass = profile?.class || '';
@@ -165,13 +168,14 @@ export const LibraryScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const readIds = useAppSelector(state => state.notifications.readIds) as string[];
   
-
-  
   const classRestrictedNotices = notices.filter((n: any) => {
     const targetClass = n.targetClass || n.class || 'All Classes';
-    if (!studentClass) return true;
-    if (targetClass.toLowerCase() === 'all' || targetClass.toLowerCase() === 'all classes') return true;
-    return targetClass.toLowerCase() === studentClass.toLowerCase();
+    const isClassMatch = !studentClass || targetClass.toLowerCase() === 'all' || targetClass.toLowerCase() === 'all classes' || targetClass.toLowerCase() === studentClass.toLowerCase();
+    
+    if (!isClassMatch) return false;
+    if (category !== 'All' && n.category !== category) return false;
+
+    return true;
   });
 
   const unreadCount = classRestrictedNotices.filter(n => !readIds.includes(n.id)).length;
@@ -376,20 +380,7 @@ export const LibraryScreen: React.FC = () => {
         <SafeAreaView edges={['top']} style={{ zIndex: 10 }}>
             <View style={styles.headerTopRow}>
               <TouchableOpacity 
-              onPress={() => {
-                if (navigation.canGoBack()) {
-                  navigation.goBack();
-                } else {
-                  const routes = navigation.getState()?.routeNames || [];
-                  if (routes.includes('TeacherDashboardScreen')) {
-                    navigation.navigate('TeacherDashboardScreen' as any);
-                  } else if (routes.includes('Main')) {
-                    navigation.navigate('Main' as any);
-                  } else if (routes.includes('Home')) {
-                    navigation.navigate('Home' as any);
-                  }
-                }
-              }}
+              onPress={() => navigation.goBack()}
               style={{
                 width: scale(40),
                 height: scale(40),
@@ -403,7 +394,7 @@ export const LibraryScreen: React.FC = () => {
             >
               <Ionicons name="chevron-back" size={scale(24)} color="#fff" />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>e-Library</Text>
+            <Text style={styles.headerTitle}>{category}</Text>
             <TouchableOpacity style={{ padding: scale(8) }}>
               <Ionicons name="notifications-outline" size={scale(24)} color="#fff" />
               {unreadCount > 0 && (

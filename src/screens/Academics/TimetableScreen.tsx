@@ -17,7 +17,11 @@ interface ClassSession {
   lectureNo?: string | number;
 }
 
-const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAYS_ORDER = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_EMOJIS: Record<string, string> = {
+  Monday: '📅', Tuesday: '📆', Wednesday: '📋',
+  Thursday: '📌', Friday: '🕌', Saturday: '📚',
+};
 
 // Helper function to format 24h string (e.g. "13:30 - 15:00" or "09:00") into 12h format with AM/PM
 const formatTo12Hour = (timeStr: string): string => {
@@ -62,7 +66,7 @@ export const TimetableScreen: React.FC = () => {
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const today = dayNames[new Date().getDay()];
     // If Sunday (not in timetable), default to Monday
-    return days.includes(today) ? today : 'Monday';
+    return DAYS_ORDER.includes(today) ? today : 'Monday';
   };
   const [activeDay, setActiveDay] = useState(getTodayName());
   const [refreshing, setRefreshing] = useState(false);
@@ -180,7 +184,7 @@ export const TimetableScreen: React.FC = () => {
         barStyle={isDark ? 'light-content' : 'dark-content'} 
       />
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.card, borderBottomWidth: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 4 }]}>
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomWidth: 0 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={scale(24)} color={theme.text} />
         </TouchableOpacity>
@@ -189,40 +193,56 @@ export const TimetableScreen: React.FC = () => {
       </View>
 
       <View style={styles.scrollContainerWrapper}>
-        {/* Horizontal Non-Scrollable Day Pills to ensure none are hidden */}
-        <View style={styles.dayPillsContainer}>
-          {days.map((day) => (
-            <TouchableOpacity
-              key={day}
-              onPress={() => setActiveDay(day)}
-              style={[
-                styles.dayPill,
-                {
-                  backgroundColor: activeDay === day ? theme.primary : 'transparent',
-                }
-              ]}
-            >
-              <Text style={[
-                styles.dayPillText,
-                { color: activeDay === day ? '#fff' : theme.textSecondary }
-              ]}>
-                {day.substring(0, 3)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* ── Day Tabs ── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={[styles.tabBar, { backgroundColor: theme.card, borderBottomColor: theme.border }]}
+          contentContainerStyle={styles.tabBarContent}
+        >
+          {DAYS_ORDER.map(day => {
+            const isSelected = day === activeDay;
+            const isToday = day === getTodayName();
+            return (
+              <TouchableOpacity
+                key={day}
+                onPress={() => setActiveDay(day)}
+                style={[
+                  styles.tab,
+                  isSelected && { backgroundColor: theme.primary + '1A' },
+                  isToday && !isSelected && { borderBottomWidth: 2, borderBottomColor: theme.primary + '55' },
+                ]}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: scale(10), marginBottom: scale(1) }}>{DAY_EMOJIS[day]}</Text>
+                <Text style={[
+                  styles.tabLabel,
+                  { color: isSelected ? theme.primary : theme.textSecondary },
+                  isSelected && { fontWeight: '800' },
+                ]}>
+                  {day.slice(0, 3).toUpperCase()}
+                </Text>
+                {isToday && (
+                  <View style={[styles.todayDot, { backgroundColor: theme.primary }]} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
         <ScrollView
-          contentContainerStyle={{ paddingBottom: scale(120) }}
+          contentContainerStyle={{ paddingBottom: scale(120), paddingTop: scale(14) }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
           }
         >
-          {/* Selected Day Heading with Underline */}
-          <View style={styles.selectedDayContainer}>
-            <Text style={[styles.selectedDayText, { color: theme.text }]}>{activeDay}</Text>
-            <View style={[styles.selectedDayUnderline, { backgroundColor: theme.primary }]} />
-          </View>
+          {/* Today badge */}
+          {activeDay === getTodayName() && (
+            <View style={[styles.todayBadge, { backgroundColor: theme.primary + '15' }]}>
+              <Ionicons name="sunny-outline" size={scale(13)} color={theme.primary} />
+              <Text style={[styles.todayBadgeText, { color: theme.primary }]}>Today's Schedule</Text>
+            </View>
+          )}
 
           {/* Timeline Classes */}
           <View style={styles.timelineWrapper}>
@@ -343,42 +363,42 @@ const styles = StyleSheet.create({
   scrollContainerWrapper: {
     flex: 1,
   },
-  dayPillsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: scale(10),
-    marginVertical: scale(6),
+  // Day Tabs
+  tabBar: {
+    maxHeight: scale(58),
+    borderBottomWidth: 0.5,
   },
-  dayPill: {
-    paddingVertical: scale(6),
-    borderRadius: scale(12),
+  tabBarContent: {
+    paddingHorizontal: scale(8),
     alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
+  },
+  tab: {
+    alignItems: 'center',
+    paddingHorizontal: scale(14),
+    paddingVertical: scale(8),
+    borderRadius: scale(10),
     marginHorizontal: scale(2),
+    minWidth: scale(52),
   },
-  dayPillText: {
-    fontSize: scale(12),
-    fontWeight: '600',
+  tabLabel: { fontSize: scale(11), fontWeight: '600', letterSpacing: 0.5 },
+  todayDot: {
+    width: scale(4), height: scale(4),
+    borderRadius: scale(2),
+    marginTop: scale(2),
   },
-  selectedDayContainer: {
-    paddingHorizontal: scale(16),
-    marginTop: scale(0),
-    marginBottom: scale(8),
+  // Today badge
+  todayBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(5),
     alignSelf: 'flex-start',
+    paddingHorizontal: scale(12),
+    paddingVertical: scale(5),
+    borderRadius: scale(20),
+    marginBottom: scale(12),
+    marginLeft: scale(16),
   },
-  selectedDayText: {
-    fontSize: scale(15),
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: scale(2),
-  },
-  selectedDayUnderline: {
-    height: scale(3),
-    width: '60%',
-    borderRadius: scale(1.5),
-  },
+  todayBadgeText: { fontSize: scale(11), fontWeight: '700' },
   timelineWrapper: {
     paddingHorizontal: scale(16),
   },

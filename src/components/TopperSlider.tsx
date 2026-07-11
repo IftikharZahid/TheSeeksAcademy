@@ -57,7 +57,13 @@ const TopperSliderSkeleton: React.FC<{ theme: any; isDark: boolean }> = ({ theme
             </View>
             <View style={{ flexDirection: 'row', gap: scale(10) }}>
                 {[1].map((i) => (
-                    <View key={i} style={[styles.studentCard, { backgroundColor: theme.card, borderColor: theme.border, elevation: 0, shadowOpacity: 0 }]}>
+                    <LinearGradient
+                        key={i}
+                        colors={['#1e3a8a', '#1e40af']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={[styles.studentCard, { elevation: 0, shadowOpacity: 0 }]}
+                    >
                         <View style={styles.studentCardContent}>
                             <View style={styles.studentCardLeft}>
                                 <View style={[styles.studentInitialsContainer, { backgroundColor: skeletonColor, borderColor: 'transparent' }]}>
@@ -75,7 +81,7 @@ const TopperSliderSkeleton: React.FC<{ theme: any; isDark: boolean }> = ({ theme
                                 <View style={{ width: scale(30), height: scale(14), backgroundColor: skeletonColor, borderRadius: scale(3), marginTop: scale(4) }} />
                             </View>
                         </View>
-                    </View>
+                    </LinearGradient>
                 ))}
             </View>
         </View>
@@ -241,7 +247,7 @@ export const TopperSlider: React.FC = () => {
             {toppersData.length > 0 && (
                 <View style={styles.header}>
                     <View style={styles.headerTitleRow}>
-                        <Text style={[styles.sectionTitle, { color: theme.primary }]}>🏆 Top Performer</Text>
+                        <Text style={[styles.sectionTitle, { color: theme.text }]}>🏆 Top Performer</Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         {isOffline && (

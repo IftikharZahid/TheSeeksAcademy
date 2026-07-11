@@ -35,9 +35,14 @@ import { initMessagesListener, loadLastReadTimestamp } from './src/store/slices/
 import { initAssignmentsListener } from './src/store/slices/assignmentsSlice';
 import { initTimetableListener } from './src/store/slices/timetableSlice';
 import { initAttendanceListener } from './src/store/slices/attendanceSlice';
+import { initAppSettingsListener } from './src/store/slices/appSettingsSlice';
 import { loadReadResultIds } from './src/store/slices/resultsSlice';
 import { AppNavigator } from './src/screens/navigation/AppNavigator';
 import { Audio } from 'expo-av';
+
+// Notification Module
+import { initPushNotificationsListener } from './src/features/notification/redux/pushNotificationsSlice';
+import { registerForPushNotificationsAsync } from './src/features/notification/services/fcmService';
 
 /**
  * Inner component that has access to Redux dispatch
@@ -66,13 +71,14 @@ function AppContent() {
     dispatch(loadLastReadTimestamp());
     dispatch(loadReadResultIds());
 
-    const unsubAuth = initAuthListener(dispatch);
+    const unsubAuth = initAuthListener(dispatch, store.getState);
     const unsubCourses = initCoursesListener(dispatch);
     const unsubTeachers = initTeachersListener(dispatch);
     const unsubNotifications = initNotificationsListener(dispatch);
     const unsubGalleries = initVideoGalleriesListener(dispatch);
     const unsubAssignments = initAssignmentsListener(dispatch);
     const unsubTimetable = initTimetableListener(dispatch);
+    const unsubAppSettings = initAppSettingsListener(dispatch);
 
     return () => {
       unsubAuth();
@@ -82,6 +88,7 @@ function AppContent() {
       unsubGalleries();
       unsubAssignments();
       unsubTimetable();
+      unsubAppSettings();
     };
   }, [dispatch]);
 
@@ -92,6 +99,10 @@ function AppContent() {
       // Attendance listener: Teacher/Dashboard writes to attendance/{auth_uid}
       // We MUST use user.uid (Firebase Auth UID), NOT any Firestore doc ID
       const unsubAttendance = initAttendanceListener(dispatch, user.uid);
+      
+      // Register for FCM Push Notifications
+      registerForPushNotificationsAsync(user.uid, profile);
+
       return () => {
         unsubLikedVideos();
         unsubAttendance();
@@ -104,9 +115,11 @@ function AppContent() {
     if (profile) {
       const unsubMessages = initMessagesListener(dispatch, profile);
       const unsubDiaries = initDiariesListener(dispatch, profile.class);
+      const unsubPushNotifications = initPushNotificationsListener(dispatch, profile);
       return () => {
         unsubMessages();
         unsubDiaries();
+        unsubPushNotifications();
       };
     }
   }, [dispatch, profile]);

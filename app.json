@@ -13,10 +13,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.TheSeeksAcademy.Students"
+      "bundleIdentifier": "com.TheSeeksAcademy.Students",
+      "buildNumber": "1"
     },
     "android": {
       "package": "com.TheSeeksAcademy.Students",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0d1f3c"

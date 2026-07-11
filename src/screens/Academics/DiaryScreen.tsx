@@ -128,7 +128,7 @@ export const DiaryScreen: React.FC = () => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
       <StatusBar backgroundColor={theme.card} barStyle={isDark ? 'light-content' : 'dark-content'} />
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+      <View style={[styles.header, { backgroundColor: theme.card, borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomColor: theme.border, borderBottomWidth: 0 }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={scale(24)} color={theme.text} />
         </TouchableOpacity>

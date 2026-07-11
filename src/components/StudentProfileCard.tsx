@@ -38,8 +38,9 @@ export const StudentProfileCard: React.FC<StudentProfileCardProps> = ({
           <View style={styles.avatarContainer}>
             <Image
               source={avatarUrl ? { uri: avatarUrl } : require('../assets/default-profile.png')}
-              style={styles.avatarImage}
+              style={[styles.avatarImage, !avatarUrl && { borderColor: isDark ? theme.border : '#f3f4f6' }]}
               contentFit="cover"
+              tintColor={!avatarUrl && isDark ? '#ffffff' : undefined}
             />
             <View style={styles.onlineIndicator} />
           </View>
