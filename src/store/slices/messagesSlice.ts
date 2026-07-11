@@ -160,8 +160,9 @@ const messagesSlice = createSlice({
 
 export const selectUnreadMessagesCount = (state: any) => {
     const { list, lastReadTimestampMs } = state.messages;
+    const currentUserId = state.auth?.user?.uid;
     if (lastReadTimestampMs === null) return 0; // still loading from AsyncStorage
-    return list.filter((m: SerializableMessage) => m.createdAtMs > lastReadTimestampMs).length;
+    return list.filter((m: SerializableMessage) => m.createdAtMs > lastReadTimestampMs && m.senderId !== currentUserId).length;
 };
 
 export const { setMessages, setLoading, addMessage, clearMessages, incrementTodayMsgCount } = messagesSlice.actions;

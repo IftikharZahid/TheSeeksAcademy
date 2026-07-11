@@ -38,6 +38,8 @@ export const TopHeader: React.FC = () => {
   const notices = useAppSelector((state) => state.notifications.notices);
   const diaries = useAppSelector((state) => state.notifications.diaries);
   const readDiaryIds = useAppSelector((state) => state.notifications.readDiaryIds);
+  const readNoticeIds = useAppSelector((state) => state.notifications.readIds);
+  const lastReadTimestampMs = useAppSelector((state) => state.messages.lastReadTimestampMs);
   const unreadDiariesCount = useAppSelector((state) => selectUnreadDiariesCount(state.notifications.diaries, state.notifications.readDiaryIds));
   const messages = useAppSelector((state) => state.messages.list);
   const totalUnreadCount = notificationCount + unreadMessagesCount + unreadDiariesCount;
@@ -67,7 +69,7 @@ export const TopHeader: React.FC = () => {
   }
   
   recentUpdates.sort((a, b) => b.timeMs - a.timeMs);
-  const topUpdates = recentUpdates.slice(0, 4);
+  const topUpdates = recentUpdates.slice(0, 15);
   const [showDropdown, setShowDropdown] = useState(false);
 
   // Time-based academic greeting
@@ -112,7 +114,7 @@ export const TopHeader: React.FC = () => {
         await soundRef.current.unloadAsync().catch(() => {});
       }
       const { sound } = await Audio.Sound.createAsync(
-        require('../assets/bell.wav')
+        require('../../assets/Bell.mp3')
       );
       soundRef.current = sound;
       await sound.playAsync();
@@ -224,7 +226,17 @@ export const TopHeader: React.FC = () => {
               </View>
             <ScrollView style={styles.dropdownContent} showsVerticalScrollIndicator={false}>
               {topUpdates.length > 0 ? (
-                topUpdates.map((update, index) => (
+                topUpdates.map((update, index) => {
+                  let isUnread = false;
+                  if (update.type === 'diary') {
+                    isUnread = !readDiaryIds.includes(update.item.id);
+                  } else if (update.type === 'message') {
+                    isUnread = lastReadTimestampMs !== null && update.timeMs > lastReadTimestampMs && update.item.senderId !== user?.uid;
+                  } else if (update.type === 'notice') {
+                    isUnread = !readNoticeIds.includes(update.item.id);
+                  }
+                  
+                  return (
                   <TouchableOpacity
                     key={index}
                     style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
@@ -250,22 +262,25 @@ export const TopHeader: React.FC = () => {
                       />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <View style={styles.itemTitleRow}>
-                        <Text style={[styles.itemTitle, { color: theme.text }]} numberOfLines={1}>
+                      <Text style={[styles.itemTitle, { color: theme.text, marginBottom: scale(2) }]} numberOfLines={1}>
                           {update.type === 'message'
                             ? `${update.item.senderName || 'Student'}${update.item.senderClass ? ` (${update.item.senderClass})` : ''}`
                             : (update.item.title || update.item.subject || update.item.teacherName || 'Update')}
-                        </Text>
-                        <Text style={[styles.itemTime, { color: theme.textSecondary }]}>
-                          {formatRelativeTime(update.timeMs)}
-                        </Text>
-                      </View>
-                      <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={2}>
+                      </Text>
+                      <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={1}>
                         {update.item.content || update.item.message || update.item.details || update.item.description || update.item.text || 'No additional details'}
                       </Text>
                     </View>
+                    <View style={{ alignItems: 'flex-end', marginLeft: scale(8), minWidth: scale(50) }}>
+                      {isUnread && (
+                        <View style={[styles.unreadDot, { backgroundColor: '#10b981', width: scale(8), height: scale(8), borderRadius: scale(4), marginBottom: scale(4) }]} />
+                      )}
+                      <Text style={[styles.itemTime, { color: theme.textSecondary, fontSize: scale(10) }]}>
+                        {formatRelativeTime(update.timeMs)}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
-                ))
+                )})
               ) : (
                 <View style={styles.emptyDropdown}>
                   <Ionicons name="notifications-off-outline" size={scale(24)} color={theme.textSecondary} />
@@ -425,7 +440,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   dropdownContainer: {
-    width: '100%',
+    width: scale(260),
     borderRadius: scale(12),
     borderWidth: 1,
     shadowColor: '#000',
@@ -440,7 +455,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: scale(16),
-    paddingVertical: scale(10),
+    paddingVertical: scale(8),
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   dropdownTitle: {
@@ -454,21 +469,22 @@ const styles = StyleSheet.create({
   dropdownItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingVertical: scale(12),
+    paddingVertical: scale(8),
     paddingHorizontal: scale(14),
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconBox: {
-    width: scale(36),
-    height: scale(36),
-    borderRadius: scale(18),
+    width: scale(28),
+    height: scale(28),
+    borderRadius: scale(14),
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: scale(12),
+    marginRight: scale(10),
     marginTop: scale(2),
   },
   dropdownContent: {
-    flex: 1,
+    flexShrink: 1,
+    maxHeight: scale(300),
   },
   itemTitleRow: {
     flexDirection: 'row',

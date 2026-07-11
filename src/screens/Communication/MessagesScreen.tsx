@@ -540,7 +540,7 @@ export const MessagesScreen: React.FC = () => {
             bellSoundRef.current = null;
           }
           const { sound } = await Audio.Sound.createAsync(
-            require('../../assets/bell.wav')
+            require('../../assets/Bell.mp3')
           );
           bellSoundRef.current = sound;
           await sound.playAsync();
@@ -749,17 +749,15 @@ export const MessagesScreen: React.FC = () => {
   // ── Render: Groups List ────────────────────────────────────────────────
   if (!activeGroup) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-        <StatusBar backgroundColor={theme.card} barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['top', 'left', 'right']}>
+        <StatusBar translucent backgroundColor="transparent" barStyle={isDark ? 'light-content' : 'dark-content'} />
         <View style={[styles.headerNoticeStyle, { backgroundColor: theme.card, borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomColor: theme.border, borderBottomWidth: 0 }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonNoticeStyle}>
-            <Ionicons name="arrow-back" size={scale(24)} color={theme.text} />
-          </TouchableOpacity>
+          <View style={styles.placeholderButton} />
           <Text style={[styles.headerTitleNoticeStyle, { color: theme.text }]}>Messages</Text>
           <View style={styles.placeholderButton} />
         </View>
         <ScrollView
-          style={styles.contentContainerNoticeStyle}
+          style={[styles.contentContainerNoticeStyle, { backgroundColor: theme.background }]}
           contentContainerStyle={{ paddingVertical: scale(16), paddingBottom: scale(100) }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
@@ -1000,8 +998,8 @@ export const MessagesScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.backgroundSecondary }]} edges={['top', 'left', 'right']}>
-      <StatusBar backgroundColor={theme.card} barStyle={isDark ? 'light-content' : 'dark-content'} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['top', 'left', 'right']}>
+      <StatusBar translucent backgroundColor="transparent" barStyle={isDark ? 'light-content' : 'dark-content'} />
       {/* Header — onLayout tracks real height so KAV offset is exact */}
       <View
         style={[styles.headerNoticeStyle, { backgroundColor: theme.card, justifyContent: 'flex-start', borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomColor: theme.border, borderBottomWidth: 0 }]}
@@ -1059,6 +1057,7 @@ export const MessagesScreen: React.FC = () => {
           offset = height of everything above this view (header).
           On Android the system also does adjustResize but 'padding' + offset
           gives us reliable, consistent behavior without any double-push. */}
+      <View style={{ flex: 1, backgroundColor: theme.backgroundSecondary }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
@@ -1233,6 +1232,7 @@ export const MessagesScreen: React.FC = () => {
           </View>
         )}
       </KeyboardAvoidingView>
+      </View>
 
       {/* ── Custom Action Sheet Bottom Modal (Now Centered) ── */}
       <Modal
