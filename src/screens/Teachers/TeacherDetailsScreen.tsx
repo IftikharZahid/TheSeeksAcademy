@@ -81,13 +81,8 @@ export const StaffInfoScreen: React.FC = () => {
           >
             <Ionicons name="arrow-back" size={scale(24)} color="#ffffff" />
           </TouchableOpacity>
-          {/* Header Title Removed */}
-          <TouchableOpacity
-            onPress={handleToggleLike}
-            style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
-          >
-            <Ionicons name={isFavorite ? "heart" : "heart-outline"} size={scale(22)} color={isFavorite ? "#ff4081" : "#ffffff"} />
-          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: '#ffffff' }]}>Teacher Profile</Text>
+          <View style={{ width: scale(40) }} />
         </View>
       </SafeAreaView>
 
@@ -109,7 +104,7 @@ export const StaffInfoScreen: React.FC = () => {
                       style={styles.profileImage}
                     />
                   ) : (
-                    <View style={[styles.profileImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#e5e7eb' }]}>
+                    <View style={[styles.profileImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#374151' : '#e5e7eb' }]}>
                       <Ionicons 
                         name={(teacher as any).gender?.toLowerCase() === 'female' ? "woman" : "man"} 
                         size={scale(40)} 
@@ -125,7 +120,7 @@ export const StaffInfoScreen: React.FC = () => {
 
               <View style={styles.profileMeta}>
                 <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>{teacher.name}</Text>
-                <Text style={[styles.role, { color: theme.primary }]} numberOfLines={1}>{teacher.subject} Specialist</Text>
+                <Text style={[styles.role, { color: isDark ? '#93c5fd' : theme.primary }]} numberOfLines={1}>{teacher.subject} Specialist</Text>
                 <View style={[styles.badge, { backgroundColor: theme.primary + '12' }]}>
                   <Text style={[styles.badgeText, { color: theme.primary }]}>Active Instructor</Text>
                 </View>
@@ -182,7 +177,7 @@ export const StaffInfoScreen: React.FC = () => {
           <View style={[styles.detailsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
             {/* Qualification Item */}
             <View style={styles.detailsRow}>
-              <View style={[styles.iconBox, { backgroundColor: '#fee2e2' }]}>
+              <View style={[styles.iconBox, { backgroundColor: isDark ? 'rgba(248,113,113,0.15)' : '#fee2e2' }]}>
                 <Ionicons name="school" size={scale(15)} color="#ef4444" />
               </View>
               <View style={styles.detailsTextContent}>
@@ -195,7 +190,7 @@ export const StaffInfoScreen: React.FC = () => {
 
             {/* Availability Item */}
             <View style={styles.detailsRow}>
-              <View style={[styles.iconBox, { backgroundColor: '#dcfce7' }]}>
+              <View style={[styles.iconBox, { backgroundColor: isDark ? 'rgba(74,222,128,0.15)' : '#dcfce7' }]}>
                 <Ionicons name="calendar" size={scale(15)} color="#22c55e" />
               </View>
               <View style={styles.detailsTextContent}>

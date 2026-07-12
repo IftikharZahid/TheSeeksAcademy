@@ -11,7 +11,7 @@ import {
     ActivityIndicator,
     StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -152,6 +152,7 @@ const GalleryCard: React.FC<GalleryCardProps> = ({ gallery, index, onPress }) =>
 export const VideoGalleryScreen: React.FC = () => {
     const navigation = useNavigation<any>();
     const { theme, isDark } = useTheme();
+    const insets = useSafeAreaInsets();
     const headerAnim = useRef(new Animated.Value(0)).current;
 
     // ── Use Redux store (single source of truth) ──
@@ -212,13 +213,17 @@ export const VideoGalleryScreen: React.FC = () => {
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
-            <StatusBar backgroundColor={theme.background} barStyle={isDark ? "light-content" : "dark-content"} />
+        <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top, backgroundColor: theme.card, zIndex: 999 }} />
+            <StatusBar translucent={true} backgroundColor="transparent" barStyle={isDark ? "light-content" : "dark-content"} />
             {/* Compact Header */}
             <Animated.View
                 style={[
                     styles.header,
                     {
+                        backgroundColor: theme.card,
+                        borderBottomWidth: 1,
+                        borderBottomColor: theme.border,
                         opacity: headerAnim,
                     }
                 ]}
@@ -291,7 +296,7 @@ export const VideoGalleryScreen: React.FC = () => {
                     )}
                 </ScrollView>
             )}
-        </SafeAreaView>
+        </View>
     );
 };
 

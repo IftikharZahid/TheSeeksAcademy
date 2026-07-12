@@ -155,8 +155,9 @@ export const LibraryScreen: React.FC = () => {
   const palette = ['#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#eab308', '#ec4899', '#6366f1', '#f43f5e', '#0ea5e9', '#22c55e'];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.card} />
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top, backgroundColor: theme.card, zIndex: 999 }} />
+      <StatusBar translucent={true} backgroundColor="transparent" barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Header */}
       <View style={[styles.header, { borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomWidth: 0,  backgroundColor: theme.card, borderBottomColor: theme.border }]}>
@@ -293,8 +294,8 @@ export const LibraryScreen: React.FC = () => {
                     icon: cardIcon,
                     color: cardColor,
                     onPress: () => isVideo
-                      ? navigation.navigate('VideoGalleryScreen')
-                      : navigation.navigate('DocumentsScreen', { category: catName }),
+                      ? navigation.navigate('VideoGallery', { screen: 'VideoGalleryScreen' })
+                      : navigation.navigate('Home', { screen: 'DocumentsScreen', params: { category: catName } }),
                     count: isVideo
                       ? reduxGalleries.length
                       : notices.filter((n: any) => n.category === catName).length,
@@ -305,7 +306,7 @@ export const LibraryScreen: React.FC = () => {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

@@ -210,7 +210,7 @@ export const CourseCategories: React.FC = () => {
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>Quick Access</Text>
                 {categories.length > 6 && (
                     <TouchableOpacity onPress={() => setShowAll(!showAll)}>
-                        <Text style={[styles.viewAllText, { color: theme.primary }]}>{showAll ? 'Show Less' : 'View All'}</Text>
+                        <Text style={[styles.viewAllText, { color: isDark ? '#60a5fa' : theme.primary }]}>{showAll ? 'Show Less' : 'View All'}</Text>
                     </TouchableOpacity>
                 )}
             </View>

@@ -332,7 +332,7 @@ export const HomeScreen: React.FC = () => {
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Continue Learning</Text>
               <TouchableOpacity onPress={() => navigation.navigate('VideoGallery', { screen: 'LikedVideosScreen' })}>
-                <Text style={[styles.seeAllText, { color: theme.primary }]}>See All</Text>
+                <Text style={[styles.seeAllText, { color: isDark ? '#60a5fa' : theme.primary }]}>See All</Text>
               </TouchableOpacity>
             </View>
             
@@ -375,7 +375,7 @@ export const HomeScreen: React.FC = () => {
                         {/* Category chip */}
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: scale(2) }}>
                           <View style={[styles.chipTag, { backgroundColor: (theme.primary || '#3b82f6') + '15' }]}>
-                            <Text style={[styles.chipTagText, { color: theme.primary }]} numberOfLines={1}>
+                            <Text style={[styles.chipTagText, { color: isDark ? '#60a5fa' : theme.primary }]} numberOfLines={1}>
                               {item.galleryName || 'Subject'}
                             </Text>
                           </View>
@@ -409,8 +409,8 @@ export const HomeScreen: React.FC = () => {
                             style={[styles.resumeButton, { backgroundColor: (theme.primary || '#3b82f6') + '15' }]}
                             onPress={() => handleVideoPress(item)}
                           >
-                            <Ionicons name="play" size={scale(9)} color={theme.primary} />
-                            <Text style={[styles.resumeButtonText, { color: theme.primary }]}>Resume</Text>
+                            <Ionicons name="play" size={scale(9)} color={isDark ? '#60a5fa' : theme.primary} />
+                            <Text style={[styles.resumeButtonText, { color: isDark ? '#60a5fa' : theme.primary }]}>Resume</Text>
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -457,7 +457,7 @@ export const HomeScreen: React.FC = () => {
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Today's Schedule</Text>
               <TouchableOpacity onPress={() => navigation.navigate('TimetableScreen')}>
-                <Text style={[styles.seeAllText, { color: theme.primary }]}>View Calendar</Text>
+                <Text style={[styles.seeAllText, { color: isDark ? '#60a5fa' : theme.primary }]}>View Calendar</Text>
               </TouchableOpacity>
             </View>
 
@@ -505,12 +505,12 @@ export const HomeScreen: React.FC = () => {
                           </View>
                       <View style={styles.scheduleInfo}>
                         <View style={styles.scheduleRow}>
-                          <Text style={[styles.scheduleSubject, { color: theme.text }, isActive && { color: theme.primary }]} numberOfLines={2}>
+                          <Text style={[styles.scheduleSubject, { color: theme.text }, isActive && { color: isDark ? '#60a5fa' : theme.primary }]} numberOfLines={2}>
                             {session.subject || session.subjectName || 'N/A'}
                           </Text>
-                          <View style={[styles.scheduleTimeWrap, { backgroundColor: isDark ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.1)' }]}>
-                            <Ionicons name="time" size={scale(10)} color={theme.primary || '#3b82f6'} style={{marginRight: scale(3)}} />
-                            <Text style={[styles.scheduleTimeRight, { color: theme.primary || '#3b82f6' }]}>
+                          <View style={[styles.scheduleTimeWrap, { backgroundColor: isDark ? 'rgba(96,165,250,0.15)' : 'rgba(59,130,246,0.1)' }]}>
+                            <Ionicons name="time" size={scale(10)} color={isDark ? '#60a5fa' : theme.primary || '#3b82f6'} style={{marginRight: scale(3)}} />
+                            <Text style={[styles.scheduleTimeRight, { color: isDark ? '#60a5fa' : theme.primary || '#3b82f6' }]}>
                               {session.startTime} - {session.endTime}
                             </Text>
                           </View>

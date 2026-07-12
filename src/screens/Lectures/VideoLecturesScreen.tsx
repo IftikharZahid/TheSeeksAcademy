@@ -8,6 +8,7 @@ import {
     Dimensions,
     RefreshControl,
     ActivityIndicator,
+    StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -386,12 +387,14 @@ export const VideoLecturesScreen: React.FC = () => {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+            <StatusBar backgroundColor={theme.card} barStyle={isDark ? "light-content" : "dark-content"} />
             {/* Header */}
             <View style={[
                 styles.header,
                 {
-                    backgroundColor: isDark ? theme.card : '#fff',
-                    borderBottomColor: isDark ? theme.border : '#e5e7eb'
+                    backgroundColor: theme.card,
+                    borderBottomWidth: 1,
+                    borderBottomColor: theme.border
                 }
             ]}>
                 <TouchableOpacity

@@ -62,6 +62,7 @@ export const CourseList: React.FC = () => {
     const navigation = useNavigation<any>();
     const { theme, isDark } = useTheme();
     const netInfo = useNetInfo();
+    const [activeIndex, setActiveIndex] = useState(0);
 
     const globalGalleries = useAppSelector((state) => state.videos.galleries);
     const videoProgressData = useAppSelector((state) => state.videos.videoProgress);
@@ -110,59 +111,55 @@ export const CourseList: React.FC = () => {
         }
         
         const progressPercentage = videoCount > 0 ? Math.floor((watchedVideosCount / videoCount) * 100) : 0;
-        
-        // Mock fallback data for design
-        const className = item.targetClass || userProfile?.class || '1st Year';
-        const section = 'Section A'; // Mock
-        const teacherName = item.teacherName || 'Subject Teacher'; // Mock fallback
-        
+        const teacherName = item.teacherName || 'Subject Teacher';
         const iconConfig = getSubjectIcon(item.name);
 
         return (
             <TouchableOpacity
-                style={[styles.courseCard, { backgroundColor: theme.card }]}
+                style={[styles.courseCard, { backgroundColor: theme.card, borderColor: isDark ? theme.border : '#f1f5f9' }]}
                 onPress={() => handleCoursePress(item)}
                 activeOpacity={0.75}
             >
-                {/* Top row: icon + progress % */}
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: scale(8) }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <View style={[styles.cardIconContainer, { backgroundColor: isDark ? iconConfig.color + '20' : iconConfig.bgColor }]}>
                         {iconConfig.type === 'FontAwesome5' ? (
-                            <FontAwesome5 name={iconConfig.name as any} size={scale(16)} color={iconConfig.color} />
+                            <FontAwesome5 name={iconConfig.name as any} size={scale(14)} color={iconConfig.color} />
                         ) : (
-                            <Ionicons name={iconConfig.name as any} size={scale(18)} color={iconConfig.color} />
+                            <Ionicons name={iconConfig.name as any} size={scale(16)} color={iconConfig.color} />
                         )}
                     </View>
-                    <Text style={[styles.progressText, { color: iconConfig.color }]}>{progressPercentage}%</Text>
+                    <View style={[styles.videoCountChip, { backgroundColor: isDark ? theme.backgroundSecondary : '#f8fafc', marginTop: 0 }]}>
+                        <Ionicons name="play-circle-outline" size={scale(10)} color={theme.textSecondary} />
+                        <Text style={[styles.videoCountText, { color: theme.textSecondary }]}>{videoCount}</Text>
+                    </View>
                 </View>
 
-                {/* Subject name */}
-                <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={2}>
-                    {item.name}
-                </Text>
+                <View style={{ marginTop: scale(12), flex: 1 }}>
+                    <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>
+                        {item.name}
+                    </Text>
+                    <Text style={[styles.teacherName, { color: theme.textTertiary }]} numberOfLines={1}>
+                        {teacherName}
+                    </Text>
+                </View>
 
-                {/* Class & teacher */}
-                <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
-                    Class: {className}
-                </Text>
-                <Text style={[styles.teacherName, { color: theme.textSecondary }]} numberOfLines={1}>
-                    {teacherName}
-                </Text>
-
-                {/* Progress bar */}
-                <View style={[styles.progressRow, { marginTop: scale(8) }]}>
-                    <View style={styles.progressBarBg}>
+                <View style={{ marginTop: scale(14) }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: scale(5) }}>
+                        <Text style={{ fontSize: scale(9), color: theme.textSecondary, fontWeight: '600' }}>Progress</Text>
+                        <Text style={[styles.progressText, { color: iconConfig.color }]}>{progressPercentage}%</Text>
+                    </View>
+                    <View style={[styles.progressBarBg, { backgroundColor: isDark ? theme.backgroundSecondary : '#f1f5f9' }]}>
                         <View style={[styles.progressBarFill, { width: `${progressPercentage}%`, backgroundColor: iconConfig.color }]} />
                     </View>
                 </View>
-
-                {/* Video count chip */}
-                <View style={[styles.videoCountChip, { backgroundColor: iconConfig.color + '15' }]}>
-                    <Ionicons name="play-circle-outline" size={scale(10)} color={iconConfig.color} />
-                    <Text style={[styles.videoCountText, { color: iconConfig.color }]}>{videoCount} videos</Text>
-                </View>
             </TouchableOpacity>
         );
+    };
+
+    const handleScroll = (event: any) => {
+        const scrollPosition = event.nativeEvent.contentOffset.x;
+        const index = Math.round(scrollPosition / (cardWidth + scale(12)));
+        setActiveIndex(index);
     };
 
     const isOffline = netInfo.isConnected === false;
@@ -208,7 +205,7 @@ export const CourseList: React.FC = () => {
                     )}
                 </View>
                 <TouchableOpacity onPress={() => navigation.navigate('VideoGallery')}>
-                    <Text style={[styles.seeAllText, { color: theme.primary }]}>View All</Text>
+                    <Text style={[styles.seeAllText, { color: isDark ? '#60a5fa' : theme.primary }]}>View All</Text>
                 </TouchableOpacity>
             </View>
             
@@ -225,7 +222,17 @@ export const CourseList: React.FC = () => {
                 initialNumToRender={3}
                 maxToRenderPerBatch={3}
                 windowSize={3}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
             />
+
+            {galleries.length > 1 && (
+                <View style={styles.dotsContainer}>
+                    {galleries.map((_, i) => (
+                        <View key={i} style={[styles.dot, activeIndex === i ? [styles.activeDot, { backgroundColor: theme.primary }] : { backgroundColor: isDark ? '#334155' : '#cbd5e1' }]} />
+                    ))}
+                </View>
+            )}
         </View>
     );
 };
@@ -257,21 +264,19 @@ const styles = StyleSheet.create({
     },
     courseCard: {
         width: cardWidth,
-        padding: scale(10),
-        borderRadius: scale(12),
-        backgroundColor: '#ffffff',
+        padding: scale(14),
+        borderRadius: scale(16),
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.03)',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.03,
+        shadowRadius: 8,
         elevation: 2,
     },
     cardIconContainer: {
-        width: scale(36),
-        height: scale(36),
-        borderRadius: scale(10),
+        width: scale(34),
+        height: scale(34),
+        borderRadius: scale(12),
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -280,21 +285,15 @@ const styles = StyleSheet.create({
         marginBottom: scale(6),
     },
     cardTitle: {
-        fontSize: scale(12),
+        fontSize: scale(14),
         fontWeight: '800',
         marginBottom: scale(3),
-        letterSpacing: -0.2,
-        lineHeight: scale(16),
-    },
-    cardSubtitle: {
-        fontSize: scale(9),
-        fontWeight: '500',
-        marginBottom: scale(2),
+        letterSpacing: -0.3,
+        lineHeight: scale(18),
     },
     teacherName: {
-        fontSize: scale(9),
-        fontWeight: '500',
-        marginBottom: scale(2),
+        fontSize: scale(10),
+        fontWeight: '600',
     },
     progressRow: {
         flexDirection: 'row',
@@ -303,8 +302,7 @@ const styles = StyleSheet.create({
     },
     progressBarBg: {
         flex: 1,
-        height: scale(3),
-        backgroundColor: '#f1f5f9',
+        height: scale(4),
         borderRadius: scale(2),
         overflow: 'hidden',
     },
@@ -313,22 +311,21 @@ const styles = StyleSheet.create({
         borderRadius: scale(2),
     },
     progressText: {
-        fontSize: scale(9),
-        fontWeight: '700',
+        fontSize: scale(10),
+        fontWeight: '800',
     },
     videoCountChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: scale(3),
+        gap: scale(4),
         paddingHorizontal: scale(6),
-        paddingVertical: scale(3),
-        borderRadius: scale(6),
-        marginTop: scale(6),
+        paddingVertical: scale(4),
+        borderRadius: scale(8),
         alignSelf: 'flex-start',
     },
     videoCountText: {
-        fontSize: scale(8.5),
-        fontWeight: '600',
+        fontSize: scale(9),
+        fontWeight: '700',
     },
     offlineBadge: {
         flexDirection: 'row',
@@ -368,5 +365,22 @@ const styles = StyleSheet.create({
     errorText: {
         fontSize: scale(11),
         lineHeight: scale(15),
+    },
+    dotsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop: scale(12),
+        gap: scale(4),
+    },
+    dot: {
+        width: scale(5),
+        height: scale(5),
+        borderRadius: scale(2.5),
+    },
+    activeDot: {
+        width: scale(14),
+        height: scale(5),
+        borderRadius: scale(2.5),
     },
 });

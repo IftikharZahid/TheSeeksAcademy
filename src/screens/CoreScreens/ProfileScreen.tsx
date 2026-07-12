@@ -16,8 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { scale } from '../../utils/responsive';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { useNetInfo } from '@react-native-community/netinfo';
-import { fetchUserProfile } from '../../store/slices/authSlice';
+import { fetchUserProfile, setProfile } from '../../store/slices/authSlice';
 import { CompactCard, MenuRow } from '../../components/CompactUI';
+import { StudentProfileBanner } from '../../components/StudentProfileBanner';
 
 type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -160,6 +161,9 @@ export const ProfileScreen: React.FC = () => {
           const imageData = `data:image/jpeg;base64,${manipResult.base64}`;
           await AsyncStorage.setItem(`profile_picture_${user.uid}`, imageData);
           setLocalImageUri(imageData);
+          if (profileData) {
+            dispatch(setProfile({ ...profileData, image: imageData }));
+          }
           Alert.alert('Success', 'Profile picture saved locally in cache!');
         } else {
           Alert.alert('Error', 'Could not process image.');
@@ -184,25 +188,43 @@ export const ProfileScreen: React.FC = () => {
   // ── Sub-components ─────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      <StatusBar 
-        backgroundColor={theme.card} 
-        barStyle={isDark ? 'light-content' : 'dark-content'} 
-      />
-      {/* ── Top Bar ───────────────────────────────────────────────────── */}
-      <View style={styles.topBar}>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: StatusBar.currentHeight || 0 }]}>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: StatusBar.currentHeight || 0, backgroundColor: theme.primary, zIndex: 999 }} />
+      <StatusBar barStyle="light-content" backgroundColor={isDark ? theme.card : theme.primary} translucent={false} />
+      
+      {/* Fixed Header (Transparent, Absolute) */}
+      <View style={[styles.topBar, { 
+        position: 'absolute', 
+        top: StatusBar.currentHeight || 0, 
+        left: 0, 
+        right: 0, 
+        backgroundColor: 'transparent', 
+        borderBottomColor: 'transparent', 
+        paddingTop: scale(10),
+        paddingBottom: scale(10),
+        paddingHorizontal: scale(10), 
+        zIndex: 100 
+      }]}>
         <TouchableOpacity
-          style={[styles.iconBtn, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}
+          style={{ 
+            width: scale(38), 
+            height: scale(38), 
+            borderRadius: scale(12), 
+            backgroundColor: 'rgba(255, 255, 255, 0.15)', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            marginRight: scale(12) 
+          }} 
           onPress={toggleTheme}
           activeOpacity={0.7}
         >
-          <Ionicons name={isDark ? 'sunny' : 'moon'} size={scale(16)} color={isDark ? '#fbbf24' : '#64748b'} />
+          <Ionicons name={isDark ? 'sunny' : 'moon'} size={scale(22)} color="#ffffff" />
         </TouchableOpacity>
 
         <View style={styles.titleCenter}>
-          <Text style={[styles.screenTitle, { color: theme.text }]}>Profile</Text>
+          <Text style={[styles.screenTitle, { color: '#fff' }]}>Profile</Text>
           {isOffline && profileData && (
-            <View style={[styles.offlineBadge, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#fef3c7' }]}>
+            <View style={[styles.offlineBadge, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
               <Ionicons name="cloud-offline-outline" size={scale(8)} color="#f59e0b" style={{ marginRight: scale(3) }} />
               <Text style={[styles.offlineBadgeText, { color: '#d97706' }]}>Offline Cache</Text>
             </View>
@@ -210,11 +232,18 @@ export const ProfileScreen: React.FC = () => {
         </View>
 
         <TouchableOpacity
-          style={[styles.iconBtn, { backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#fef2f2' }]}
+          style={{ 
+            width: scale(38), 
+            height: scale(38), 
+            borderRadius: scale(12), 
+            backgroundColor: 'rgba(255, 255, 255, 0.2)', 
+            justifyContent: 'center', 
+            alignItems: 'center' 
+          }} 
           onPress={handleLogout}
           activeOpacity={0.7}
         >
-          <Ionicons name="log-out-outline" size={scale(16)} color="#ef4444" />
+          <Ionicons name="log-out-outline" size={scale(20)} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -242,8 +271,11 @@ export const ProfileScreen: React.FC = () => {
         ) : (
           <View style={styles.content}>
             {/* ── Profile Header ────────────────────────────────────────── */}
-            <View style={styles.heroSection}>
-              <TouchableOpacity style={[styles.avatarWrap, { borderColor: theme.border }]} onPress={handleImagePick} disabled={uploadingImage} activeOpacity={0.7}>
+            <View style={{ marginHorizontal: -scale(14), marginTop: -scale(8) }}>
+              <StudentProfileBanner />
+            </View>
+            <View style={styles.avatarSection}>
+              <TouchableOpacity style={[styles.avatarContainer, { borderColor: theme.background }]} onPress={handleImagePick} disabled={uploadingImage} activeOpacity={0.7}>
                 <Image
                   source={displayImage && !imageError ? { uri: displayImage } : require('../../assets/default-profile.png')}
                   defaultSource={require('../../assets/default-profile.png')}
@@ -255,25 +287,23 @@ export const ProfileScreen: React.FC = () => {
                     <ActivityIndicator size="small" color="#fff" />
                   </View>
                 )}
-                <View style={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: theme.primary, width: scale(20), height: scale(20), borderRadius: scale(10), justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: theme.card }}>
-                  <Ionicons name="camera" size={10} color="#fff" />
+                <View style={{ position: 'absolute', bottom: 0, right: 0, backgroundColor: theme.primary, width: scale(30), height: scale(30), borderRadius: scale(15), justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: theme.background }}>
+                  <Ionicons name="camera" size={scale(16)} color="#fff" />
                 </View>
               </TouchableOpacity>
-              <View style={styles.heroInfo}>
-                <Text style={[styles.heroName, { color: theme.text }]} numberOfLines={1}>{displayName}</Text>
-                {profileData?.email ? (
-                  <Text style={[styles.heroEmail, { color: theme.textSecondary }]} numberOfLines={1}>{profileData.email}</Text>
-                ) : null}
-                <View style={styles.heroBadges}>
-                  <View style={[styles.badge, { backgroundColor: theme.primary + '15' }]}>
-                    <Text style={[styles.badgeText, { color: theme.primary }]}>{displayRole}</Text>
-                  </View>
-                  {!!profileData?.gender && (
-                    <View style={[styles.badge, { backgroundColor: '#10b98115' }]}>
-                      <Text style={[styles.badgeText, { color: '#10b981' }]}>{profileData.gender}</Text>
-                    </View>
-                  )}
+              <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
+              {profileData?.email ? (
+                <Text style={[styles.heroEmail, { color: theme.textSecondary, marginBottom: scale(4) }]} numberOfLines={1}>{profileData.email}</Text>
+              ) : null}
+              <View style={styles.heroBadges}>
+                <View style={[styles.roleBadge, { backgroundColor: theme.primary + '15' }]}>
+                  <Text style={[styles.roleText, { color: theme.primary }]}>{displayRole}</Text>
                 </View>
+                {!!profileData?.gender && (
+                  <View style={[styles.roleBadge, { backgroundColor: '#10b98115' }]}>
+                    <Text style={[styles.roleText, { color: '#10b981' }]}>{profileData.gender}</Text>
+                  </View>
+                )}
               </View>
             </View>
 
@@ -410,7 +440,7 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -449,27 +479,44 @@ const styles = StyleSheet.create({
   offlineBadgeText: { fontSize: scale(9), fontWeight: '700' },
 
   // ── Profile Hero ───────────────────────────────────────────────────────────
-  heroSection: {
-    flexDirection: 'row',
+  avatarSection: {
     alignItems: 'center',
-    marginBottom: scale(20),
-    paddingHorizontal: scale(4),
+    marginTop: -scale(80),
+    paddingBottom: scale(16),
+    zIndex: 10,
   },
-  avatarWrap: {
-    width: scale(56),
-    height: scale(56),
-    borderRadius: scale(28),
-    borderWidth: 1,
+  avatarContainer: {
+    width: scale(110),
+    height: scale(110),
+    borderRadius: scale(55),
+    borderWidth: 4,
     overflow: 'hidden',
-    marginRight: scale(14),
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: scale(4) },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
   },
   avatar: { width: '100%', height: '100%' },
-  heroInfo: { flex: 1, justifyContent: 'center' },
-  heroName: { fontSize: scale(16), fontWeight: '700', letterSpacing: -0.2, marginBottom: scale(2) },
+  name: {
+    fontSize: scale(20),
+    fontWeight: '800',
+    marginTop: scale(12),
+    letterSpacing: -0.5,
+  },
   heroEmail: { fontSize: scale(11), marginBottom: scale(6) },
-  heroBadges: { flexDirection: 'row', gap: scale(6) },
-  badge: { paddingHorizontal: scale(8), paddingVertical: scale(3), borderRadius: scale(12) },
-  badgeText: { fontSize: scale(9), fontWeight: '700', textTransform: 'uppercase' },
+  heroBadges: { flexDirection: 'row', gap: scale(6), justifyContent: 'center' },
+  roleBadge: {
+    marginTop: scale(6),
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: scale(12),
+  },
+  roleText: {
+    fontSize: scale(11),
+    fontWeight: '700',
+  },
 
   // ── Sections ───────────────────────────────────────────────────────────────
   section: { marginBottom: scale(18) },

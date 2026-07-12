@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
@@ -422,12 +423,13 @@ export const MessagesScreen: React.FC = () => {
     }
   }, [initialGroupId, navigation]);
 
+
   // ── FIX: Track keyboard visibility to avoid double safe-area padding ──
   const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showEvent = 'keyboardDidShow';
+    const hideEvent = 'keyboardDidHide';
 
     const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
     const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
@@ -739,20 +741,28 @@ export const MessagesScreen: React.FC = () => {
   // ── Header height tracking for correct KAV offset ─────────────────────
   const [headerHeight, setHeaderHeight] = useState(56);
 
+  // ── FIX: Compute bottom padding for the input bar ──────────────────────
   // When keyboard is visible, the keyboard itself covers the bottom — no inset needed.
-  // When keyboard is hidden, the bottom tab bar handles the bottom safe area.
-  // We don't need to add insets.bottom anymore to avoid the gap above the tab bar.
+  // When keyboard is hidden, respect the device’s home indicator / safe area on all platforms.
   const inputBarPaddingBottom = showEmojiModal
     ? 0
-    : 8;
+    : keyboardVisible
+      ? 8
+      : Math.max(8, insets.bottom + 4);
 
   // ── Render: Groups List ────────────────────────────────────────────────
   if (!activeGroup) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['top', 'left', 'right']}>
-        <StatusBar translucent backgroundColor="transparent" barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <View style={[styles.headerNoticeStyle, { backgroundColor: theme.card, borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomColor: theme.border, borderBottomWidth: 0 }]}>
-          <View style={styles.placeholderButton} />
+        <StatusBar backgroundColor={theme.card} barStyle={isDark ? 'light-content' : 'dark-content'} />
+        <View style={[styles.headerNoticeStyle, { backgroundColor: theme.card, borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), borderBottomColor: theme.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Home' as never)}
+            style={[styles.placeholderButton, { justifyContent: 'center', alignItems: 'center' }]}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="arrow-back" size={scale(22)} color={theme.text} />
+          </TouchableOpacity>
           <Text style={[styles.headerTitleNoticeStyle, { color: theme.text }]}>Messages</Text>
           <View style={styles.placeholderButton} />
         </View>
@@ -999,14 +1009,19 @@ export const MessagesScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['top', 'left', 'right']}>
-      <StatusBar translucent backgroundColor="transparent" barStyle={isDark ? 'light-content' : 'dark-content'} />
+      <StatusBar backgroundColor={theme.card} barStyle={isDark ? 'light-content' : 'dark-content'} />
       {/* Header — onLayout tracks real height so KAV offset is exact */}
       <View
-        style={[styles.headerNoticeStyle, { backgroundColor: theme.card, justifyContent: 'flex-start', borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomColor: theme.border, borderBottomWidth: 0 }]}
+        style={[styles.headerNoticeStyle, { backgroundColor: theme.card, justifyContent: 'flex-start', borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), borderBottomColor: theme.border, borderBottomWidth: StyleSheet.hairlineWidth }]}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       >
-        <TouchableOpacity onPress={() => setActiveGroup(null)} style={[styles.backButtonNoticeStyle, { marginRight: scale(8) }]}>
-          <Ionicons name="arrow-back" size={scale(24)} color={theme.text} />
+
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Home' as never)}
+          style={{ paddingRight: scale(10), paddingVertical: scale(4) }}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Ionicons name="arrow-back" size={scale(22)} color={theme.text} />
         </TouchableOpacity>
 
         <View style={{ width: scale(36), height: scale(36), borderRadius: scale(18), backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', justifyContent: 'center', alignItems: 'center', marginRight: scale(10), overflow: 'hidden', borderWidth: 1, borderColor: theme.border }}>
@@ -1053,16 +1068,21 @@ export const MessagesScreen: React.FC = () => {
         )}
       </View>
 
-      {/* KeyboardAvoidingView — behavior='padding' works on BOTH platforms.
-          offset = height of everything above this view (header).
-          On Android the system also does adjustResize but 'padding' + offset
-          gives us reliable, consistent behavior without any double-push. */}
-      <View style={{ flex: 1, backgroundColor: theme.backgroundSecondary }}>
+      {/*
+        ── FIX: KeyboardAvoidingView ─────────────────────────────────────────
+        iOS   → behavior="padding"  pushes content up as keyboard rises
+        Android → behavior="height"  shrinks the view; combined with
+                  windowSoftInputMode="adjustResize" in AndroidManifest this
+                  gives the most reliable result on all Android versions.
+        keyboardVerticalOffset on iOS must equal the height of everything
+        rendered ABOVE this KeyboardAvoidingView (header inside SafeAreaView).
+        We use scale(48) as the header height; adjust if your header is taller.
+      */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + headerHeight : 0}
-        enabled={Platform.OS === 'ios' ? true : keyboardVisible}
+        behavior="padding"
+        keyboardVerticalOffset={0}
+        enabled={keyboardVisible}
       >
         <FlatList
           ref={flatListRef}
@@ -1102,12 +1122,7 @@ export const MessagesScreen: React.FC = () => {
           </View>
         )}
 
-        {/* ── Input Bar ──────────────────────────────────────────────────────
-            paddingBottom is dynamic:
-            • keyboard visible  → 8px  (keyboard itself covers the bottom)
-            • keyboard hidden   → insets.bottom + 4  (home indicator safe area)
-            This prevents the double-gap that appeared before.
-        */}
+        {/* ── Input Bar ─────────────────────────────────────────────────── */}
         {isStudentRole && !isPrivilegedRole && !messagingEnabled ? (
           <View style={[
             styles.inputContainer,
@@ -1232,7 +1247,6 @@ export const MessagesScreen: React.FC = () => {
           </View>
         )}
       </KeyboardAvoidingView>
-      </View>
 
       {/* ── Custom Action Sheet Bottom Modal (Now Centered) ── */}
       <Modal
@@ -1601,6 +1615,7 @@ const styles = StyleSheet.create({
     paddingTop: scale(10),
     paddingHorizontal: scale(12),
     borderTopWidth: 1,
+    
     // paddingBottom is applied inline dynamically via inputBarPaddingBottom
   },
   inputField: {
@@ -1613,6 +1628,7 @@ const styles = StyleSheet.create({
     paddingVertical: scale(10),
     paddingRight: scale(12),
     fontSize: scale(15),
+
   },
   sendBtn: {
     width: scale(40),

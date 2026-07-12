@@ -12,7 +12,6 @@ import { StaffInfoScreen } from '../Teachers/TeacherDetailsScreen';
 import { FeeDetailScreen } from '../Finance/FeeDetailScreen';
 
 import { MessagesScreen } from '../Communication/MessagesScreen';
-import { LikedTeachersScreen } from '../Teachers/LikedTeachersScreen';
 import { LibraryScreen } from '../Academics/StudentLibraryScreen';
 import { DocumentsScreen } from '../Academics/DocumentsScreen';
 
@@ -41,7 +40,6 @@ export type HomeStackParamList = {
   };
   FeeDetailScreen: undefined;
   MessagesScreen: undefined;
-  LikedTeachersScreen: undefined;
   LibraryScreen: undefined;
   DocumentsScreen: { category: string };
 };
@@ -61,7 +59,6 @@ export const HomeStack: React.FC = () => {
       <Stack.Screen name="StaffInfoScreen" component={StaffInfoScreen} />
       <Stack.Screen name="FeeDetailScreen" component={FeeDetailScreen} />
       <Stack.Screen name="MessagesScreen" component={MessagesScreen} />
-      <Stack.Screen name="LikedTeachersScreen" component={LikedTeachersScreen} />
       <Stack.Screen name="LibraryScreen" component={LibraryScreen} />
       <Stack.Screen name="DocumentsScreen" component={DocumentsScreen} />
     </Stack.Navigator>

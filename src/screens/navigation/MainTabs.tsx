@@ -35,7 +35,7 @@ export const MainTabs: React.FC = () => {
         component={HomeStack}
         options={({ route }) => {
           const routeName = getFocusedRouteNameFromRoute(route) ?? 'HomeScreen';
-          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'StaffInfoScreen', 'HelpCenterScreen', 'AdminTeachersScreen', 'FeeDetailScreen', 'LikedTeachersScreen', 'DiaryScreen', 'MessagesScreen', 'LibraryScreen', 'DocumentsScreen'];
+          const hiddenRoutes = ['AssignmentsScreen', 'ResultsScreen', 'TimetableScreen', 'TeachersScreen', 'AttendanceScreen', 'StaffInfoScreen', 'HelpCenterScreen', 'AdminTeachersScreen', 'FeeDetailScreen', 'DiaryScreen', 'MessagesScreen', 'LibraryScreen', 'DocumentsScreen'];
 
           const isHidden = hiddenRoutes.includes(routeName);
 
@@ -69,6 +69,7 @@ export const MainTabs: React.FC = () => {
         component={MessagesScreen}
         options={{
           headerShown: false,
+          tabBarStyle: { display: 'none' },
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
           ),

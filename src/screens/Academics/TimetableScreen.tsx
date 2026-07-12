@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, StatusBar } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, StatusBar, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
@@ -54,6 +54,102 @@ const formatTo12Hour = (timeStr: string): string => {
   }
   
   return convertSingleTime(timeStr);
+};
+
+
+const AnimatedLectureItem = ({ classItem, index, isLast, theme, selectedDay }: any) => {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(50)).current;
+
+  useEffect(() => {
+    opacity.setValue(0);
+    translateY.setValue(50);
+    
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 500,
+        delay: index * 120,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateY, {
+        toValue: 0,
+        friction: 7,
+        tension: 40,
+        delay: index * 120,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [selectedDay, classItem.id]);
+
+  return (
+    <Animated.View style={[styles.timelineRow, { opacity, transform: [{ translateY }] }]}>
+      {/* Time Column */}
+      <View style={styles.timeColumn}>
+        <Text style={[styles.timeText, { color: theme.textSecondary }]}>
+          {formatTo12Hour(classItem.time)}
+        </Text>
+      </View>
+
+      {/* Timeline Center */}
+      <View style={styles.timelineCenter}>
+        <View style={[styles.timelineDot, { backgroundColor: theme.primary }]} />
+        {!isLast && <View style={[styles.timelineLine, { backgroundColor: 'rgba(0,0,0,0.08)' }]} />}
+      </View>
+
+      {/* Content Card */}
+      <View style={[styles.contentCard, { backgroundColor: theme.card, borderLeftColor: theme.primary, shadowColor: '#000' }]}>
+        
+        <View style={styles.cardHeaderRow}>
+          <Text style={[styles.subjectText, { color: theme.text }]} numberOfLines={1}>
+            {classItem.subject}
+          </Text>
+          <View style={[styles.lectureBadge, { backgroundColor: theme.primary + '15' }]}>
+            <Text style={[styles.lectureBadgeText, { color: theme.primary }]}>
+              Lec {classItem.lectureNo || (index + 1)}
+            </Text>
+          </View>
+        </View>
+
+        {classItem.combinedDetails ? (
+          classItem.combinedDetails.map((detail: any, idx: number) => (
+            <View key={idx} style={[styles.cardFooterRow, { marginTop: idx > 0 ? scale(4) : scale(2) }]}>
+              <View style={[styles.detailItem, { flexShrink: 1, marginRight: scale(4) }]}>
+                <Ionicons name="person-circle-outline" size={scale(14)} color={theme.textSecondary} />
+                <Text style={[styles.detailsText, { color: theme.textSecondary, flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">
+                  {detail.instructor}
+                </Text>
+              </View>
+
+              <View style={[styles.detailItem, { flexShrink: 0, maxWidth: '50%' }]}>
+                <Text style={[styles.detailsText, { color: theme.textSecondary, fontWeight: '600' }]}>Room:</Text>
+                <Text style={[styles.detailsText, { color: theme.textSecondary, marginLeft: 2 }]} ellipsizeMode="tail" numberOfLines={1}>
+                  {detail.room}
+                </Text>
+              </View>
+            </View>
+          ))
+        ) : (
+          <View style={styles.cardFooterRow}>
+            <View style={[styles.detailItem, { flexShrink: 1, marginRight: scale(4) }]}>
+              <Ionicons name="person-circle-outline" size={scale(14)} color={theme.textSecondary} />
+              <Text style={[styles.detailsText, { color: theme.textSecondary, flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">
+                {classItem.instructor}
+              </Text>
+            </View>
+
+            <View style={[styles.detailItem, { flexShrink: 0, maxWidth: '50%' }]}>
+              <Text style={[styles.detailsText, { color: theme.textSecondary, fontWeight: '600' }]}>Room:</Text>
+              <Text style={[styles.detailsText, { color: theme.textSecondary, marginLeft: 2 }]} ellipsizeMode="tail" numberOfLines={1}>
+                {classItem.room}
+              </Text>
+            </View>
+          </View>
+        )}
+        
+      </View>
+    </Animated.View>
+  );
 };
 
 export const TimetableScreen: React.FC = () => {
@@ -254,73 +350,15 @@ export const TimetableScreen: React.FC = () => {
               scheduleData.map((classItem, index) => {
                 const isLast = index === scheduleData.length - 1;
                 return (
-                  <View key={classItem.id || index} style={styles.timelineRow}>
-                    {/* Time Column */}
-                    <View style={styles.timeColumn}>
-                      <Text style={[styles.timeText, { color: theme.textSecondary }]}>
-                        {formatTo12Hour(classItem.time)}
-                      </Text>
-                    </View>
-
-                    {/* Timeline Center */}
-                    <View style={styles.timelineCenter}>
-                      <View style={[styles.timelineDot, { backgroundColor: theme.primary }]} />
-                      {!isLast && <View style={[styles.timelineLine, { backgroundColor: 'rgba(0,0,0,0.08)' }]} />}
-                    </View>
-
-                    {/* Content Card */}
-                    <View style={[styles.contentCard, { backgroundColor: theme.card, borderLeftColor: theme.primary, shadowColor: '#000' }]}>
-                      
-                      <View style={styles.cardHeaderRow}>
-                        <Text style={[styles.subjectText, { color: theme.text }]} numberOfLines={1}>
-                          {classItem.subject}
-                        </Text>
-                        <View style={[styles.lectureBadge, { backgroundColor: theme.primary + '15' }]}>
-                          <Text style={[styles.lectureBadgeText, { color: theme.primary }]}>
-                            Lec {classItem.lectureNo || (index + 1)}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {classItem.combinedDetails ? (
-                        classItem.combinedDetails.map((detail: any, idx: number) => (
-                          <View key={idx} style={[styles.cardFooterRow, { marginTop: idx > 0 ? scale(4) : scale(2) }]}>
-                            <View style={[styles.detailItem, { flexShrink: 1, marginRight: scale(4) }]}>
-                              <Ionicons name="person-circle-outline" size={scale(14)} color={theme.textSecondary} />
-                              <Text style={[styles.detailsText, { color: theme.textSecondary, flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">
-                                {detail.instructor}
-                              </Text>
-                            </View>
-
-                            <View style={[styles.detailItem, { flexShrink: 0, maxWidth: '50%' }]}>
-                              <Text style={[styles.detailsText, { color: theme.textSecondary, fontWeight: '600' }]}>Room:</Text>
-                              <Text style={[styles.detailsText, { color: theme.textSecondary, marginLeft: 2 }]} ellipsizeMode="tail" numberOfLines={1}>
-                                {detail.room}
-                              </Text>
-                            </View>
-                          </View>
-                        ))
-                      ) : (
-                        <View style={styles.cardFooterRow}>
-                          <View style={[styles.detailItem, { flexShrink: 1, marginRight: scale(4) }]}>
-                            <Ionicons name="person-circle-outline" size={scale(14)} color={theme.textSecondary} />
-                            <Text style={[styles.detailsText, { color: theme.textSecondary, flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">
-                              {classItem.instructor}
-                            </Text>
-                          </View>
-
-                          <View style={[styles.detailItem, { flexShrink: 0, maxWidth: '50%' }]}>
-                            <Text style={[styles.detailsText, { color: theme.textSecondary, fontWeight: '600' }]}>Room:</Text>
-                            <Text style={[styles.detailsText, { color: theme.textSecondary, marginLeft: 2 }]} ellipsizeMode="tail" numberOfLines={1}>
-                              {classItem.room}
-                            </Text>
-                          </View>
-                        </View>
-                      )}
-                      
-                    </View>
-                  </View>
-                );
+                  <AnimatedLectureItem 
+                      key={classItem.id || index}
+                      classItem={classItem}
+                      index={index}
+                      isLast={isLast}
+                      theme={theme}
+                      selectedDay={activeDay}
+                    />
+                  );
               })
             )}
 

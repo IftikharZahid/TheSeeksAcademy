@@ -84,7 +84,7 @@ export const TeachersScreen: React.FC = () => {
         {teacher.image && teacher.image.trim() !== '' ? (
           <Image source={{ uri: teacher.image }} style={styles.teacherImage} />
         ) : (
-          <View style={[styles.teacherImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#e5e7eb' }]}>
+          <View style={[styles.teacherImage, { justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#374151' : '#e5e7eb' }]}>
             <Ionicons 
               name={teacher.gender?.toLowerCase() === 'female' ? "woman" : "man"} 
               size={scale(50)} 
@@ -103,7 +103,7 @@ export const TeachersScreen: React.FC = () => {
         <Text style={[styles.teacherName, { color: theme.text }]} numberOfLines={1}>
           {teacher.name}
         </Text>
-        <Text style={[styles.subject, { color: theme.primary }]} numberOfLines={1}>
+        <Text style={[styles.subject, { color: isDark ? '#93c5fd' : theme.primary }]} numberOfLines={1}>
           {teacher.subject}
         </Text>
 
@@ -134,13 +134,13 @@ export const TeachersScreen: React.FC = () => {
         >
           <Ionicons name="arrow-back" size={scale(22)} color={theme.text} />
         </TouchableOpacity>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, justifyContent: 'center' }}>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Staff Members</Text>
-          <Text style={{ fontSize: scale(12), color: theme.textSecondary }}>{staff.length} available</Text>
         </View>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate('LikedTeachersScreen')}>
-          <Ionicons name="heart-outline" size={scale(22)} color={theme.text} />
-        </TouchableOpacity>
+        <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : theme.primary + '15', borderRadius: scale(20), paddingHorizontal: scale(12), paddingVertical: scale(6), flexDirection: 'row', alignItems: 'center' }}>
+          <Ionicons name="people" size={scale(16)} color={isDark ? theme.text : theme.primary} style={{ marginRight: scale(6) }} />
+          <Text style={{ fontSize: scale(14), fontWeight: '700', color: isDark ? theme.text : theme.primary }}>{staff.length} Total</Text>
+        </View>
       </View>
 
       <View style={styles.contentWrapper}>
