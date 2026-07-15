@@ -6,7 +6,7 @@ import themeReducer from './slices/themeSlice';
 import coursesReducer from './slices/coursesSlice';
 import teachersReducer from './slices/teachersSlice';
 import notificationsReducer from './slices/notificationsSlice';
-import pushNotificationsReducer from '../features/notification/redux/pushNotificationsSlice';
+
 import videosReducer from './slices/videosSlice';
 import feeReducer from './slices/feeSlice';
 import resultsReducer from './slices/resultsSlice';
@@ -21,7 +21,7 @@ import timetableReducer from './slices/timetableSlice';
 const persistConfig = {
     key: 'root',
     storage: AsyncStorage,
-    whitelist: ['auth', 'videos', 'theme', 'courses', 'teachers', 'notifications', 'pushNotifications', 'fee', 'results', 'attendance', 'messages', 'admin', 'complaints', 'assignments', 'appSettings', 'timetable'],
+    whitelist: ['auth', 'videos', 'theme', 'courses', 'teachers', 'notifications', 'fee', 'results', 'attendance', 'messages', 'admin', 'complaints', 'assignments', 'appSettings', 'timetable'],
 };
 
 const rootReducer = combineReducers({
@@ -30,7 +30,7 @@ const rootReducer = combineReducers({
     courses: coursesReducer,
     teachers: teachersReducer,
     notifications: notificationsReducer,
-    pushNotifications: pushNotificationsReducer,
+
     videos: videosReducer,
     fee: feeReducer,
     results: resultsReducer,

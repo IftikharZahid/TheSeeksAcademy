@@ -119,9 +119,28 @@ export const DiaryScreen: React.FC = () => {
     );
   };
 
+  const userGender = profile?.gender ? profile.gender.toLowerCase().trim() : '';
+  const isMale = userGender === 'male' || userGender === 'boy' || userGender === 'boys';
+  const isFemale = userGender === 'female' || userGender === 'girl' || userGender === 'girls';
+
   const filteredEntries = entries.filter(entry => {
     if (!entry.date) return false;
-    return new Date(entry.date).toDateString() === selectedDate.toDateString();
+    const dateMatch = new Date(entry.date).toDateString() === selectedDate.toDateString();
+
+    let matchGender = true;
+    if ((entry as any).gender && (entry as any).gender.toLowerCase().trim() !== 'all') {
+      const entryGender = (entry as any).gender.toLowerCase().trim();
+      const entryIsMale = ['boys', 'boy', 'male', 'm'].includes(entryGender);
+      const entryIsFemale = ['girls', 'girl', 'female', 'f'].includes(entryGender);
+      
+      if (entryIsMale) {
+        matchGender = isMale;
+      } else if (entryIsFemale) {
+        matchGender = isFemale;
+      }
+    }
+
+    return dateMatch && matchGender;
   });
 
   return (

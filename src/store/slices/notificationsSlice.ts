@@ -66,6 +66,13 @@ const formatTimeAgo = (timestamp?: Timestamp) => {
     return 'Just now';
 };
 
+/** Simple fingerprint: title + message so edits are detected */
+const noticeHash = (n: Notice) => `${n.title}|${n.message}`;
+const diaryHash = (d: DiaryEntry) => `${d.title}|${d.details}|${d.subject}`;
+
+const HASHES_NOTICE_KEY = 'notice_content_hashes';
+const HASHES_DIARY_KEY  = 'diary_content_hashes';
+
 // ── Slice ──────────────────────────────────────────────
 const notificationsSlice = createSlice({
     name: 'notifications',
@@ -97,10 +104,43 @@ const notificationsSlice = createSlice({
         setLoading(state, action: PayloadAction<boolean>) {
             state.loading = action.payload;
         },
+        /**
+         * Remove read IDs for notices that were DELETED by admin.
+         * payload = array of currently-live notice IDs.
+         */
+        pruneReadIds(state, action: PayloadAction<string[]>) {
+            state.readIds = state.readIds.filter((id) => action.payload.includes(id));
+        },
+        /**
+         * Remove read diary IDs for diaries that were DELETED by admin.
+         * payload = array of currently-live diary IDs.
+         */
+        pruneDiaryReadIds(state, action: PayloadAction<string[]>) {
+            state.readDiaryIds = state.readDiaryIds.filter((id) => action.payload.includes(id));
+        },
+        /**
+         * Un-read a notice whose content was EDITED by admin.
+         * payload = notice ID to remove from readIds.
+         */
+        unmarkNoticeRead(state, action: PayloadAction<string>) {
+            state.readIds = state.readIds.filter((id) => id !== action.payload);
+        },
+        /**
+         * Un-read a diary whose content was EDITED by admin.
+         * payload = diary ID to remove from readDiaryIds.
+         */
+        unmarkDiaryRead(state, action: PayloadAction<string>) {
+            state.readDiaryIds = state.readDiaryIds.filter((id) => id !== action.payload);
+        },
     },
 });
 
-export const { setNotices, setReadIds, markAsRead, setDiaries, setReadDiaryIds, markDiaryAsRead, setLoading } = notificationsSlice.actions;
+export const {
+    setNotices, setReadIds, markAsRead,
+    setDiaries, setReadDiaryIds, markDiaryAsRead,
+    setLoading, pruneReadIds, pruneDiaryReadIds,
+    unmarkNoticeRead, unmarkDiaryRead,
+} = notificationsSlice.actions;
 export default notificationsSlice.reducer;
 
 // ── Selectors ──────────────────────────────────────────
@@ -122,13 +162,34 @@ export const initNotificationsListener = (dispatch: Dispatch) => {
     const q = query(collection(db, 'notices'), orderBy('createdAt', 'desc'));
     return onSnapshot(
         q,
-        (snapshot) => {
+        async (snapshot) => {
             const fetched = snapshot.docs.map((d) => ({
                 id: d.id,
                 ...d.data(),
                 timeAgo: formatTimeAgo(d.data().createdAt),
             })) as Notice[];
+
             dispatch(setNotices(fetched));
+
+            // 1. Prune read IDs for DELETED notices
+            dispatch(pruneReadIds(fetched.map((n) => n.id)));
+
+            // 2. Detect EDITED notices – compare stored content hashes
+            try {
+                const storedHashes: Record<string, string> =
+                    JSON.parse((await AsyncStorage.getItem(HASHES_NOTICE_KEY)) ?? '{}');
+
+                const updatedHashes: Record<string, string> = {};
+                for (const n of fetched) {
+                    const hash = noticeHash(n);
+                    updatedHashes[n.id] = hash;
+                    // If this notice was previously read but its content changed, un-read it
+                    if (storedHashes[n.id] && storedHashes[n.id] !== hash) {
+                        dispatch(unmarkNoticeRead(n.id));
+                    }
+                }
+                await AsyncStorage.setItem(HASHES_NOTICE_KEY, JSON.stringify(updatedHashes));
+            } catch { /* non-critical */ }
         },
         (error) => {
             console.error('Error fetching notices:', error);
@@ -163,7 +224,7 @@ export const initDiariesListener = (dispatch: Dispatch, studentClass?: string) =
         q = query(collection(db, 'diaries'));
     }
 
-    return onSnapshot(q, (snapshot) => {
+    return onSnapshot(q, async (snapshot) => {
         const fetched = snapshot.docs.map(doc => {
             const data = doc.data();
             let dateStr = null;
@@ -180,15 +241,35 @@ export const initDiariesListener = (dispatch: Dispatch, studentClass?: string) =
                 date: dateStr,
             };
         }) as DiaryEntry[];
-        
+
         // Sort manually to avoid requiring a composite index in Firestore
         fetched.sort((a, b) => {
             const timeA = typeof a.createdAt === 'number' ? a.createdAt : (a.createdAt?.toMillis ? a.createdAt.toMillis() : 0);
             const timeB = typeof b.createdAt === 'number' ? b.createdAt : (b.createdAt?.toMillis ? b.createdAt.toMillis() : 0);
             return timeB - timeA;
         });
-        
+
         dispatch(setDiaries(fetched));
+
+        // 1. Prune read IDs for DELETED diaries
+        dispatch(pruneDiaryReadIds(fetched.map((d) => d.id)));
+
+        // 2. Detect EDITED diaries – compare stored content hashes
+        try {
+            const storedHashes: Record<string, string> =
+                JSON.parse((await AsyncStorage.getItem(HASHES_DIARY_KEY)) ?? '{}');
+
+            const updatedHashes: Record<string, string> = {};
+            for (const d of fetched) {
+                const hash = diaryHash(d);
+                updatedHashes[d.id] = hash;
+                // If this diary was previously read but its content changed, un-read it
+                if (storedHashes[d.id] && storedHashes[d.id] !== hash) {
+                    dispatch(unmarkDiaryRead(d.id));
+                }
+            }
+            await AsyncStorage.setItem(HASHES_DIARY_KEY, JSON.stringify(updatedHashes));
+        } catch { /* non-critical */ }
     });
 };
 

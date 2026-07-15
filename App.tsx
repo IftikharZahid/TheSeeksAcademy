@@ -2,17 +2,6 @@ import React, { useEffect } from 'react';
 import * as SplashScreenNative from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LogBox } from 'react-native';
-import * as Notifications from 'expo-notifications';
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
 
 if (!__DEV__) {
   console.log = () => {};
@@ -40,9 +29,6 @@ import { loadReadResultIds } from './src/store/slices/resultsSlice';
 import { AppNavigator } from './src/screens/navigation/AppNavigator';
 import { Audio } from 'expo-av';
 
-// Notification Module
-import { initPushNotificationsListener } from './src/features/notification/redux/pushNotificationsSlice';
-import { registerForPushNotificationsAsync } from './src/features/notification/services/fcmService';
 
 /**
  * Inner component that has access to Redux dispatch
@@ -100,8 +86,6 @@ function AppContent() {
       // We MUST use user.uid (Firebase Auth UID), NOT any Firestore doc ID
       const unsubAttendance = initAttendanceListener(dispatch, user.uid);
       
-      // Register for FCM Push Notifications
-      registerForPushNotificationsAsync(user.uid, profile);
 
       return () => {
         unsubLikedVideos();
@@ -115,11 +99,9 @@ function AppContent() {
     if (profile) {
       const unsubMessages = initMessagesListener(dispatch, profile);
       const unsubDiaries = initDiariesListener(dispatch, profile.class);
-      const unsubPushNotifications = initPushNotificationsListener(dispatch, profile);
       return () => {
         unsubMessages();
         unsubDiaries();
-        unsubPushNotifications();
       };
     }
   }, [dispatch, profile]);

@@ -1,16 +1,26 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Modal, TouchableWithoutFeedback, Image, ScrollView, StatusBar } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  StyleSheet,
+  Animated,
+  Modal,
+  Image,
+  ScrollView,
+  StatusBar,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useNotifications } from '../context/NotificationContext';
-import { useAppSelector } from '../store/hooks';
-import { selectUnreadMessagesCount } from '../store/slices/messagesSlice';
-import { selectUnreadDiariesCount } from '../store/slices/notificationsSlice';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { selectUnreadMessagesCount, updateLastReadTimestamp } from '../store/slices/messagesSlice';
+import { selectUnreadDiariesCount, markDiaryAsRead, persistReadDiaryIds } from '../store/slices/notificationsSlice';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import { scale } from '../utils/responsive';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const formatRelativeTime = (timeMs: number): string => {
   if (!timeMs) return '';
@@ -30,7 +40,8 @@ export const TopHeader: React.FC = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { theme, isDark, toggleTheme } = useTheme();
-  const { unreadCount: notificationCount } = useNotifications();
+  const dispatch = useAppDispatch();
+  const { unreadCount: notificationCount, markAsRead } = useNotifications();
   const unreadMessagesCount = useAppSelector(selectUnreadMessagesCount);
   const user = useAppSelector((state) => state.auth.user);
   const profile = useAppSelector((state) => state.auth.profile);
@@ -40,47 +51,54 @@ export const TopHeader: React.FC = () => {
   const readDiaryIds = useAppSelector((state) => state.notifications.readDiaryIds);
   const readNoticeIds = useAppSelector((state) => state.notifications.readIds);
   const lastReadTimestampMs = useAppSelector((state) => state.messages.lastReadTimestampMs);
-  const unreadDiariesCount = useAppSelector((state) => selectUnreadDiariesCount(state.notifications.diaries, state.notifications.readDiaryIds));
+  const unreadDiariesCount = useAppSelector((state) =>
+    selectUnreadDiariesCount(state.notifications.diaries, state.notifications.readDiaryIds)
+  );
   const messages = useAppSelector((state) => state.messages.list);
   const totalUnreadCount = notificationCount + unreadMessagesCount + unreadDiariesCount;
 
-  // Combine & Sort Recent Updates
-  const recentUpdates: any[] = [];
+  // Combine & build recent updates list
   const getNoticeTime = (n: any) => {
     if (n.createdAt?.toMillis) return n.createdAt.toMillis();
     if (n.createdAt?.seconds) return n.createdAt.seconds * 1000;
     return 0;
   };
-  
+
+  const recentUpdates: any[] = [];
   if (notices && notices.length > 0) {
-    notices.forEach(n => {
+    notices.forEach((n) => {
       recentUpdates.push({ id: `notice-${n.id}`, type: 'notice', item: n, timeMs: getNoticeTime(n) });
     });
   }
   if (diaries && diaries.length > 0) {
-    diaries.forEach(d => {
+    diaries.forEach((d) => {
       recentUpdates.push({ id: `diary-${d.id}`, type: 'diary', item: d, timeMs: getNoticeTime(d) });
     });
   }
   if (messages && messages.length > 0) {
-    messages.forEach(m => {
-      recentUpdates.push({ id: `msg-${m.id}`, type: 'message', item: m, timeMs: (m as any).createdAtMs || 0 });
+    messages.forEach((m) => {
+      const msgTime = typeof m.timestampMs === 'number' ? m.timestampMs : (m.createdAtMs || 0);
+      recentUpdates.push({ id: `message-${m.id}`, type: 'message', item: m, timeMs: msgTime });
     });
   }
-  
-  recentUpdates.sort((a, b) => b.timeMs - a.timeMs);
-  const topUpdates = recentUpdates.slice(0, 15);
-  const [showDropdown, setShowDropdown] = useState(false);
 
-  // Time-based academic greeting
-  const getGreeting = (): string => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return 'Good Morning ☀️';
-    if (hour >= 12 && hour < 14) return 'Good Noon 🌤️';
-    if (hour >= 14 && hour < 18) return 'Good Afternoon 🌇';
-    if (hour >= 18 && hour < 21) return 'Good Evening 🌆';
-    return 'Good Night 🌙';
-  };
+  // Sort updates by time, newest first
+  recentUpdates.sort((a, b) => b.timeMs - a.timeMs);
+
+  // Only show unread items in the dropdown
+  const unreadRecentUpdates = recentUpdates.filter((update) => {
+    if (update.type === 'diary') return !readDiaryIds.includes(update.item.id);
+    if (update.type === 'notice') return !readNoticeIds.includes(update.item.id);
+    if (update.type === 'message')
+      return (
+        lastReadTimestampMs !== null &&
+        update.timeMs > lastReadTimestampMs &&
+        update.item.senderId !== user?.uid
+      );
+    return false;
+  });
+
+  const [showDropdown, setShowDropdown] = useState(false);
 
   // ── Bell ring animation & sound ─────────────────────────
   const bellRotate = useRef(new Animated.Value(0)).current;
@@ -99,7 +117,6 @@ export const TopHeader: React.FC = () => {
   }, []);
 
   const ringBell = async () => {
-    // Animate
     Animated.sequence([
       Animated.timing(bellRotate, { toValue: 1, duration: 100, useNativeDriver: true }),
       Animated.timing(bellRotate, { toValue: -1, duration: 100, useNativeDriver: true }),
@@ -108,14 +125,11 @@ export const TopHeader: React.FC = () => {
       Animated.timing(bellRotate, { toValue: 0, duration: 100, useNativeDriver: true }),
     ]).start();
 
-    // Play Sound
     try {
       if (soundRef.current) {
         await soundRef.current.unloadAsync().catch(() => {});
       }
-      const { sound } = await Audio.Sound.createAsync(
-        require('../../assets/Bell.mp3')
-      );
+      const { sound } = await Audio.Sound.createAsync(require('../../assets/Bell.mp3'));
       soundRef.current = sound;
       await sound.playAsync();
     } catch (e) {
@@ -123,28 +137,19 @@ export const TopHeader: React.FC = () => {
     }
   };
 
-  // Trigger ring when notification count goes UP
   useEffect(() => {
-    if (notificationCount > prevNotifCount.current) {
-      ringBell();
-    }
+    if (notificationCount > prevNotifCount.current) ringBell();
     prevNotifCount.current = notificationCount;
   }, [notificationCount]);
 
-  // Trigger ring when unread messages count goes UP
   useEffect(() => {
-    if (unreadMessagesCount > prevMsgCount.current) {
-      ringBell();
-    }
+    if (unreadMessagesCount > prevMsgCount.current) ringBell();
     prevMsgCount.current = unreadMessagesCount;
   }, [unreadMessagesCount]);
 
-  // Trigger ring when unread diaries count goes UP
   const prevDiariesCount = useRef(unreadDiariesCount);
   useEffect(() => {
-    if (unreadDiariesCount > prevDiariesCount.current) {
-      ringBell();
-    }
+    if (unreadDiariesCount > prevDiariesCount.current) ringBell();
     prevDiariesCount.current = unreadDiariesCount;
   }, [unreadDiariesCount]);
 
@@ -174,17 +179,24 @@ export const TopHeader: React.FC = () => {
           </View>
         </View>
 
-        {/* Right Section - Mod Button + Notification Bell */}
+        {/* Right Section - Theme Toggle + Notification Bell */}
         <View style={styles.rightSection}>
           <TouchableOpacity
-            style={[styles.modButton, { backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.4)', borderWidth: 1 }]}
+            style={[
+              styles.modButton,
+              { backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.4)', borderWidth: 1 },
+            ]}
             onPress={toggleTheme}
             activeOpacity={0.7}
           >
             <Ionicons name={isDark ? 'sunny' : 'moon'} size={scale(18)} color={'#ffffff'} />
           </TouchableOpacity>
+
           <TouchableOpacity
-            style={[styles.notificationButton, { backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.4)', borderWidth: 1 }]}
+            style={[
+              styles.notificationButton,
+              { backgroundColor: 'transparent', borderColor: 'rgba(255,255,255,0.4)', borderWidth: 1 },
+            ]}
             onPress={() => setShowDropdown(true)}
             activeOpacity={0.7}
           >
@@ -210,89 +222,112 @@ export const TopHeader: React.FC = () => {
         onRequestClose={() => setShowDropdown(false)}
         statusBarTranslucent={true}
       >
-        <TouchableOpacity
-          style={styles.dropdownOverlay}
-          activeOpacity={1}
-          onPress={() => setShowDropdown(false)}
-        >
-          <View style={[styles.dropdownWrapper, { top: insets.top + scale(50), right: scale(16) }]}>
+        <TouchableWithoutFeedback onPress={() => setShowDropdown(false)}>
+          <View style={styles.dropdownOverlay}>
+            <TouchableWithoutFeedback>
+              <View
+                style={[
+                  styles.dropdownWrapper,
+                  { top: insets.top + scale(50), right: scale(16) },
+                ]}
+              >
             {/* Caret pointing up */}
             <View style={[styles.caret, { borderBottomColor: theme.border }]} />
             <View style={[styles.caretInner, { borderBottomColor: theme.card }]} />
 
-            <View style={[styles.dropdownContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View
+              style={[
+                styles.dropdownContainer,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ]}
+            >
+              {/* Header */}
               <View style={[styles.dropdownHeader, { borderBottomColor: theme.border }]}>
                 <Text style={[styles.dropdownTitle, { color: theme.text }]}>Recent Updates</Text>
               </View>
-            <ScrollView style={styles.dropdownContent} showsVerticalScrollIndicator={false}>
-              {topUpdates.length > 0 ? (
-                topUpdates.map((update, index) => {
-                  let isUnread = false;
-                  if (update.type === 'diary') {
-                    isUnread = !readDiaryIds.includes(update.item.id);
-                  } else if (update.type === 'message') {
-                    isUnread = lastReadTimestampMs !== null && update.timeMs > lastReadTimestampMs && update.item.senderId !== user?.uid;
-                  } else if (update.type === 'notice') {
-                    isUnread = !readNoticeIds.includes(update.item.id);
-                  }
-                  
-                  return (
-                  <TouchableOpacity
-                    key={index}
-                    style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
-                    onPress={() => {
-                      setShowDropdown(false);
-                      if (update.type === 'diary') {
-                        navigation.navigate('DiaryScreen' as never);
-                      } else if (update.type === 'message') {
-                        navigation.navigate('Messages' as never);
-                      } else if (update.type === 'notice') {
-                        navigation.navigate('ELibrary' as never);
-                      }
-                    }}
-                  >
-                    <View style={[styles.iconBox, { backgroundColor: isDark ? '#334155' : '#f1f5f9' }]}>
-                      <Ionicons
-                        name={
-                          update.type === 'notice' ? 'megaphone-outline' :
-                          update.type === 'diary' ? 'book-outline' : 'chatbubbles-outline'
+
+              {/* Content: list or empty state */}
+              {unreadRecentUpdates.length > 0 ? (
+                <ScrollView
+                  style={styles.dropdownContent}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {unreadRecentUpdates.slice(0, 5).map((update) => (
+                    <TouchableOpacity
+                      key={update.id}
+                      style={[styles.dropdownItem, { borderBottomColor: theme.border }]}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        setShowDropdown(false);
+                        if (update.type === 'notice') {
+                          markAsRead(update.item.id);
+                          navigation.navigate('Home', { screen: 'DocumentsScreen' });
+                        } else if (update.type === 'diary') {
+                          dispatch(markDiaryAsRead(update.item.id));
+                          persistReadDiaryIds([...readDiaryIds, update.item.id]).catch(() => {});
+                          navigation.navigate('Home', { screen: 'DiaryScreen' });
+                        } else if (update.type === 'message') {
+                          dispatch(updateLastReadTimestamp(Date.now()));
+                          navigation.navigate('Messages', { groupId: update.item.groupId || update.item.id });
                         }
-                        size={scale(16)}
-                        color={theme.primary}
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.itemTitle, { color: theme.text, marginBottom: scale(2) }]} numberOfLines={1}>
-                          {update.type === 'message'
-                            ? `${update.item.senderName || 'Student'}${update.item.senderClass ? ` (${update.item.senderClass})` : ''}`
-                            : (update.item.title || update.item.subject || update.item.teacherName || 'Update')}
-                      </Text>
-                      <Text style={[styles.itemText, { color: theme.textSecondary }]} numberOfLines={1}>
-                        {update.item.content || update.item.message || update.item.details || update.item.description || update.item.text || 'No additional details'}
-                      </Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end', marginLeft: scale(8), minWidth: scale(50) }}>
-                      {isUnread && (
-                        <View style={[styles.unreadDot, { backgroundColor: '#10b981', width: scale(8), height: scale(8), borderRadius: scale(4), marginBottom: scale(4) }]} />
-                      )}
-                      <Text style={[styles.itemTime, { color: theme.textSecondary, fontSize: scale(10) }]}>
-                        {formatRelativeTime(update.timeMs)}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                )})
+                      }}
+                    >
+                      <View
+                        style={[
+                          styles.iconBox,
+                          {
+                            backgroundColor:
+                              update.type === 'notice'
+                                ? 'rgba(59,130,246,0.12)'
+                                : update.type === 'message'
+                                ? 'rgba(234,179,8,0.12)'
+                                : 'rgba(16,185,129,0.12)',
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name={update.type === 'notice' ? 'notifications-outline' : update.type === 'message' ? 'chatbubble-outline' : 'book-outline'}
+                          size={scale(14)}
+                          color={update.type === 'notice' ? '#3b82f6' : update.type === 'message' ? '#eab308' : '#10b981'}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <View style={styles.itemTitleRow}>
+                          <Text
+                            style={[styles.itemTitle, { color: theme.text }]}
+                            numberOfLines={1}
+                          >
+                            {update.item.title || (update.type === 'message' ? update.item.senderName : '')}
+                          </Text>
+                          <Text style={[styles.itemTime, { color: theme.textSecondary }]}>
+                            {formatRelativeTime(update.timeMs)}
+                          </Text>
+                        </View>
+                        <Text
+                          style={[styles.itemText, { color: theme.textSecondary }]}
+                          numberOfLines={2}
+                        >
+                          {update.item.body || update.item.message || update.item.text || ''}
+                        </Text>
+                      </View>
+                      <View style={[styles.unreadDot, { backgroundColor: '#ef4444' }]} />
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               ) : (
                 <View style={styles.emptyDropdown}>
-                  <Ionicons name="notifications-off-outline" size={scale(24)} color={theme.textSecondary} />
-                  <Text style={{ color: theme.textSecondary, marginTop: scale(8), fontSize: scale(12) }}>
-                    No recent updates.
+                  <Ionicons name="checkmark-circle-outline" size={scale(32)} color="#10b981" />
+                  <Text style={[styles.emptyTitle, { color: theme.text }]}>All caught up!</Text>
+                  <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+                    No new updates at the moment
                   </Text>
                 </View>
               )}
-            </ScrollView>
+            </View>
           </View>
+            </TouchableWithoutFeedback>
           </View>
-        </TouchableOpacity>
+        </TouchableWithoutFeedback>
       </Modal>
     </SafeAreaView>
   );
@@ -300,15 +335,14 @@ export const TopHeader: React.FC = () => {
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: '#ffffff',
+    zIndex: 100,
   },
   container: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: scale(16),
-    paddingTop: scale(2),
-    paddingBottom: scale(2),
+    paddingVertical: scale(8),
   },
   middleSection: {
     flex: 1,
@@ -341,8 +375,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Arial',
     fontWeight: 'bold',
     letterSpacing: 1,
-    alignSelf:'flex-end'
- 
+    alignSelf: 'flex-end',
   },
   rightSection: {
     flexDirection: 'row',
@@ -363,10 +396,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-  },
   notificationButton: {
     width: scale(36),
     height: scale(36),
@@ -378,14 +407,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
-  },
-  avatar: {
-    width: scale(38),
-    height: scale(38),
-    borderRadius: scale(19),
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#e5e7eb',
   },
   badge: {
     position: 'absolute',
@@ -422,7 +443,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: scale(8),
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    marginRight: scale(10), // align with the center of the notification bell
+    marginRight: scale(10),
   },
   caretInner: {
     width: 0,
@@ -462,9 +483,8 @@ const styles = StyleSheet.create({
     fontSize: scale(13),
     fontWeight: '700',
   },
-  viewAllText: {
-    fontSize: scale(11),
-    fontWeight: '600',
+  dropdownContent: {
+    maxHeight: scale(300),
   },
   dropdownItem: {
     flexDirection: 'row',
@@ -481,10 +501,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: scale(10),
     marginTop: scale(2),
-  },
-  dropdownContent: {
-    flexShrink: 1,
-    maxHeight: scale(300),
   },
   itemTitleRow: {
     flexDirection: 'row',
@@ -506,13 +522,41 @@ const styles = StyleSheet.create({
     fontSize: scale(11),
   },
   emptyDropdown: {
-    padding: scale(20),
+    paddingVertical: scale(24),
+    paddingHorizontal: scale(16),
     alignItems: 'center',
+    gap: scale(6),
+  },
+  emptyTitle: {
+    fontSize: scale(13),
+    fontWeight: '700',
+    marginTop: scale(4),
+  },
+  emptySubtitle: {
+    fontSize: scale(11),
+    textAlign: 'center',
   },
   unreadDot: {
     width: scale(8),
     height: scale(8),
     borderRadius: scale(4),
     marginLeft: scale(8),
+    alignSelf: 'center',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatar: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+  },
+  viewAllText: {
+    fontSize: scale(11),
+    fontWeight: '600',
   },
 });

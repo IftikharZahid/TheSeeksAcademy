@@ -2,24 +2,25 @@
   "expo": {
     "name": "TheSeeks Academy",
     "slug": "TheSeeks-Students",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/app icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.TheSeeksAcademy.Students",
-      "buildNumber": "2"
+      "buildNumber": "3"
     },
     "android": {
       "package": "com.TheSeeksAcademy.Students",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0d1f3c"
+        "backgroundColor": "#ffffff"
       },
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
+      "blockedPermissions": ["android.permission.READ_MEDIA_VIDEO"],
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
@@ -28,7 +29,6 @@
         "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
         "android.permission.ACCESS_MEDIA_LOCATION",
         "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO"
       ]
     },
@@ -47,25 +47,16 @@
       ],
       "expo-audio",
       [
-        "expo-notifications",
-        {
-          "icon": "./assets/icon.png",
-          "color": "#0d1f3c",
-          "androidMode": "default",
-          "androidCollapsedTitle": "The Seeks Academy"
-        }
-      ],
-      [
         "expo-image-picker",
         {
-          "photosPermission": "The Seeks Academy needs access to your photos to set a profile picture."
+          "photosPermission": "TheSeeksAcademy needs access to your photos to set a profile picture."
         }
       ],
       [
         "expo-media-library",
         {
-          "photosPermission": "Allow The Seeks Academy to access your photos.",
-          "savePhotosPermission": "Allow The Seeks Academy to save photos.",
+          "photosPermission": "Allow TheSeeksAcademy to access your photos.",
+          "savePhotosPermission": "Allow TheSeeksAcademy to save photos.",
           "isAccessMediaLocationEnabled": true
         }
       ],

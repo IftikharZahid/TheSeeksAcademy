@@ -2,5 +2,25 @@
     "avdmanager.sdkPath": "C:\\Users\\USER\\AppData\\Local\\Android\\Sdk",
     "files.autoSave": "afterDelay",
     "avdmanager.sdkManager": "d:\\cmdline-tools\\bin\\sdkmanager.bat",
-    "json.schemaDownload.enable": false
+    "json.schemaDownload.enable": false,
+
+    // Exclude node_modules from Java/Kotlin/Gradle IDE scanning
+    // This stops the Red Hat Java extension from treating node_modules
+    // gradle files as real Android library projects (they are not).
+    "java.import.exclusions": [
+        "**/node_modules/**",
+        "**/android/build/**",
+        "**/build/**",
+        "**/.gradle/**"
+    ],
+    "java.project.importOnFirstTimeStartup": "disabled",
+
+    // Prevent Gradle build tools from opening node_modules sub-projects
+    "java.gradle.buildServer.enabled": "off",
+
+    // Hide node_modules Gradle errors from Problems panel
+    "files.exclude": {
+        "**/node_modules": true,
+        "**/.gradle": true
+    }
 }

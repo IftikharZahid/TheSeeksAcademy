@@ -26,12 +26,6 @@ export type { Teacher } from './slices/teachersSlice';
 export { setNotices, markAsRead, initNotificationsListener, persistReadIds } from './slices/notificationsSlice';
 export type { Notice } from './slices/notificationsSlice';
 
-export {
-    initPushNotificationsListener,
-    markAsRead as markPushAsRead,
-    markAllAsRead as markAllPushAsRead,
-    persistPushReadIds
-} from '../features/notification/redux/pushNotificationsSlice';
 
 export { setGalleries, toggleLikeVideo, setVideoProgress, clearVideoProgress, initVideoGalleriesListener } from './slices/videosSlice';
 export type { VideoGallery, Video } from './slices/videosSlice';

@@ -249,11 +249,6 @@ export const initAuthListener = (dispatch: ThunkDispatch<any, any, UnknownAction
                 const { fetchLikedTeacherIds } = require('./teachersSlice');
                 dispatch(fetchLikedTeacherIds(firebaseUser.uid));
 
-                // Register for Push Notifications and save token
-                const { registerForPushNotificationsAsync, savePushTokenToFirestore } = require('../../services/PushNotificationService');
-                registerForPushNotificationsAsync().then((token: string | undefined) => {
-                    if (token) savePushTokenToFirestore(firebaseUser.uid, token);
-                }).catch((e: any) => console.log('Push Token Error:', e));
             } else {
                 // Profile fetch failed (Likely due to no internet connection)
                 const state = getState();

@@ -322,7 +322,14 @@ export const ResultsScreen: React.FC = () => {
           <Ionicons name="chevron-back" size={20} color={isDark ? '#e2e8f0' : '#1e293b'} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: isDark ? '#f8fafc' : '#0f172a', fontSize: fontSize.header }]}>Result Detail</Text>
-        <View style={{ width: scale(28) }} />
+        <TouchableOpacity 
+          style={[styles.saveButton, { paddingHorizontal: scale(10), paddingVertical: scale(6), elevation: 0, backgroundColor: isDark ? '#475569' : '#334155' }]} 
+          activeOpacity={0.8} 
+          onPress={handleSaveResult}
+        >
+          <Ionicons name="download-outline" size={14} color="#fff" style={{ marginRight: scale(4) }} />
+          <Text style={[styles.saveButtonText, { fontSize: scale(10) }]}>Save</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? '#fff' : '#000'} />}>
@@ -357,8 +364,8 @@ export const ResultsScreen: React.FC = () => {
             <View ref={viewShotRef} collapsable={false} style={styles.resultSheet}>
 
               <View style={styles.sheetHeader}>
-                <Image source={require('../../assets/the-seeks-logo.png')} style={[styles.sheetLogo, { width: isSmallScreen ? 40 : 50, height: isSmallScreen ? 40 : 50 }]} resizeMode="contain" />
-                <View style={styles.sheetHeaderCenter}>
+                <Image source={require('../../assets/the-seeks-logo.png')} style={[styles.sheetLogo, { width: isSmallScreen ? 60 : 75, height: isSmallScreen ? 60 : 75 }]} resizeMode="contain" />
+                <View style={styles.sheetHeaderLeft}>
                   <Text style={[styles.sheetAcademyName, { fontSize: isSmallScreen ? 14 : 16 }]}>The Seeks Academy Fort Abbas</Text>
                   <Text style={[styles.sheetTitle, { fontSize: isSmallScreen ? 10 : 11 }]}>Result Sheet ({activeTab === 'All' ? 'Grand Test' : `${processedData.testCategory} ${activeTab}`} Session {new Date().getFullYear()}-{new Date().getFullYear() + 1})</Text>
                 </View>
@@ -428,13 +435,6 @@ export const ResultsScreen: React.FC = () => {
         <View style={{ height: scale(80) }} />
       </ScrollView>
 
-      <View style={styles.fabContainer}>
-        <TouchableOpacity style={styles.saveButton} activeOpacity={0.8} onPress={handleSaveResult}>
-          <Ionicons name="download-outline" size={16} color="#fff" style={{ marginRight: scale(6) }} />
-          <Text style={styles.saveButtonText}>Save Result</Text>
-        </TouchableOpacity>
-      </View>
-
       <Modal visible={showCategoryPicker} transparent animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowCategoryPicker(false)}>
           <View style={[styles.modalContent, { backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
@@ -501,11 +501,11 @@ const styles = StyleSheet.create({
   dropdownText: { fontSize: scale(13), fontWeight: '700' },
 
   resultSheet: { backgroundColor: '#fff', borderRadius: scale(8), padding: scale(12), marginBottom: scale(16), borderWidth: 1, borderColor: '#e2e8f0' },
-  sheetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: scale(12) },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: scale(8) },
   sheetLogo: { marginRight: scale(8) },
-  sheetHeaderCenter: { flex: 1, alignItems: 'center' },
-  sheetAcademyName: { fontWeight: '800', color: '#0f172a', textAlign: 'center' },
-  sheetTitle: { fontWeight: '600', color: '#475569', marginTop: 2, textAlign: 'center' },
+  sheetHeaderLeft: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
+  sheetAcademyName: { fontWeight: '800', color: '#0f172a', textAlign: 'left' },
+  sheetTitle: { fontWeight: '600', color: '#475569', marginTop: 2, textAlign: 'left' },
 
   studentInfoSection: { marginBottom: scale(12), borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingBottom: scale(10) },
   infoRow: { flexDirection: 'row', marginBottom: scale(4), alignItems: 'center' },
