@@ -232,8 +232,8 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.mainContainer, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+    <View style={[styles.mainContainer, { backgroundColor: COLORS.white }]}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       {/* ── Background Graphic (Fixed position) ── */}
       <View style={styles.backgroundGraphic}>
@@ -246,7 +246,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
           <ScrollView
             ref={scrollViewRef}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardHeight }]}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight + 60 : 30 }]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             bounces={false}

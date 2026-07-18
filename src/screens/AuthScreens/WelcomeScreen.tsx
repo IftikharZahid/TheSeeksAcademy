@@ -70,8 +70,8 @@ export const WelcomeScreen: React.FC = () => {
   ];
 
   return (
-    <View style={[styles.mainContainer, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+    <View style={[styles.mainContainer, { backgroundColor: COLORS.white }]}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <ScrollView
