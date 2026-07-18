@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
+import * as Clipboard from 'expo-clipboard';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, ActivityIndicator, RefreshControl, Alert, Modal, StatusBar, TextInput } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -6,8 +7,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useTheme } from '../../context/ThemeContext';
 import { auth, db, storage } from '../../api/firebaseConfig';
-import { signOut, updateProfile } from 'firebase/auth';
-import { doc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { signOut, updateProfile, reauthenticateWithCredential, updatePassword, EmailAuthProvider } from 'firebase/auth';
+import { doc, updateDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -51,6 +52,17 @@ export const ProfileScreen: React.FC = () => {
   const [editField, setEditField] = useState<'fathername' | 'phone' | null>(null);
   const [editValue, setEditValue] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [emailCopied, setEmailCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
   
   const isOffline = netInfo.isConnected === false;
 
@@ -116,6 +128,79 @@ export const ProfileScreen: React.FC = () => {
       Alert.alert('Error', 'Failed to update profile.');
     }
     setSavingEdit(false);
+  };
+
+  const handleCopyEmail = async () => {
+    const email = profileData?.email || user?.email || '';
+    if (!email) return;
+    await Clipboard.setStringAsync(email);
+    setEmailCopied(true);
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setEmailCopied(false), 2000);
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Missing Fields', 'Please fill in all password fields.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      Alert.alert('Weak Password', 'New password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Mismatch', 'New password and confirmation do not match.');
+      return;
+    }
+    const email = user?.email || profileData?.email;
+    if (!email || !auth.currentUser) {
+      Alert.alert('Error', 'No authenticated user found.');
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      const credential = EmailAuthProvider.credential(email, currentPassword);
+      await reauthenticateWithCredential(auth.currentUser, credential);
+      await updatePassword(auth.currentUser, newPassword);
+      
+      // Keep admin panel in sync
+      const docRef = doc(db, 'studentsprofile', auth.currentUser.uid);
+      await setDoc(docRef, { password: newPassword }, { merge: true });
+
+      // Also update in students collection which the admin panel table uses
+      const q = query(collection(db, 'students'), where('email', '==', email.toLowerCase()));
+      const snap = await getDocs(q);
+      const updatePromises = snap.docs.map(d => updateDoc(doc(db, 'students', d.id), { password: newPassword }));
+      await Promise.all(updatePromises);
+      
+      setPasswordChanged(true);
+      setTimeout(() => {
+        setPasswordModalVisible(false);
+      }, 2000);
+    } catch (error: any) {
+      const code = error?.code || '';
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        Alert.alert('Wrong Password', 'The current password you entered is incorrect.');
+      } else {
+        Alert.alert('Error', error?.message || 'Failed to update password. Please try again.');
+      }
+    }
+    setSavingPassword(false);
+  };
+
+  const openPasswordModal = () => {
+    if (isOffline) {
+      Alert.alert('Offline', 'Please connect to the internet to change your password.');
+      return;
+    }
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowCurrentPw(false);
+    setShowNewPw(false);
+    setShowConfirmPw(false);
+    setPasswordChanged(false);
+    setPasswordModalVisible(true);
   };
 
   const handleMenuPress = (key: string) => {
@@ -190,7 +275,7 @@ export const ProfileScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: theme.background, paddingTop: StatusBar.currentHeight || 0 }]}>
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: StatusBar.currentHeight || 0, backgroundColor: theme.primary, zIndex: 999 }} />
-      <StatusBar barStyle="light-content" backgroundColor={isDark ? theme.card : theme.primary} translucent={false} />
+      <StatusBar barStyle="light-content" backgroundColor={theme.primary} translucent={false} />
       
       {/* Fixed Header (Transparent, Absolute) */}
       <View style={[styles.topBar, { 
@@ -292,8 +377,27 @@ export const ProfileScreen: React.FC = () => {
                 </View>
               </TouchableOpacity>
               <Text style={[styles.name, { color: theme.text }]}>{displayName}</Text>
-              {profileData?.email ? (
-                <Text style={[styles.heroEmail, { color: theme.textSecondary, marginBottom: scale(4) }]} numberOfLines={1}>{profileData.email}</Text>
+              {(profileData?.email || user?.email) ? (
+                <TouchableOpacity
+                  onPress={handleCopyEmail}
+                  activeOpacity={0.7}
+                  style={styles.emailCopyRow}
+                >
+                  <Text style={[styles.heroEmail, { color: theme.textSecondary }]} numberOfLines={1}>
+                    {profileData?.email || user?.email}
+                  </Text>
+                  <Ionicons
+                    name={emailCopied ? 'checkmark-circle' : 'copy-outline'}
+                    size={scale(13)}
+                    color={emailCopied ? '#10b981' : theme.textSecondary}
+                    style={{ marginLeft: scale(5) }}
+                  />
+                  {emailCopied && (
+                    <View style={styles.copiedBadge}>
+                      <Text style={styles.copiedBadgeText}>Copied!</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
               ) : null}
               <View style={styles.heroBadges}>
                 <View style={[styles.roleBadge, { backgroundColor: theme.primary + '15' }]}>
@@ -331,6 +435,20 @@ export const ProfileScreen: React.FC = () => {
                 <CompactCard icon="school" label={isTeacher ? 'Subject' : 'Class'} value={profileData?.class} color="#ec4899" />
                 <CompactCard icon="albums" label={isTeacher ? 'Qual.' : 'Session'} value={profileData?.session} color="#8b5cf6" />
                 <CompactCard icon="id-card" label="ID / Roll No" value={profileData?.rollno} color="#10b981" />
+              </View>
+            </View>
+
+            {/* ── Account Section ──────────────────────────────────────────── */}
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>ACCOUNT</Text>
+              <View style={[styles.menuCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <MenuRow
+                  icon="lock-closed"
+                  label="Change Password"
+                  color="#f97316"
+                  onPress={openPasswordModal}
+                  isLast={true}
+                />
               </View>
             </View>
 
@@ -437,6 +555,107 @@ export const ProfileScreen: React.FC = () => {
                 )}
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Change Password Modal ─────────────────────────────────────────────── */}
+      <Modal visible={passwordModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: theme.card, width: '92%' }]}>
+            <View style={[styles.modalIconWrap, { backgroundColor: 'rgba(249,115,22,0.15)' }]}>
+              <Ionicons name="lock-closed-outline" size={scale(20)} color="#f97316" />
+            </View>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Change Password</Text>
+
+            {passwordChanged ? (
+              <>
+                <View style={[styles.adminSyncNote, { backgroundColor: '#10b98115', marginBottom: scale(16) }]}>
+                  <Ionicons name="checkmark-circle-outline" size={scale(14)} color="#10b981" style={{ marginRight: scale(6) }} />
+                  <Text style={[styles.adminSyncText, { color: '#10b981' }]}>Password updated successfully!</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.modalBtn, styles.modalBtnConfirm, { backgroundColor: theme.primary, width: '100%' }]}
+                  onPress={() => setPasswordModalVisible(false)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.modalBtnText, { color: '#fff' }]}>Done</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                {/* Current Password */}
+                <View style={[styles.pwFieldWrap, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                  <TextInput
+                    style={[styles.pwInput, { color: theme.text }]}
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    placeholder="Current Password"
+                    placeholderTextColor={theme.textSecondary}
+                    secureTextEntry={!showCurrentPw}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity onPress={() => setShowCurrentPw(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name={showCurrentPw ? 'eye-off-outline' : 'eye-outline'} size={scale(18)} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* New Password */}
+                <View style={[styles.pwFieldWrap, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                  <TextInput
+                    style={[styles.pwInput, { color: theme.text }]}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder="New Password"
+                    placeholderTextColor={theme.textSecondary}
+                    secureTextEntry={!showNewPw}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity onPress={() => setShowNewPw(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name={showNewPw ? 'eye-off-outline' : 'eye-outline'} size={scale(18)} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Confirm New Password */}
+                <View style={[styles.pwFieldWrap, { backgroundColor: theme.background, borderColor: theme.border, marginBottom: scale(16) }]}>
+                  <TextInput
+                    style={[styles.pwInput, { color: theme.text }]}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Confirm New Password"
+                    placeholderTextColor={theme.textSecondary}
+                    secureTextEntry={!showConfirmPw}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity onPress={() => setShowConfirmPw(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name={showConfirmPw ? 'eye-off-outline' : 'eye-outline'} size={scale(18)} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.modalBtnRow}>
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.modalBtnCancel, { borderColor: theme.border, borderWidth: 1 }]}
+                    onPress={() => setPasswordModalVisible(false)}
+                    disabled={savingPassword}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.modalBtnText, { color: theme.textSecondary }]}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalBtn, styles.modalBtnConfirm, { backgroundColor: '#f97316' }]}
+                    onPress={handleChangePassword}
+                    disabled={savingPassword}
+                    activeOpacity={0.7}
+                  >
+                    {savingPassword ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={[styles.modalBtnText, { color: '#fff' }]}>Update</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -561,5 +780,61 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(12),
     marginBottom: scale(16),
     fontSize: scale(12),
+  },
+
+  // ── Email Copy Row ─────────────────────────────────────────────────────────
+  emailCopyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(4),
+    paddingVertical: scale(3),
+    paddingHorizontal: scale(10),
+    borderRadius: scale(8),
+  },
+  copiedBadge: {
+    marginLeft: scale(6),
+    backgroundColor: '#10b98120',
+    paddingHorizontal: scale(6),
+    paddingVertical: scale(1),
+    borderRadius: scale(6),
+  },
+  copiedBadgeText: {
+    fontSize: scale(9),
+    fontWeight: '700',
+    color: '#10b981',
+  },
+
+  // ── Admin Sync Note ────────────────────────────────────────────────────────
+  adminSyncNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#6366f110',
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: scale(8),
+    marginBottom: scale(12),
+  },
+  adminSyncText: {
+    fontSize: scale(10),
+    color: '#6366f1',
+    fontWeight: '600',
+  },
+
+  // ── Password Field ─────────────────────────────────────────────────────────
+  pwFieldWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: scale(8),
+    paddingHorizontal: scale(12),
+    marginBottom: scale(10),
+    height: scale(42),
+    width: '100%',
+  },
+  pwInput: {
+    flex: 1,
+    fontSize: scale(12),
+    height: '100%',
   },
 });

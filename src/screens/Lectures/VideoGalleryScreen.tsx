@@ -216,7 +216,12 @@ export const VideoGalleryScreen: React.FC = () => {
     return (
         <ScreenContainer
             headerTitle="Video Gallery"
-            headerSubtitle={`${totalVideos} videos available`}
+            rightAction={
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: scale(14), paddingHorizontal: scale(10), paddingVertical: scale(4), flexDirection: 'row', alignItems: 'center', gap: scale(4) }}>
+                    <Ionicons name="videocam" size={scale(12)} color="#ffffff" />
+                    <Text style={{ color: '#ffffff', fontSize: scale(11), fontWeight: '700' }}>{totalVideos}</Text>
+                </View>
+            }
             showBack={true}
             useBottomInset={false}
         >
@@ -337,8 +342,9 @@ const styles = StyleSheet.create({
         marginTop: scale(12),
     },
     banner: {
-        borderRadius: scale(16),
-        padding: scale(16),
+        borderRadius: scale(12),
+        paddingVertical: scale(12),
+        paddingHorizontal: scale(14),
         overflow: 'hidden',
         position: 'relative',
     },
@@ -346,13 +352,13 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     bannerTitle: {
-        fontSize: scale(18),
+        fontSize: scale(15),
         fontWeight: '700',
         color: '#fff',
-        marginBottom: scale(4),
+        marginBottom: scale(2),
     },
     bannerSubtitle: {
-        fontSize: scale(12),
+        fontSize: scale(11),
         color: 'rgba(255, 255, 255, 0.85)',
     },
     bannerDecoration: {

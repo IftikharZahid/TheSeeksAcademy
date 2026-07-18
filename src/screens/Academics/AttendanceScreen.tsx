@@ -348,12 +348,12 @@ export const AttendanceScreen: React.FC = () => {
         <View style={[
           styles.compactScore,
           {
-            backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : '#ecfdf5',
-            borderColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#a7f3d0',
+            backgroundColor: 'rgba(255,255,255,0.2)',
+            borderColor: 'transparent',
           }
         ]}>
           <Ionicons name="stats-chart" size={11} color="#ffffff" style={styles.scoreIcon} />
-          <Text style={[styles.compactPercentage, { color: isDark ? '#34d399' : '#059669' }]}>
+          <Text style={[styles.compactPercentage, { color: '#ffffff' }]}>
             {summary.percentage > 0 ? `${summary.percentage}%` : '—'}
           </Text>
         </View>
