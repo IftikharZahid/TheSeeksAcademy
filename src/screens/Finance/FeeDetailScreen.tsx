@@ -15,7 +15,7 @@ import {
   RefreshControl,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
@@ -520,20 +520,7 @@ export const FeeDetailScreen: React.FC = () => {
   const renderSkeleton = () => {
     const skelBg = isDark ? '#1e293b' : '#f1f5f9';
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom', 'left', 'right']}>
-        <StatusBar 
-          backgroundColor={theme.card} 
-          barStyle={isDark ? 'light-content' : 'dark-content'} 
-        />
-        {/* Header Skeleton */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', padding: scale(16), borderBottomWidth: 1, borderBottomColor: theme.border }}>
-          <View style={{ width: scale(22), height: scale(22), borderRadius: scale(11), backgroundColor: skelBg }} />
-          <View style={{ marginLeft: scale(16), flex: 1 }}>
-            <View style={{ width: '40%', height: scale(16), borderRadius: scale(4), backgroundColor: skelBg, marginBottom: scale(6) }} />
-            <View style={{ width: '25%', height: scale(12), borderRadius: scale(4), backgroundColor: skelBg }} />
-          </View>
-          <View style={{ width: scale(70), height: scale(24), borderRadius: scale(12), backgroundColor: skelBg }} />
-        </View>
+      <ScreenContainer headerTitle="Fee Ledger">
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {/* Balance Card Skeleton */}
@@ -566,7 +553,7 @@ export const FeeDetailScreen: React.FC = () => {
             </View>
           ))}
         </ScrollView>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   };
 
@@ -576,17 +563,7 @@ export const FeeDetailScreen: React.FC = () => {
   
   if (!feeData) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom', 'left', 'right']}>
-        <StatusBar 
-          backgroundColor={theme.card} 
-          barStyle={isDark ? 'light-content' : 'dark-content'} 
-        />
-        <TouchableOpacity
-          style={{ padding: scale(16) }}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.text} />
-        </TouchableOpacity>
+      <ScreenContainer headerTitle="Fee Ledger">
         <View style={[styles.loadingContainer, { paddingHorizontal: scale(24) }]}>
           <Ionicons name="cloud-offline-outline" size={scale(60)} color={theme.textSecondary} style={{ marginBottom: scale(16) }} />
           <Text style={{ color: theme.text, fontSize: scale(18), fontWeight: 'bold', marginBottom: scale(8), textAlign: 'center' }}>No Data Available</Text>
@@ -595,50 +572,15 @@ export const FeeDetailScreen: React.FC = () => {
             <Text style={{ color: '#fff', fontWeight: 'bold' }}>Try Again</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'bottom', 'left', 'right']}>
-      <StatusBar 
-        backgroundColor={theme.card} 
-        barStyle={isDark ? 'light-content' : 'dark-content'} 
-      />
-      {/* Floating Header */}
-      <Animated.View
-        style={[
-          styles.floatingHeader,
-          {
-            opacity: headerAnim,
-            transform: [{
-              translateY: headerAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [-10, 0],
-              })
-            }],
-            backgroundColor: theme.card,
-            borderBottomColor: theme.border,
-          }
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.floatingBackButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={22} color={theme.text} />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <View style={styles.headerTitleRow}>
-            <Ionicons name="wallet-outline" size={18} color={theme.primary} style={styles.headerIcon} />
-            <Text style={[styles.headerTitle, { color: theme.text }]}>Fee Ledger</Text>
-          </View>
-          <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-            SESSION {profile?.session || '2024-25'}
-          </Text>
-        </View>
-
-        {/* Dynamic Header Status Pill */}
+    <ScreenContainer 
+      headerTitle="Fee Ledger"
+      headerSubtitle={`SESSION ${profile?.session || '2024-25'}`}
+      rightAction={
         <View style={[
           styles.headerStatusPill,
           {
@@ -649,20 +591,31 @@ export const FeeDetailScreen: React.FC = () => {
               ? (isDark ? 'rgba(245, 158, 11, 0.25)' : '#fde68a')
               : (isDark ? 'rgba(16, 185, 129, 0.25)' : '#a7f3d0'),
             borderWidth: 1,
+            paddingHorizontal: scale(8),
+            paddingVertical: scale(4),
+            borderRadius: scale(12),
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: scale(4),
           }
         ]}>
           <View style={[
             styles.headerStatusDot,
-            { backgroundColor: feeData.pendingAmount > 0 ? '#fbbf24' : '#10b981' }
+            { backgroundColor: feeData.pendingAmount > 0 ? '#fbbf24' : '#10b981', width: scale(6), height: scale(6), borderRadius: scale(3) }
           ]} />
           <Text style={[
             styles.headerStatusText,
-            { color: feeData.pendingAmount > 0 ? (isDark ? '#fbbf24' : '#d97706') : (isDark ? '#34d399' : '#059669') }
+            { 
+              color: feeData.pendingAmount > 0 ? (isDark ? '#fbbf24' : '#d97706') : (isDark ? '#34d399' : '#059669'),
+              fontSize: scale(10),
+              fontWeight: '700'
+            }
           ]}>
-            {feeData.pendingAmount > 0 ? `DUE: PKR ${feeData.pendingAmount.toLocaleString()}` : 'PAID'}
+            {feeData.pendingAmount > 0 ? `DUE` : 'PAID'}
           </Text>
         </View>
-      </Animated.View>
+      }
+    >
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -910,7 +863,7 @@ export const FeeDetailScreen: React.FC = () => {
                 {selectedPayment ? 'Monthly Fee Slip' : 'Fee Slip Preview'}
               </Text>
               <TouchableOpacity onPress={closeFeeSlipModal}>
-                <Ionicons name="close" size={24} color={theme.text} />
+                <Ionicons name="close" size={24} color="#ffffff" />
               </TouchableOpacity>
             </View>
 
@@ -1063,7 +1016,7 @@ export const FeeDetailScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Dimensions, StatusBar } from "react-native";
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../navigation/HomeStack';
@@ -124,24 +124,17 @@ export const TeachersScreen: React.FC = () => {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={theme.background} />
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.card, borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomColor: theme.border, borderBottomWidth: 0 }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('HomeScreen')}
-        >
-          <Ionicons name="arrow-back" size={scale(22)} color={theme.text} />
-        </TouchableOpacity>
-        <View style={{ flex: 1, justifyContent: 'center' }}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Staff Members</Text>
+    <ScreenContainer 
+      headerTitle="Staff Members"
+      rightAction={
+        <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: scale(14), paddingHorizontal: scale(10), paddingVertical: scale(4), flexDirection: 'row', alignItems: 'center', gap: scale(4) }}>
+          <Ionicons name="people" size={scale(14)} color="#ffffff" />
+          <Text style={{ fontSize: scale(13), fontWeight: '800', color: '#ffffff' }}>
+            {staff.length}
+          </Text>
         </View>
-        <View style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : theme.primary + '15', borderRadius: scale(20), paddingHorizontal: scale(12), paddingVertical: scale(6), flexDirection: 'row', alignItems: 'center' }}>
-          <Ionicons name="people" size={scale(16)} color={isDark ? theme.text : theme.primary} style={{ marginRight: scale(6) }} />
-          <Text style={{ fontSize: scale(14), fontWeight: '700', color: isDark ? theme.text : theme.primary }}>{staff.length} Total</Text>
-        </View>
-      </View>
+      }
+    >
 
       <View style={styles.contentWrapper}>
         {/* Loading State */}
@@ -176,7 +169,7 @@ export const TeachersScreen: React.FC = () => {
           </ScrollView>
         )}
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 

@@ -364,7 +364,7 @@ export const DocumentsScreen: React.FC = () => {
       setPickerModalVisible(false);
   };
 
-  const headerBg = isDark ? theme.backgroundSecondary : '#1e3a8a';
+  const headerBg = theme.primary;
 
   return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -408,11 +408,15 @@ export const DocumentsScreen: React.FC = () => {
         </SafeAreaView>
         
         {/* Scrollable Content */}
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={{ flex: 1 }}>
           <FlatList
             style={{ flex: 1 }}
           data={filteredNotices}
           keyExtractor={item => item.id}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          removeClippedSubviews={true}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
@@ -473,7 +477,7 @@ export const DocumentsScreen: React.FC = () => {
           </View>
         }
       />
-      </KeyboardAvoidingView>
+      </View>
 
       {/* Dynamic Picker Modal */}
       <Modal visible={pickerModalVisible} transparent={true} animationType="fade">
@@ -557,7 +561,7 @@ export const DocumentsScreen: React.FC = () => {
                     style={[styles.popupCloseBtn, { backgroundColor: isDark ? '#1e293b' : '#f1f5f9' }]}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <Ionicons name="close" size={scale(18)} color={theme.text} />
+                    <Ionicons name="close" size={scale(18)} color="#ffffff" />
                   </TouchableOpacity>
                 </View>
 

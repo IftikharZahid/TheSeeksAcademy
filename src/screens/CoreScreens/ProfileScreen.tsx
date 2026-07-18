@@ -275,12 +275,12 @@ export const ProfileScreen: React.FC = () => {
               <StudentProfileBanner />
             </View>
             <View style={styles.avatarSection}>
-              <TouchableOpacity style={[styles.avatarContainer, { borderColor: theme.background }]} onPress={handleImagePick} disabled={uploadingImage} activeOpacity={0.7}>
+              <TouchableOpacity style={[styles.avatarContainer, { borderColor: theme.background, backgroundColor: isDark ? theme.card : '#fff' }]} onPress={handleImagePick} disabled={uploadingImage} activeOpacity={0.7}>
                 <Image
                   source={displayImage && !imageError ? { uri: displayImage } : require('../../assets/default-profile.png')}
                   defaultSource={require('../../assets/default-profile.png')}
                   onError={() => setImageError(true)}
-                  style={[styles.avatar, (!displayImage || imageError) && isDark ? { tintColor: '#fff' } : null]}
+                  style={[styles.avatar, (!displayImage || imageError) && isDark ? { tintColor: '#ffffff' } : null]}
                 />
                 {uploadingImage && (
                   <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }]}>

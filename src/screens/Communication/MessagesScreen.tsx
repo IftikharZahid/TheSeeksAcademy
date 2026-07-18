@@ -753,17 +753,17 @@ export const MessagesScreen: React.FC = () => {
   // ── Render: Groups List ────────────────────────────────────────────────
   if (!activeGroup) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['top', 'left', 'right']}>
-        <StatusBar backgroundColor={theme.card} barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <View style={[styles.headerNoticeStyle, { backgroundColor: theme.card, borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), borderBottomColor: theme.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.primary }]} edges={['top', 'left', 'right']}>
+        <StatusBar backgroundColor={theme.primary} barStyle="light-content" />
+        <View style={[styles.headerNoticeStyle, { backgroundColor: theme.primary, borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), borderBottomColor: theme.primary, borderBottomWidth: StyleSheet.hairlineWidth }]}>
           <TouchableOpacity
             onPress={() => navigation.navigate('Home' as never)}
             style={[styles.placeholderButton, { justifyContent: 'center', alignItems: 'center' }]}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="arrow-back" size={scale(22)} color={theme.text} />
+            <Ionicons name="arrow-back" size={scale(22)} color="#ffffff" />
           </TouchableOpacity>
-          <Text style={[styles.headerTitleNoticeStyle, { color: theme.text }]}>Messages</Text>
+          <Text style={[styles.headerTitleNoticeStyle, { color: '#ffffff' }]}>Messages</Text>
           <View style={styles.placeholderButton} />
         </View>
         <ScrollView
@@ -1008,11 +1008,11 @@ export const MessagesScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.card }]} edges={['top', 'left', 'right']}>
-      <StatusBar backgroundColor={theme.card} barStyle={isDark ? 'light-content' : 'dark-content'} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.primary }]} edges={['top', 'left', 'right']}>
+      <StatusBar backgroundColor={theme.primary} barStyle="light-content" />
       {/* Header — onLayout tracks real height so KAV offset is exact */}
       <View
-        style={[styles.headerNoticeStyle, { backgroundColor: theme.card, justifyContent: 'flex-start', borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), borderBottomColor: theme.border, borderBottomWidth: StyleSheet.hairlineWidth }]}
+        style={[styles.headerNoticeStyle, { backgroundColor: theme.primary, justifyContent: 'flex-start', borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), borderBottomColor: theme.primary, borderBottomWidth: StyleSheet.hairlineWidth }]}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       >
 
@@ -1021,18 +1021,18 @@ export const MessagesScreen: React.FC = () => {
           style={{ paddingRight: scale(10), paddingVertical: scale(4) }}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="arrow-back" size={scale(22)} color={theme.text} />
+          <Ionicons name="arrow-back" size={scale(22)} color="#ffffff" />
         </TouchableOpacity>
 
-        <View style={{ width: scale(36), height: scale(36), borderRadius: scale(18), backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9', justifyContent: 'center', alignItems: 'center', marginRight: scale(10), overflow: 'hidden', borderWidth: 1, borderColor: theme.border }}>
+        <View style={{ width: scale(36), height: scale(36), borderRadius: scale(18), backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: scale(10), overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }}>
           <Image source={require('../../assets/the-seeks-logo.png')} style={{ width: '70%', height: '70%', resizeMode: 'contain' }} />
         </View>
 
         <View style={{ flex: 1, justifyContent: 'center' }}>
-          <Text style={{ fontSize: scale(16), fontWeight: '800', color: theme.text }} numberOfLines={1}>
+          <Text style={{ fontSize: scale(16), fontWeight: '800', color: '#ffffff' }} numberOfLines={1}>
             {groupObj?.name || 'Chat'}
           </Text>
-          <Text style={{ fontSize: scale(11), color: theme.textSecondary, marginTop: 2, fontWeight: '600', opacity: 0.7 }}>
+          <Text style={{ fontSize: scale(11), color: 'rgba(255,255,255,0.8)', marginTop: 2, fontWeight: '600' }}>
             {currentMessages.length} Messages
           </Text>
         </View>
@@ -1043,7 +1043,9 @@ export const MessagesScreen: React.FC = () => {
             right: scale(16),
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: remainingMessages <= 3 ? 'rgba(239,68,68,0.12)' : 'rgba(99,102,241,0.1)',
+            backgroundColor: remainingMessages <= 3 
+                ? theme.error 
+                : 'rgba(255,255,255,0.2)',
             paddingHorizontal: scale(10),
             paddingVertical: scale(5),
             borderRadius: scale(14),
@@ -1052,15 +1054,15 @@ export const MessagesScreen: React.FC = () => {
             <Text style={{
               fontSize: scale(14),
               fontWeight: '800',
-              color: remainingMessages <= 3 ? '#ef4444' : theme.primary,
+              color: '#ffffff',
             }}>
               {remainingMessages}
             </Text>
             <Text style={{
               fontSize: scale(9),
               fontWeight: '700',
-              color: remainingMessages <= 3 ? '#ef4444' : theme.primary,
-              opacity: 0.7,
+              color: '#ffffff',
+              opacity: 0.9,
             }}>
               Left
             </Text>
@@ -1079,7 +1081,7 @@ export const MessagesScreen: React.FC = () => {
         We use scale(48) as the header height; adjust if your header is taller.
       */}
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: theme.background }}
         behavior="padding"
         keyboardVerticalOffset={0}
         enabled={keyboardVisible}

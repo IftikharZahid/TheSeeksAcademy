@@ -12,6 +12,7 @@ import {
     StatusBar,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -213,31 +214,12 @@ export const VideoGalleryScreen: React.FC = () => {
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top, backgroundColor: theme.card, zIndex: 999 }} />
-            <StatusBar translucent={true} backgroundColor="transparent" barStyle={isDark ? "light-content" : "dark-content"} />
-            {/* Compact Header */}
-            <Animated.View
-                style={[
-                    styles.header,
-                    {
-                        backgroundColor: theme.card,
-                        borderBottomWidth: 1,
-                        borderBottomColor: theme.border,
-                        opacity: headerAnim,
-                    }
-                ]}
-            >
-                <View style={styles.headerIcon}>
-                    <Ionicons name="videocam" size={24} color={theme.primary} />
-                </View>
-                <View style={styles.headerCenter}>
-                    <Text style={[styles.headerTitle, { color: theme.text }]}>Video Gallery</Text>
-                    <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-                        {totalVideos} videos available
-                    </Text>
-                </View>
-            </Animated.View>
+        <ScreenContainer
+            headerTitle="Video Gallery"
+            headerSubtitle={`${totalVideos} videos available`}
+            showBack={true}
+            useBottomInset={false}
+        >
 
             {loading ? (
                 <View style={styles.loadingContainer}>
@@ -296,7 +278,7 @@ export const VideoGalleryScreen: React.FC = () => {
                     )}
                 </ScrollView>
             )}
-        </View>
+        </ScreenContainer>
     );
 };
 
@@ -347,7 +329,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     scrollContent: {
-        paddingBottom: scale(24),
+        // No paddingBottom needed since TabBar sits below
     },
     // Banner
     bannerContainer: {

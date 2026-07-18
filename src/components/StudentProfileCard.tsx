@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Image } from 'expo-image';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { scale } from '../utils/responsive';
@@ -38,9 +37,12 @@ export const StudentProfileCard: React.FC<StudentProfileCardProps> = ({
           <View style={styles.avatarContainer}>
             <Image
               source={avatarUrl ? { uri: avatarUrl } : require('../assets/default-profile.png')}
-              style={[styles.avatarImage, !avatarUrl && { borderColor: isDark ? theme.border : '#f3f4f6' }]}
-              contentFit="cover"
-              tintColor={!avatarUrl && isDark ? '#ffffff' : undefined}
+              style={[
+                styles.avatarImage, 
+                !avatarUrl && { borderColor: isDark ? theme.border : '#f3f4f6' },
+                !avatarUrl && isDark ? { tintColor: '#ffffff' } : null
+              ]}
+              resizeMode="cover"
             />
             <View style={styles.onlineIndicator} />
           </View>

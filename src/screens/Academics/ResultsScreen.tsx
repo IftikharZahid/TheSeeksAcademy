@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, TextInput, Alert, Platform, Image, Dimensions, Modal, Keyboard, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -312,26 +313,19 @@ export const ResultsScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0f172a' : '#f8fafc' }]} edges={['top', 'left', 'right']}>
-      <StatusBar
-        backgroundColor={theme.card}
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-      />
-      <View style={[styles.header, { borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomWidth: 0,  backgroundColor: isDark ? '#1e293b' : '#fff' }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
-          <Ionicons name="chevron-back" size={20} color={isDark ? '#e2e8f0' : '#1e293b'} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: isDark ? '#f8fafc' : '#0f172a', fontSize: fontSize.header }]}>Result Detail</Text>
-        <TouchableOpacity 
-          style={[styles.saveButton, { paddingHorizontal: scale(10), paddingVertical: scale(6), elevation: 0, backgroundColor: isDark ? '#475569' : '#334155' }]} 
-          activeOpacity={0.8} 
+    <ScreenContainer
+      headerTitle="Result Detail"
+      rightAction={
+        <TouchableOpacity
+          style={[styles.saveButton, { paddingHorizontal: scale(10), paddingVertical: scale(6), elevation: 0, backgroundColor: 'rgba(255,255,255,0.2)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' }]}
+          activeOpacity={0.8}
           onPress={handleSaveResult}
         >
           <Ionicons name="download-outline" size={14} color="#fff" style={{ marginRight: scale(4) }} />
           <Text style={[styles.saveButtonText, { fontSize: scale(10) }]}>Save</Text>
         </TouchableOpacity>
-      </View>
-
+      }
+    >
       <ScrollView contentContainerStyle={styles.scrollContent} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? '#fff' : '#000'} />}>
         <View style={[styles.filterSearchRow, { backgroundColor: isDark ? '#1e293b' : '#fff', borderColor: isDark ? '#334155' : '#e2e8f0' }]}>
           <TouchableOpacity
@@ -341,7 +335,7 @@ export const ResultsScreen: React.FC = () => {
             <Text style={[styles.dropdownLabel, { color: isDark ? '#64748b' : '#94a3b8' }]}>Test Type</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text numberOfLines={1} style={[styles.dropdownText, { color: isDark ? '#cbd5e1' : '#334155' }]}>{activeCategory === 'All' ? 'All Types' : activeCategory}</Text>
-              <Ionicons name="chevron-down" size={14} color={isDark ? '#94a3b8' : '#64748b'} style={{ marginLeft: scale(6) }} />
+              <Ionicons name="chevron-down" size={14} color="#ffffff" style={{ marginLeft: scale(6) }} />
             </View>
           </TouchableOpacity>
 
@@ -354,7 +348,7 @@ export const ResultsScreen: React.FC = () => {
             <Text style={[styles.dropdownLabel, { color: isDark ? '#64748b' : '#94a3b8' }]}>Test No.</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Text numberOfLines={1} style={[styles.dropdownText, { color: isDark ? '#cbd5e1' : '#334155' }]}>{activeTab === 'All' ? 'All Tests' : activeTab}</Text>
-              <Ionicons name="chevron-down" size={14} color={isDark ? '#94a3b8' : '#64748b'} style={{ marginLeft: scale(6) }} />
+              <Ionicons name="chevron-down" size={14} color="#ffffff" style={{ marginLeft: scale(6) }} />
             </View>
           </TouchableOpacity>
         </View>
@@ -364,7 +358,7 @@ export const ResultsScreen: React.FC = () => {
             <View ref={viewShotRef} collapsable={false} style={styles.resultSheet}>
 
               <View style={styles.sheetHeader}>
-                <Image source={require('../../assets/the-seeks-logo.png')} style={[styles.sheetLogo, { width: isSmallScreen ? 60 : 75, height: isSmallScreen ? 60 : 75 }]} resizeMode="contain" />
+                <Image source={require('../../assets/the-seeks-logo.png')} style={[styles.sheetLogo, { width: isSmallScreen ? 70 : 85, height: isSmallScreen ? 70 : 85 }]} resizeMode="contain" />
                 <View style={styles.sheetHeaderLeft}>
                   <Text style={[styles.sheetAcademyName, { fontSize: isSmallScreen ? 14 : 16 }]}>The Seeks Academy Fort Abbas</Text>
                   <Text style={[styles.sheetTitle, { fontSize: isSmallScreen ? 10 : 11 }]}>Result Sheet ({activeTab === 'All' ? 'Grand Test' : `${processedData.testCategory} ${activeTab}`} Session {new Date().getFullYear()}-{new Date().getFullYear() + 1})</Text>
@@ -480,7 +474,7 @@ export const ResultsScreen: React.FC = () => {
           </View>
         </TouchableOpacity>
       </Modal>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
@@ -502,7 +496,7 @@ const styles = StyleSheet.create({
 
   resultSheet: { backgroundColor: '#fff', borderRadius: scale(8), padding: scale(12), marginBottom: scale(16), borderWidth: 1, borderColor: '#e2e8f0' },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: scale(8) },
-  sheetLogo: { marginRight: scale(8) },
+  sheetLogo: { marginRight: scale(4) },
   sheetHeaderLeft: { flex: 1, alignItems: 'flex-start', justifyContent: 'center' },
   sheetAcademyName: { fontWeight: '800', color: '#0f172a', textAlign: 'left' },
   sheetTitle: { fontWeight: '600', color: '#475569', marginTop: 2, textAlign: 'left' },

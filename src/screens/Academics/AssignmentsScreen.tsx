@@ -11,7 +11,7 @@ import {
   StatusBar,
   Modal,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ScreenContainer } from "../../components/layout/ScreenContainer";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { initAssignmentsListener, markAssignmentAsRead, persistReadAssignmentIds } from "../../store/slices/assignmentsSlice";
@@ -128,21 +128,7 @@ export const AssignmentsScreen: React.FC = () => {
   const lateCount      = assignments.filter((a) => a.status === "Late").length;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      <StatusBar 
-        backgroundColor={theme.card} 
-        barStyle={isDark ? 'light-content' : 'dark-content'} 
-      />
-
-      {/* ── Header ─────────────────────────────────────────────────── */}
-      <View style={[styles.header, { borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomWidth: 0,  backgroundColor: theme.card }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={scale(24)} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Assignments</Text>
-        <View style={{ width: scale(24) }} />
-      </View>
-
+    <ScreenContainer headerTitle="Assignments">
       {/* ── Scrollable body ────────────────────────────────────────── */}
       <View style={styles.contentContainer}>
         {/* Search */}
@@ -369,7 +355,7 @@ export const AssignmentsScreen: React.FC = () => {
         </View>
       </Modal>
 
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 

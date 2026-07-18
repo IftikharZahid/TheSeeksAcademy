@@ -233,7 +233,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={[styles.mainContainer, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
       {/* ── Background Graphic (Fixed position) ── */}
       <View style={styles.backgroundGraphic}>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, StatusBar } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -75,20 +75,7 @@ export const SettingsScreen: React.FC = () => {
   ];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
-      <StatusBar backgroundColor={theme.card} barStyle={isDark ? 'light-content' : 'dark-content'} />
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.card, borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomColor: theme.border, borderBottomWidth: 0 }]}>
-        <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: theme.backgroundSecondary }]}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={20} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Settings</Text>
-        <View style={{ width: scale(36) }} />
-      </View>
-
+    <ScreenContainer headerTitle="Settings">
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
@@ -146,7 +133,7 @@ export const SettingsScreen: React.FC = () => {
 
         <View style={{ height: scale(24) }} />
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 

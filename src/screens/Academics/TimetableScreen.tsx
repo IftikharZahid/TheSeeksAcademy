@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, StatusBar, Animated } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppSelector } from '../../store/hooks';
@@ -169,8 +169,6 @@ export const TimetableScreen: React.FC = () => {
   const [scheduleData, setScheduleData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-
-
   const allEntries = useAppSelector(state => state.timetable.entries);
   const isTimetableLoading = useAppSelector(state => state.timetable.status === 'loading' || state.timetable.status === 'idle');
 
@@ -274,22 +272,9 @@ export const TimetableScreen: React.FC = () => {
   }, []);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      <StatusBar 
-        backgroundColor={theme.card} 
-        barStyle={isDark ? 'light-content' : 'dark-content'} 
-      />
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.card, borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomWidth: 0 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={scale(24)} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Timetable</Text>
-        <View style={{ width: scale(36) }} />
-      </View>
-
+    <ScreenContainer headerTitle="Timetable">
       <View style={styles.scrollContainerWrapper}>
-        {/* ── Day Tabs ── */}
+        {/* Day Tabs */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -350,15 +335,15 @@ export const TimetableScreen: React.FC = () => {
               scheduleData.map((classItem, index) => {
                 const isLast = index === scheduleData.length - 1;
                 return (
-                  <AnimatedLectureItem 
-                      key={classItem.id || index}
-                      classItem={classItem}
-                      index={index}
-                      isLast={isLast}
-                      theme={theme}
-                      selectedDay={activeDay}
-                    />
-                  );
+                  <AnimatedLectureItem
+                    key={classItem.id || index}
+                    classItem={classItem}
+                    index={index}
+                    isLast={isLast}
+                    theme={theme}
+                    selectedDay={activeDay}
+                  />
+                );
               })
             )}
 
@@ -373,30 +358,13 @@ export const TimetableScreen: React.FC = () => {
           </View>
         </ScrollView>
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: scale(16),
-    paddingVertical: scale(12),
-    zIndex: 10,
-  },
-  backButton: {
-    padding: scale(4),
-  },
-  headerTitle: {
-    fontSize: scale(18),
-    fontWeight: '700',
-    flex: 1,
-    textAlign: 'center',
   },
   scrollContainerWrapper: {
     flex: 1,

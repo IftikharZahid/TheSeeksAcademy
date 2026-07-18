@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { db, auth } from '../../api/firebaseConfig';
@@ -205,27 +206,19 @@ export const LikedVideosScreen: React.FC = () => {
     );
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-            <StatusBar backgroundColor={theme.card} barStyle={isDark ? "light-content" : "dark-content"} />
-            <View style={[styles.header, { backgroundColor: theme.card, borderBottomWidth: 1, borderBottomColor: theme.border, elevation: 0, shadowOpacity: 0 }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={scale(24)} color={theme.text} />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: theme.text }]}>Liked Videos</Text>
-                <TouchableOpacity
-                    style={[styles.headerIconButton, { backgroundColor: theme.card }]}
-                    activeOpacity={1}
-                >
-                    <Ionicons name="heart" size={scale(22)} color={theme.primary} />
+        <ScreenContainer 
+            headerTitle="Liked Videos"
+            rightAction={
+                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.2)', paddingHorizontal: scale(10), paddingVertical: scale(4), borderRadius: scale(12), gap: scale(4) }}>
+                    <Ionicons name="heart" size={scale(14)} color="#fff" />
                     {likedVideos.length > 0 && (
-                        <View style={styles.badge}>
-                            <Text style={styles.badgeText}>
-                                {likedVideos.length > 99 ? '99+' : likedVideos.length}
-                            </Text>
-                        </View>
+                        <Text style={{ fontSize: scale(12), fontWeight: '700', color: '#fff' }}>
+                            {likedVideos.length > 99 ? '99+' : likedVideos.length}
+                        </Text>
                     )}
-                </TouchableOpacity>
-            </View>
+                </View>
+            }
+        >
 
             {loading ? (
                 <FlatList
@@ -277,7 +270,7 @@ export const LikedVideosScreen: React.FC = () => {
                     }
                 />
             )}
-        </SafeAreaView>
+        </ScreenContainer>
     );
 };
 

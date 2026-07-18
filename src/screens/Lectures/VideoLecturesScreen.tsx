@@ -11,6 +11,7 @@ import {
     StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -386,44 +387,22 @@ export const VideoLecturesScreen: React.FC = () => {
         : [`${galleryColor}20`, `${galleryColor}05`];
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
-            <StatusBar backgroundColor={theme.card} barStyle={isDark ? "light-content" : "dark-content"} />
-            {/* Header */}
-            <View style={[
-                styles.header,
-                {
-                    backgroundColor: theme.card,
-                    borderBottomWidth: 1,
-                    borderBottomColor: theme.border
-                }
-            ]}>
-                <TouchableOpacity
-                    onPress={() => navigation.goBack()}
-                    style={[styles.backButton, { backgroundColor: isDark ? theme.backgroundSecondary : '#f3f4f6' }]}
-                >
-                    <Ionicons name="chevron-back" size={20} color={theme.text} />
-                </TouchableOpacity>
-
-                <View style={styles.headerInfo}>
-                    <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1}>
-                        {galleryName}
-                    </Text>
-                    <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
-                        {totalVideos} Videos
-                    </Text>
-                </View>
-
+        <ScreenContainer
+            headerTitle={galleryName}
+            headerSubtitle={`${totalVideos} Videos`}
+            rightAction={
                 <TouchableOpacity
                     onPress={handleToggleLike}
-                    style={[styles.actionButton, { backgroundColor: isDark ? theme.backgroundSecondary : '#f3f4f6' }]}
+                    style={[styles.actionButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.2)' }]}
                 >
                     <Ionicons
                         name={isFavorite ? "heart" : "heart-outline"}
                         size={18}
-                        color={isFavorite ? "#ef4444" : theme.text}
+                        color={isFavorite ? "#fca5a5" : "#fff"}
                     />
                 </TouchableOpacity>
-            </View>
+            }
+        >
 
             {/* Fixed Video Player Area */}
             <View>
@@ -711,7 +690,7 @@ export const VideoLecturesScreen: React.FC = () => {
 
                 <View style={{ height: scale(40) }} />
             </ScrollView>
-        </SafeAreaView>
+        </ScreenContainer>
     );
 };
 

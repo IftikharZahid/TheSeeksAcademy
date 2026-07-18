@@ -4,6 +4,7 @@ import {
   StatusBar, Dimensions, Animated, TextInput
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -64,7 +65,7 @@ const SkeletonCard: React.FC<{ isDark: boolean }> = ({ isDark }) => {
 const EmptyState: React.FC<{ theme: any }> = ({ theme }) => (
   <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: scale(60), paddingHorizontal: scale(24) }}>
     <View style={{ width: scale(72), height: scale(72), borderRadius: scale(20), backgroundColor: theme.card, alignItems: 'center', justifyContent: 'center', marginBottom: scale(18), shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}>
-      <Ionicons name="library-outline" size={scale(34)} color={theme.placeholder} />
+      <Ionicons name="library-outline" size={scale(34)} color="rgba(255,255,255,0.7)" />
     </View>
     <Text style={{ fontSize: scale(17), fontWeight: '700', color: theme.text, marginBottom: scale(8), textAlign: 'center' }}>No Sections Yet</Text>
     <Text style={{ fontSize: scale(13), color: theme.textSecondary, textAlign: 'center', lineHeight: scale(19) }}>
@@ -155,12 +156,9 @@ export const LibraryScreen: React.FC = () => {
   const palette = ['#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#eab308', '#ec4899', '#6366f1', '#f43f5e', '#0ea5e9', '#22c55e'];
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background, paddingTop: insets.top }]}>
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top, backgroundColor: theme.card, zIndex: 999 }} />
-      <StatusBar translucent={true} backgroundColor="transparent" barStyle={isDark ? 'light-content' : 'dark-content'} />
-
-      {/* Header */}
-      <View style={[styles.header, { borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomWidth: 0,  backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+    <ScreenContainer useBottomInset={false} useTopInset={false} statusBarColor={theme.primary}>
+      {/* Custom Library Header */}
+      <View style={[styles.header, { borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomWidth: 0, backgroundColor: theme.primary, borderBottomColor: theme.primary, paddingTop: Math.max(insets.top, 10) + scale(10) }]}>
         {!isSearching ? (
           <>
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
@@ -180,34 +178,34 @@ export const LibraryScreen: React.FC = () => {
                 style={styles.headerBtn}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="arrow-back" size={scale(22)} color={theme.text} />
+                <Ionicons name="arrow-back" size={scale(22)} color="#ffffff" />
               </TouchableOpacity>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="library" size={scale(26)} color="#6366f1" style={{ marginRight: scale(8) }} />
+                <Ionicons name="library" size={scale(26)} color="#ffffff" style={{ marginRight: scale(8) }} />
                 <View>
-                  <Text style={[styles.headerTitle, { color: theme.text }]}>e-Library</Text>
-                  <Text style={[styles.headerSub, { color: theme.placeholder }]}>Educational resources & materials</Text>
+                  <Text style={[styles.headerTitle, { color: '#ffffff' }]}>e-Library</Text>
+                  <Text style={[styles.headerSub, { color: 'rgba(255,255,255,0.7)' }]}>Educational resources & materials</Text>
                 </View>
               </View>
             </View>
 
             <TouchableOpacity style={styles.searchBtn} onPress={() => setIsSearching(true)}>
-              <Ionicons name="search" size={scale(18)} color="#6366f1" />
+              <Ionicons name="search" size={scale(18)} color="#ffffff" />
             </TouchableOpacity>
           </>
         ) : (
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, backgroundColor: isDark ? 'rgba(51,65,85,0.4)' : '#f1f5f9', borderRadius: scale(10), paddingHorizontal: scale(10) }}>
-            <Ionicons name="search" size={scale(18)} color={theme.placeholder} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: scale(10), paddingHorizontal: scale(10) }}>
+            <Ionicons name="search" size={scale(18)} color="rgba(255,255,255,0.7)" />
             <TextInput
-              style={{ flex: 1, paddingVertical: scale(8), paddingHorizontal: scale(8), color: theme.text, fontSize: scale(14) }}
+              style={{ flex: 1, paddingVertical: scale(8), paddingHorizontal: scale(8), color: '#ffffff', fontSize: scale(14) }}
               placeholder="Search sections..."
-              placeholderTextColor={theme.placeholder}
+              placeholderTextColor="rgba(255,255,255,0.7)"
               value={searchQuery}
               onChangeText={setSearchQuery}
               autoFocus
             />
             <TouchableOpacity onPress={() => { setIsSearching(false); setSearchQuery(''); }} style={{ padding: scale(4) }}>
-              <Ionicons name="close-circle" size={scale(18)} color={theme.placeholder} />
+              <Ionicons name="close-circle" size={scale(18)} color="rgba(255,255,255,0.7)" />
             </TouchableOpacity>
           </View>
         )}
@@ -232,8 +230,8 @@ export const LibraryScreen: React.FC = () => {
             </Text>
           </View>
           <View style={styles.heroIllustration}>
-            <Ionicons name="library" size={scale(55)} color={isDark ? 'rgba(99,102,241,0.2)' : '#e0e7ff'} style={{ position: 'absolute', right: scale(10), bottom: scale(5) }} />
-            <Ionicons name="book" size={scale(35)} color={isDark ? 'rgba(99,102,241,0.4)' : '#c7d2fe'} style={{ position: 'absolute', right: scale(35), bottom: scale(15) }} />
+            <Ionicons name="library" size={scale(55)} color="#ffffff" style={{ position: 'absolute', right: scale(10), bottom: scale(5) }} />
+            <Ionicons name="book" size={scale(35)} color="#ffffff" style={{ position: 'absolute', right: scale(35), bottom: scale(15) }} />
             <Ionicons name="school" size={scale(25)} color="#6366f1" style={{ position: 'absolute', right: scale(15), top: scale(10) }} />
           </View>
         </LinearGradient>
@@ -306,7 +304,7 @@ export const LibraryScreen: React.FC = () => {
           </View>
         )}
       </ScrollView>
-    </View>
+    </ScreenContainer>
   );
 };
 

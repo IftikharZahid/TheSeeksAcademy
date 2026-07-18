@@ -75,7 +75,7 @@ export const AppNavigator: React.FC = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={theme.background} />
+      <StatusBar barStyle="light-content" backgroundColor={theme.primary} />
       <NavigationContainer theme={navigationTheme}>
         <Stack.Navigator
           initialRouteName={user ? "Main" : "Welcome"}

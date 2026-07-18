@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Linking } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,24 +19,7 @@ export const AboutScreen: React.FC = () => {
   ];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      {/* ── Top Bar ───────────────────────────────────────────────────── */}
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          style={[styles.iconBtn, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={scale(16)} color={theme.text} />
-        </TouchableOpacity>
-
-        <View style={styles.titleCenter}>
-          <Text style={[styles.screenTitle, { color: theme.text }]}>About</Text>
-        </View>
-
-        <View style={styles.iconBtn} />
-      </View>
-
+    <ScreenContainer headerTitle="About">
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* ── App Identity & Stats ────────────────────────────────────────────── */}
         <LinearGradient
@@ -123,12 +106,12 @@ export const AboutScreen: React.FC = () => {
 
         <View style={styles.footerWrap}>
           <Text style={[styles.footerText, { color: theme.textSecondary }]}>Made with ❤️ by </Text>
-          <TouchableOpacity onPress={() => Linking.openURL('https://zahid.codes')} activeOpacity={0.7} hitSlop={{ top: scale(10), bottom: scale(10), left: scale(10), right: scale(10) }}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://iftikharzahid.github.io')} activeOpacity={0.7} hitSlop={{ top: scale(10), bottom: scale(10), left: scale(10), right: scale(10) }}>
             <Text style={[styles.footerLink, { color: theme.primary }]}>ZahidCodes</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 

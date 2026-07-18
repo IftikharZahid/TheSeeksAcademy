@@ -47,11 +47,11 @@ const themeSlice = createSlice({
     reducers: {
         toggleTheme(state) {
             state.mode = state.mode === 'light' ? 'dark' : 'light';
-            StatusBar.setBarStyle(state.mode === 'dark' ? 'light-content' : 'dark-content');
+            StatusBar.setBarStyle('light-content');
         },
         setThemeMode(state, action: PayloadAction<ThemeMode>) {
             state.mode = action.payload;
-            StatusBar.setBarStyle(action.payload === 'dark' ? 'light-content' : 'dark-content');
+            StatusBar.setBarStyle('light-content');
         },
     },
     extraReducers: (builder) => {
@@ -59,7 +59,7 @@ const themeSlice = createSlice({
             .addCase(loadSavedTheme.fulfilled, (state, action) => {
                 state.mode = action.payload;
                 state.isLoading = false;
-                StatusBar.setBarStyle(action.payload === 'dark' ? 'light-content' : 'dark-content');
+                StatusBar.setBarStyle('light-content');
             })
             .addCase(loadSavedTheme.rejected, (state) => {
                 state.isLoading = false;

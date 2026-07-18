@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, StatusBar } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenContainer } from "../../components/layout/ScreenContainer";
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
@@ -37,13 +37,14 @@ export const DiaryScreen: React.FC = () => {
   
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [refreshing, setRefreshing] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   const weekDays = React.useMemo(() => generateWeekDays(), []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const unsubDiaries = initDiariesListener(dispatch, profile?.class);
+      // Fetch all diaries and filter on the client to handle complex class/gender naming conventions
+      const unsubDiaries = initDiariesListener(dispatch);
       await new Promise((r) => setTimeout(r, 1000)); // wait for fetch
       unsubDiaries();
     } catch (e) {
@@ -57,7 +58,6 @@ export const DiaryScreen: React.FC = () => {
 
   // Mark Diaries as Read
   const handleViewDiary = (docId: string) => {
-    setExpandedId(expandedId === docId ? null : docId);
     if (!readDiaryIds.includes(docId)) {
       dispatch(markDiaryAsRead(docId));
       persistReadDiaryIds([...readDiaryIds, docId]).catch(() => {});
@@ -66,7 +66,6 @@ export const DiaryScreen: React.FC = () => {
 
   const renderEntry = ({ item }: { item: DiaryEntry }) => {
     const isUnread = !readDiaryIds.includes(item.id);
-    const isExpanded = expandedId === item.id;
     return (
       <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <View style={styles.cardHeader}>
@@ -74,89 +73,124 @@ export const DiaryScreen: React.FC = () => {
             <View style={[styles.iconWrap, { backgroundColor: isDark ? '#8b5cf620' : '#e0e7ff' }]}>
               <Ionicons name="book-outline" size={scale(18)} color="#8b5cf6" />
             </View>
-            <View>
-              <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>{item.title}</Text>
-              <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
+            <View style={{ flex: 1, paddingRight: scale(10) }}>
+              <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={2}>{item.title}</Text>
+              <Text style={[styles.cardSubtitle, { color: theme.textSecondary, marginTop: scale(2) }]}>
                 {item.subject}
               </Text>
             </View>
           </View>
-          <Text style={[styles.cardDate, { color: theme.textTertiary }]}>
-            {item.date ? new Date(item.date).toLocaleDateString() : ''}
-          </Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[styles.cardDate, { color: theme.textTertiary }]}>
+              {item.date ? new Date(item.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : ''}
+            </Text>
+            {isUnread && (
+               <View style={{ marginTop: scale(4), backgroundColor: '#22c55e15', paddingHorizontal: scale(6), paddingVertical: scale(2), borderRadius: scale(4), borderWidth: 1, borderColor: '#22c55e30' }}>
+                 <Text style={{ color: '#22c55e', fontSize: scale(9), fontWeight: '700' }}>NEW</Text>
+               </View>
+            )}
+          </View>
         </View>
+        
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
         
-        {isExpanded ? (
-          <>
-            <Text style={[styles.cardDetails, { color: theme.text }]} selectable>
-              {item.details}
-            </Text>
-            <TouchableOpacity 
-              style={[styles.viewButton, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1, marginTop: scale(10) }]}
-              onPress={() => handleViewDiary(item.id)}
-            >
-              <Text style={[styles.viewButtonText, { color: theme.text }]}>Close</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <View style={styles.viewRow}>
-            <Text style={[styles.cardDetails, { color: theme.textSecondary, flex: 1 }]} numberOfLines={2}>
-              {item.details}
-            </Text>
-            <TouchableOpacity 
-              style={[
-                styles.viewButton, 
-                { backgroundColor: isUnread ? '#22c55e' : theme.primary }
-              ]}
-              onPress={() => handleViewDiary(item.id)}
-            >
-              <Text style={[styles.viewButtonText, { color: '#fff' }]}>View</Text>
-            </TouchableOpacity>
-          </View>
+        <Text style={[styles.cardDetails, { color: theme.text, flex: 1, marginBottom: isUnread ? scale(10) : 0 }]} selectable>
+          {item.details}
+        </Text>
+
+        {isUnread && (
+          <TouchableOpacity 
+            style={{ 
+              backgroundColor: isDark ? '#22c55e20' : '#f0fdf4', 
+              borderColor: '#22c55e40', 
+              borderWidth: 1, 
+              alignSelf: 'flex-start', 
+              paddingHorizontal: scale(12), 
+              paddingVertical: scale(6), 
+              borderRadius: scale(6), 
+              flexDirection: 'row',
+              alignItems: 'center'
+            }}
+            onPress={() => handleViewDiary(item.id)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="checkmark-circle-outline" size={scale(14)} color="#22c55e" style={{ marginRight: scale(4) }} />
+            <Text style={{ color: '#22c55e', fontSize: scale(11), fontWeight: '600' }}>Mark as Read</Text>
+          </TouchableOpacity>
         )}
       </View>
     );
   };
 
+  const userClass = profile?.class ? profile.class.toLowerCase().trim() : '';
   const userGender = profile?.gender ? profile.gender.toLowerCase().trim() : '';
-  const isMale = userGender === 'male' || userGender === 'boy' || userGender === 'boys';
-  const isFemale = userGender === 'female' || userGender === 'girl' || userGender === 'girls';
+  
+  // Determine user's gender accurately by checking both gender field and class name
+  const isMaleUser = ['male', 'boy', 'boys', 'm'].includes(userGender) || userClass.includes('boy') || userClass.includes('male');
+  const isFemaleUser = ['female', 'girl', 'girls', 'f'].includes(userGender) || userClass.includes('girl') || userClass.includes('female');
+
+  // Extract base class (e.g., "10th boys" -> "10th")
+  const userBaseClass = userClass.replace(/boys?|girls?|male|female/g, '').trim();
 
   const filteredEntries = entries.filter(entry => {
     if (!entry.date) return false;
     const dateMatch = new Date(entry.date).toDateString() === selectedDate.toDateString();
 
-    let matchGender = true;
-    if ((entry as any).gender && (entry as any).gender.toLowerCase().trim() !== 'all') {
-      const entryGender = (entry as any).gender.toLowerCase().trim();
-      const entryIsMale = ['boys', 'boy', 'male', 'm'].includes(entryGender);
-      const entryIsFemale = ['girls', 'girl', 'female', 'f'].includes(entryGender);
-      
-      if (entryIsMale) {
-        matchGender = isMale;
-      } else if (entryIsFemale) {
-        matchGender = isFemale;
-      }
+    const entryClass = (entry.className || '').toLowerCase().trim();
+    const rawEntryGender = (entry as any).audience || (entry as any).gender;
+    const explicitEntryGender = rawEntryGender ? String(rawEntryGender).toLowerCase().trim() : '';
+
+    // Determine entry's gender
+    const isMaleEntry = ['boys', 'boy', 'male', 'm'].includes(explicitEntryGender) || entryClass.includes('boy') || entryClass.includes('male');
+    const isFemaleEntry = ['girls', 'girl', 'female', 'f'].includes(explicitEntryGender) || entryClass.includes('girl') || entryClass.includes('female');
+    const isAllEntry = explicitEntryGender === 'all' || explicitEntryGender === 'both';
+
+    const entryBaseClass = entryClass.replace(/boys?|girls?|male|female/g, '').trim();
+
+    // Ensure the entry belongs to the user's class
+    let matchClass = false;
+    if (!userClass || !entryClass) {
+      matchClass = true; // Fallback if missing
+    } else if (userBaseClass === entryBaseClass || userClass === entryClass) {
+      matchClass = true;
     }
 
-    return dateMatch && matchGender;
+    // Ensure the entry belongs to the user's gender
+    let matchGender = false;
+    if (isAllEntry) {
+      matchGender = true;
+    } else if (isMaleUser && isMaleEntry) {
+      matchGender = true;
+    } else if (isFemaleUser && isFemaleEntry) {
+      matchGender = true;
+    } else if (!isMaleEntry && !isFemaleEntry) {
+      // If entry has no specific gender assigned, treat as general for the class
+      matchGender = true;
+    } else if (userClass === entryClass) {
+      // Fallback if class strings match exactly
+      matchGender = true;
+    }
+
+    // STRICT OVERRIDE: Prevent cross-gender viewing even if audience was accidentally set to 'Both'
+    if (isFemaleUser && !isMaleUser && isMaleEntry && !isFemaleEntry) {
+      matchGender = false; // Female user cannot see male-only entry
+    }
+    if (isMaleUser && !isFemaleUser && isFemaleEntry && !isMaleEntry) {
+      matchGender = false; // Male user cannot see female-only entry
+    }
+
+    return dateMatch && matchClass && matchGender;
   });
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
-      <StatusBar backgroundColor={theme.card} barStyle={isDark ? 'light-content' : 'dark-content'} />
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.card, borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomColor: theme.border, borderBottomWidth: 0 }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={scale(24)} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Daily Diary</Text>
+    <ScreenContainer 
+      headerTitle="Daily Diary"
+      rightAction={
         <TouchableOpacity style={styles.backButton} onPress={onRefresh} disabled={refreshing}>
-          <Ionicons name="refresh" size={scale(22)} color={refreshing ? theme.textTertiary : theme.text} />
+          <Ionicons name="refresh" size={scale(22)} color={refreshing ? 'rgba(255,255,255,0.5)' : '#ffffff'} />
         </TouchableOpacity>
-      </View>
-
+      }
+    >
       {/* Weekly Calendar Filter */}
       <View style={[styles.calendarContainer, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <View style={styles.calendarRow}>
@@ -235,7 +269,7 @@ export const DiaryScreen: React.FC = () => {
           }
         />
       )}
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 

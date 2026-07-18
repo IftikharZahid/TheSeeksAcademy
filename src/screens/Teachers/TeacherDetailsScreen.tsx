@@ -1,6 +1,7 @@
 import React, { useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Dimensions, StatusBar, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -63,32 +64,13 @@ export const StaffInfoScreen: React.FC = () => {
 
 
   // Modern Header Background Color
-  const headerBg = isDark ? theme.backgroundSecondary : theme.primary; // Dark mode: nice dark gray, Light mode: primary color
+  const headerBg = theme.primary;
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor={headerBg} />
-
-      {/* Layer 1: Purple Background (BACK) */}
-      <View style={[styles.headerBackground, { backgroundColor: headerBg }]} />
-
-      {/* Layer 3: Floating Buttons (FRONT - always on top) */}
-      <SafeAreaView edges={['top']} style={styles.floatingButtonsContainer}>
-        <View style={styles.headerTopRow}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={[styles.iconButton, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
-          >
-            <Ionicons name="arrow-back" size={scale(24)} color="#ffffff" />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: '#ffffff' }]}>Teacher Profile</Text>
-          <View style={{ width: scale(40) }} />
-        </View>
-      </SafeAreaView>
-
+    <ScreenContainer headerTitle="Teacher Profile">
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={{ paddingVertical: scale(16) }}
         bounces={false}
       >
         {/* Profile Info Card (Overlapping) */}
@@ -218,7 +200,7 @@ export const StaffInfoScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-    </View>
+    </ScreenContainer>
   );
 };
 

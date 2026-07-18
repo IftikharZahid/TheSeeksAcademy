@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet, ScrollView, Animated, TouchableOpacity, Modal, Dimensions, Easing, RefreshControl, StatusBar } from "react-native";
 
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ScreenContainer } from "../../components/layout/ScreenContainer";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { useTheme } from '../../context/ThemeContext';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -336,27 +336,15 @@ export const AttendanceScreen: React.FC = () => {
         };
     }
   };
-
   const modalDetails = getModalContent(selectedDayInfo?.status);
 
   /* -----------------------------
         RENDER
   ------------------------------ */
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={["top", "left", "right"]}>
-      <StatusBar 
-        backgroundColor={theme.card} 
-        barStyle={isDark ? 'light-content' : 'dark-content'} 
-      />
-      {/* Header */}
-      <View style={[styles.header, { borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomWidth: 0,  backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color={theme.text} />
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Ionicons name="shield-checkmark" size={18} color={theme.primary} style={styles.headerIcon} />
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Attendance</Text>
-        </View>
+    <ScreenContainer 
+      headerTitle="Attendance"
+      rightAction={
         <View style={[
           styles.compactScore,
           {
@@ -364,13 +352,13 @@ export const AttendanceScreen: React.FC = () => {
             borderColor: isDark ? 'rgba(16, 185, 129, 0.2)' : '#a7f3d0',
           }
         ]}>
-          <Ionicons name="stats-chart" size={11} color={isDark ? '#34d399' : '#059669'} style={styles.scoreIcon} />
+          <Ionicons name="stats-chart" size={11} color="#ffffff" style={styles.scoreIcon} />
           <Text style={[styles.compactPercentage, { color: isDark ? '#34d399' : '#059669' }]}>
             {summary.percentage > 0 ? `${summary.percentage}%` : '—'}
           </Text>
         </View>
-      </View>
-
+      }
+    >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -513,7 +501,7 @@ export const AttendanceScreen: React.FC = () => {
             }
           ]}>
             <View style={styles.summaryMiniHeader}>
-              <Ionicons name="checkmark-circle" size={14} color={isDark ? '#34d399' : '#10b981'} />
+              <Ionicons name="checkmark-circle" size={14} color="#ffffff" />
               <Text style={[styles.summaryMiniLabel, { color: theme.textSecondary }]}>Present</Text>
             </View>
             <Text style={[styles.summaryMiniNumber, { color: isDark ? '#34d399' : '#059669' }]}>
@@ -530,7 +518,7 @@ export const AttendanceScreen: React.FC = () => {
             }
           ]}>
             <View style={styles.summaryMiniHeader}>
-              <Ionicons name="close-circle" size={14} color={isDark ? '#f87171' : '#ef4444'} />
+              <Ionicons name="close-circle" size={14} color="#ffffff" />
               <Text style={[styles.summaryMiniLabel, { color: theme.textSecondary }]}>Absent</Text>
             </View>
             <Text style={[styles.summaryMiniNumber, { color: isDark ? '#f87171' : '#dc2626' }]}>
@@ -547,7 +535,7 @@ export const AttendanceScreen: React.FC = () => {
             }
           ]}>
             <View style={styles.summaryMiniHeader}>
-              <Ionicons name="time" size={14} color={isDark ? '#fbbf24' : '#f59e0b'} />
+              <Ionicons name="time" size={14} color="#ffffff" />
               <Text style={[styles.summaryMiniLabel, { color: theme.textSecondary }]}>Late</Text>
             </View>
             <Text style={[styles.summaryMiniNumber, { color: isDark ? '#fbbf24' : '#d97706' }]}>
@@ -660,7 +648,7 @@ export const AttendanceScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView >
+    </ScreenContainer>
   );
 };
 

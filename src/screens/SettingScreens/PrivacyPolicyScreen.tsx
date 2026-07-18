@@ -8,7 +8,7 @@ import {
   Linking,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScreenContainer } from '../../components/layout/ScreenContainer';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,21 +19,7 @@ export const PrivacyPolicyScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
-      <StatusBar backgroundColor={theme.card} barStyle={isDark ? 'light-content' : 'dark-content'} />
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.card, borderBottomLeftRadius: scale(24), borderBottomRightRadius: scale(24), shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 8, zIndex: 10, borderBottomColor: theme.border, borderBottomWidth: 0 }]}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={[styles.backBtn, { backgroundColor: theme.backgroundSecondary }]}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={20} color={theme.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Privacy & Policy</Text>
-        <View style={{ width: scale(36) }} />
-      </View>
-
+    <ScreenContainer headerTitle="Privacy & Policy">
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Last Updated Badge/Card */}
         <View style={[styles.lastUpdatedCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -152,7 +138,7 @@ export const PrivacyPolicyScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 

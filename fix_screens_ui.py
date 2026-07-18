@@ -1,89 +1,60 @@
+import os
 import re
 
-def fix_helpcenter():
-    path = "src/screens/SettingScreens/HelpCenterScreen.tsx"
-    with open(path, "r", encoding="utf-8") as f:
+src_dir = r'c:\p\TheSeeks-Students\src\screens'
+
+def process_file(filepath):
+    with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    # Imports
-    content = content.replace("Linking,\n}", "Linking,\n  StatusBar\n}")
-    content = content.replace("import { SafeAreaView } from 'react-native-safe-area-context';", "import { useSafeAreaInsets } from 'react-native-safe-area-context';")
+    original = content
+
+    # Replace Header Background Colors
+    # Usually looks like: backgroundColor: isDark ? theme.card : '#fff'
+    # Or: backgroundColor: theme.card
+    # Or: backgroundColor: theme.background
+    # We want to find patterns where it's part of styles.header or similar View
     
-    # Hooks
-    if "const insets = useSafeAreaInsets();" not in content:
-        content = content.replace("const { theme } = useTheme();", "const { theme } = useTheme();\n  const insets = useSafeAreaInsets();")
-
-    # Layout
-    content = content.replace("<SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right', 'bottom']}>", 
-                              "<View style={[styles.container, { backgroundColor: theme.background }]}>\n      <StatusBar translucent backgroundColor=\"transparent\" barStyle=\"light-content\" />")
-    content = content.replace("</SafeAreaView>", "</View>")
+    # 1. Any <View style={[styles.header, { backgroundColor: ... }]}
+    content = re.sub(
+        r'(<View[^>]*styles\.header[^>]*backgroundColor:\s*)(?:isDark\s*\?\s*[^:]+\s*:\s*[^,}]+|theme\.[a-zA-Z]+|[\'"]#[a-fA-F0-9]+[\'"])',
+        r'\1theme.primary',
+        content
+    )
     
-    # Header
-    content = re.sub(r'<View style=\s*\{\[styles\.header,\s*\{\s*borderBottomColor:\s*theme\.border\s*\}\]\}>',
-                     r'<View style={[styles.header, { backgroundColor: theme.primary, paddingTop: insets.top + 15, paddingBottom: 15 }]}>', content)
-    content = content.replace("color={theme.text} />", 'color="#fff" />')
-    content = content.replace("style={[styles.backBtn, { backgroundColor: theme.backgroundSecondary }]}", "style={styles.backBtn}")
-    content = content.replace("color: theme.text }]}>Help Center", "color: '#fff' }]}>Help Center")
+    # 2. Text colors in headers to #ffffff
+    # Let's target text that has styles.headerTitle or headerSub
+    content = re.sub(
+        r'(<Text[^>]*styles\.headerTitle[^>]*color:\s*)(?:isDark\s*\?\s*[^:]+\s*:\s*[^,}]+|theme\.text|theme\.[a-zA-Z]+|[\'"]#[a-fA-F0-9]+[\'"])',
+        r'\1\'#ffffff\'',
+        content
+    )
+    content = re.sub(
+        r'(<Text[^>]*styles\.headerSub[^>]*color:\s*)(?:isDark\s*\?\s*[^:]+\s*:\s*[^,}]+|theme\.placeholder|theme\.[a-zA-Z]+|[\'"]#[a-fA-F0-9]+[\'"])',
+        r'\1\'rgba(255,255,255,0.7)\'',
+        content
+    )
     
-    # Bottom padding
-    content = content.replace("style={[styles.bottomContainer, { borderTopColor: theme.border, backgroundColor: theme.background }]}",
-                              "style={[styles.bottomContainer, { borderTopColor: theme.border, backgroundColor: theme.background, paddingBottom: insets.bottom + 20 }]}")
+    # 3. Ionicons in headers
+    # <Ionicons name="arrow-back" ... color={theme.text} /> -> color="#ffffff"
+    content = re.sub(
+        r'(<Ionicons[^>]*color=)\{?(?:theme\.text|isDark\s*\?\s*[^:]+\s*:\s*[^}]+)\}?',
+        r'\1"#ffffff"',
+        content
+    )
 
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
+    # Specific fix for StudentLibraryScreen.tsx
+    if 'StudentLibraryScreen.tsx' in filepath:
+        content = re.sub(r'color:\s*theme\.text(\s*\}\])\s*>\s*e-Library', r'color: \'#ffffff\'\1>e-Library', content)
+        content = re.sub(r'color:\s*theme\.placeholder(\s*\}\])\s*>\s*Educational', r'color: \'rgba(255,255,255,0.7)\'\1>Educational', content)
+        
+    if content != original:
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f'Updated {filepath}')
 
-def fix_about():
-    path = "src/screens/SettingScreens/AboutScreen.tsx"
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
+for root, _, files in os.walk(src_dir):
+    for file in files:
+        if file.endswith('.tsx') or file.endswith('.ts'):
+            process_file(os.path.join(root, file))
 
-    content = content.replace("Linking,\n}", "Linking,\n  StatusBar\n}")
-    content = content.replace("import { SafeAreaView } from 'react-native-safe-area-context';", "import { useSafeAreaInsets } from 'react-native-safe-area-context';")
-    if "const insets = useSafeAreaInsets();" not in content:
-        content = content.replace("const { theme, isDark } = useTheme();", "const { theme, isDark } = useTheme();\n  const insets = useSafeAreaInsets();")
-
-    content = content.replace("<SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>", 
-                              "<View style={[styles.container, { backgroundColor: theme.background }]}>\n      <StatusBar translucent backgroundColor=\"transparent\" barStyle=\"light-content\" />")
-    content = content.replace("</SafeAreaView>", "</View>")
-    
-    content = re.sub(r'<View style=\s*\{\[styles\.header,\s*\{\s*borderBottomColor:\s*theme\.border\s*\}\]\}>',
-                     r'<View style={[styles.header, { backgroundColor: theme.primary, paddingTop: insets.top + 15, paddingBottom: 15 }]}>', content)
-    content = content.replace("color={theme.text} />", 'color="#fff" />')
-    content = content.replace("style={[styles.backBtn, { backgroundColor: theme.backgroundSecondary }]}", "style={styles.backBtn}")
-    content = content.replace("color: theme.text }]}>About", "color: '#fff' }]}>About")
-    
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
-
-def fix_settings():
-    path = "src/screens/SettingScreens/SettingsScreen.tsx"
-    with open(path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    content = content.replace("Switch,\n}", "Switch,\n  StatusBar\n}")
-    content = content.replace("import { SafeAreaView } from 'react-native-safe-area-context';", "import { useSafeAreaInsets } from 'react-native-safe-area-context';")
-    if "const insets = useSafeAreaInsets();" not in content:
-        content = content.replace("const { theme, isDark, toggleTheme } = useTheme();", "const { theme, isDark, toggleTheme } = useTheme();\n  const insets = useSafeAreaInsets();")
-
-    content = content.replace("<SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>", 
-                              "<View style={[styles.container, { backgroundColor: theme.background }]}>\n      <StatusBar translucent backgroundColor=\"transparent\" barStyle=\"light-content\" />")
-    content = content.replace("</SafeAreaView>", "</View>")
-    
-    content = re.sub(r'<View style=\s*\{\[styles\.header,\s*\{\s*borderBottomColor:\s*theme\.border\s*\}\]\}>',
-                     r'<View style={[styles.header, { backgroundColor: theme.primary, paddingTop: insets.top + 15, paddingBottom: 15 }]}>', content)
-    content = content.replace("color={theme.text} />", 'color="#fff" />')
-    content = content.replace("style={[styles.backBtn, { backgroundColor: theme.backgroundSecondary }]}", "style={styles.backBtn}")
-    content = content.replace("color: theme.text }]}>Settings", "color: '#fff' }]}>Settings")
-    
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
-
-try:
-    fix_helpcenter()
-    print("Fixed HelpCenter")
-    fix_about()
-    print("Fixed About")
-    fix_settings()
-    print("Fixed Settings")
-except Exception as e:
-    print(f"Error: {e}")
