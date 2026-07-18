@@ -297,11 +297,11 @@ export const HomeScreen: React.FC = () => {
           source={require('../../assets/the-seeks-logo.png')} 
           style={{ position: 'absolute', right: -scale(135), top: scale(40), width: scale(430), height: scale(90), opacity: 0.15, resizeMode: 'contain' }}        />
       </LinearGradient>
-
-      <View style={{ flex: 1, marginTop: insets.top + scale(50) }}>
+      {/* The header section is a gradient background with the logo. It is fixed at the top and does not scroll.*/}
+      <View style={{ flex: 1, marginTop: insets.top + scale(60) }}>
         <ScrollView
           style={styles.container}
-          contentContainerStyle={{ paddingBottom: scale(10), paddingTop: scale(10) }}
+          contentContainerStyle={{ paddingBottom: scale(10) }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
