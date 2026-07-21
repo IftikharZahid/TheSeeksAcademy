@@ -12,18 +12,24 @@ import { markDiaryAsRead, persistReadDiaryIds, DiaryEntry, initDiariesListener }
 
 const generateWeekDays = () => {
   const today = new Date();
+  today.setHours(0, 0, 0, 0); // reset time
   const days = [];
-  const currentDay = today.getDay(); // 0 is Sunday
-  const diff = today.getDate() - currentDay + (currentDay === 0 ? -6 : 1); // Get Monday
-  const startOfWeek = new Date(today.setDate(diff));
-  startOfWeek.setHours(0, 0, 0, 0); // reset time
   
-  for(let i = 0; i < 7; i++) {
-    const day = new Date(startOfWeek);
-    day.setDate(startOfWeek.getDate() + i);
+  // Create a rolling window of the past 7 days (6 days ago + today)
+  // This ensures the diary doesn't wipe out on Monday, but gradually drops the oldest day
+  for(let i = 6; i >= 0; i--) {
+    const day = new Date(today);
+    day.setDate(today.getDate() - i);
     days.push(day);
   }
   return days;
+};
+
+const getLocalDateStr = (d: Date | string | null) => {
+  if (!d) return '';
+  const dateObj = new Date(d);
+  if (isNaN(dateObj.getTime())) return '';
+  return `${dateObj.getFullYear()}-${(dateObj.getMonth()+1).toString().padStart(2, '0')}-${dateObj.getDate().toString().padStart(2, '0')}`;
 };
 
 export const DiaryScreen: React.FC = () => {
@@ -42,17 +48,12 @@ export const DiaryScreen: React.FC = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    try {
-      // Fetch all diaries and filter on the client to handle complex class/gender naming conventions
-      const unsubDiaries = initDiariesListener(dispatch);
-      await new Promise((r) => setTimeout(r, 1000)); // wait for fetch
-      unsubDiaries();
-    } catch (e) {
-      console.warn('Error refreshing diaries:', e);
-    } finally {
+    // Data is already managed and synced in real-time by Redux Toolkit (via App.tsx listener).
+    // Simulate a brief refresh for UX.
+    setTimeout(() => {
       setRefreshing(false);
-    }
-  }, [dispatch, profile]);
+    }, 800);
+  }, []);
 
 
 
@@ -125,58 +126,57 @@ export const DiaryScreen: React.FC = () => {
   const userClass = profile?.class ? profile.class.toLowerCase().trim() : '';
   const userGender = profile?.gender ? profile.gender.toLowerCase().trim() : '';
   
-  // Determine user's gender accurately by checking both gender field and class name
-  const isMaleUser = ['male', 'boy', 'boys', 'm'].includes(userGender) || userClass.includes('boy') || userClass.includes('male');
-  const isFemaleUser = ['female', 'girl', 'girls', 'f'].includes(userGender) || userClass.includes('girl') || userClass.includes('female');
+  const classIsBoy = userClass.includes('boy') || userClass.includes('male');
+  const classIsGirl = userClass.includes('girl') || userClass.includes('female');
+  
+  // Determine user's gender accurately by giving priority to their class name. Fallback to profile gender if not clear.
+  const isMaleUser = classIsBoy || (!classIsGirl && ['male', 'boy', 'boys', 'm'].includes(userGender));
+  const isFemaleUser = classIsGirl || (!classIsBoy && ['female', 'girl', 'girls', 'f'].includes(userGender));
 
   // Extract base class (e.g., "10th boys" -> "10th")
   const userBaseClass = userClass.replace(/boys?|girls?|male|female/g, '').trim();
 
   const filteredEntries = entries.filter(entry => {
     if (!entry.date) return false;
-    const dateMatch = new Date(entry.date).toDateString() === selectedDate.toDateString();
+    const dDateStr = getLocalDateStr(entry.date);
+    const selDateStr = getLocalDateStr(selectedDate);
+    const dateMatch = dDateStr === selDateStr;
 
     const entryClass = (entry.className || '').toLowerCase().trim();
     const rawEntryGender = (entry as any).audience || (entry as any).gender;
     const explicitEntryGender = rawEntryGender ? String(rawEntryGender).toLowerCase().trim() : '';
 
+    const entryIsAllClasses = entryClass === 'all' || entryClass === '';
+
     // Determine entry's gender
     const isMaleEntry = ['boys', 'boy', 'male', 'm'].includes(explicitEntryGender) || entryClass.includes('boy') || entryClass.includes('male');
     const isFemaleEntry = ['girls', 'girl', 'female', 'f'].includes(explicitEntryGender) || entryClass.includes('girl') || entryClass.includes('female');
-    const isAllEntry = explicitEntryGender === 'all' || explicitEntryGender === 'both';
 
     const entryBaseClass = entryClass.replace(/boys?|girls?|male|female/g, '').trim();
 
     // Ensure the entry belongs to the user's class
     let matchClass = false;
-    if (!userClass || !entryClass) {
-      matchClass = true; // Fallback if missing
-    } else if (userBaseClass === entryBaseClass || userClass === entryClass) {
+    if (entryIsAllClasses || !userClass) {
+      matchClass = true; // Fallback if missing or target is all classes
+    } else if (userClass === entryClass) {
+      matchClass = true;
+    } else if (userBaseClass === entryBaseClass) {
       matchClass = true;
     }
 
-    // Ensure the entry belongs to the user's gender
-    let matchGender = false;
-    if (isAllEntry) {
-      matchGender = true;
-    } else if (isMaleUser && isMaleEntry) {
-      matchGender = true;
-    } else if (isFemaleUser && isFemaleEntry) {
-      matchGender = true;
-    } else if (!isMaleEntry && !isFemaleEntry) {
-      // If entry has no specific gender assigned, treat as general for the class
-      matchGender = true;
-    } else if (userClass === entryClass) {
-      // Fallback if class strings match exactly
-      matchGender = true;
-    }
+    if (!matchClass) return false;
 
-    // STRICT OVERRIDE: Prevent cross-gender viewing even if audience was accidentally set to 'Both'
-    if (isFemaleUser && !isMaleUser && isMaleEntry && !isFemaleEntry) {
-      matchGender = false; // Female user cannot see male-only entry
+    // Ensure the entry belongs to the user's gender
+    let matchGender = true;
+
+    // STRICT OVERRIDE: Prevent cross-gender viewing
+    // If entry is specifically for males, but user is definitely female (and not male)
+    if (isMaleEntry && !isFemaleEntry && isFemaleUser && !isMaleUser) {
+      matchGender = false; 
     }
-    if (isMaleUser && !isFemaleUser && isFemaleEntry && !isMaleEntry) {
-      matchGender = false; // Male user cannot see female-only entry
+    // If entry is specifically for females, but user is definitely male (and not female)
+    if (isFemaleEntry && !isMaleEntry && isMaleUser && !isFemaleUser) {
+      matchGender = false;
     }
 
     return dateMatch && matchClass && matchGender;
@@ -264,6 +264,10 @@ export const DiaryScreen: React.FC = () => {
           renderItem={renderEntry}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={10}
+          maxToRenderPerBatch={5}
+          windowSize={5}
+          removeClippedSubviews={true}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
           }

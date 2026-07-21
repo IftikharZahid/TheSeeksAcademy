@@ -19,7 +19,7 @@ import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { selectUnreadMessagesCount, updateLastReadTimestamp } from '../store/slices/messagesSlice';
 import { selectUnreadDiariesCount, markDiaryAsRead, persistReadDiaryIds } from '../store/slices/notificationsSlice';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { useAudioPlayer } from 'expo-audio';
 import { scale } from '../utils/responsive';
 
 const formatRelativeTime = (timeMs: number): string => {
@@ -104,17 +104,7 @@ export const TopHeader: React.FC = () => {
   const bellRotate = useRef(new Animated.Value(0)).current;
   const prevNotifCount = useRef(notificationCount);
   const prevMsgCount = useRef(unreadMessagesCount);
-  const soundRef = useRef<InstanceType<typeof Audio.Sound> | null>(null);
-
-  // Cleanup sound on unmount
-  useEffect(() => {
-    return () => {
-      if (soundRef.current) {
-        soundRef.current.unloadAsync().catch(() => {});
-        soundRef.current = null;
-      }
-    };
-  }, []);
+  const player = useAudioPlayer(require('../../assets/Bell.mp3'));
 
   const ringBell = async () => {
     Animated.sequence([
@@ -126,12 +116,8 @@ export const TopHeader: React.FC = () => {
     ]).start();
 
     try {
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync().catch(() => {});
-      }
-      const { sound } = await Audio.Sound.createAsync(require('../../assets/Bell.mp3'));
-      soundRef.current = sound;
-      await sound.playAsync();
+      player.seekTo(0);
+      player.play();
     } catch (e) {
       console.log('Error playing bell sound:', e);
     }
@@ -250,9 +236,10 @@ export const TopHeader: React.FC = () => {
               {unreadRecentUpdates.length > 0 ? (
                 <ScrollView
                   style={styles.dropdownContent}
-                  showsVerticalScrollIndicator={false}
+                  showsVerticalScrollIndicator={true}
+                  indicatorStyle={isDark ? "white" : "black"}
                 >
-                  {unreadRecentUpdates.slice(0, 5).map((update) => (
+                  {unreadRecentUpdates.slice(0, 30).map((update) => (
                     <TouchableOpacity
                       key={update.id}
                       style={[styles.dropdownItem, { borderBottomColor: theme.border }]}

@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, StatusBar, Dimensions, RefreshControl, FlatList } from 'react-native';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, StatusBar, Dimensions, RefreshControl, FlatList, Modal, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -33,6 +33,44 @@ export const HomeScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [showWelcome, setShowWelcome] = useState(true);
+
+  const popupScale = useRef(new Animated.Value(0.5)).current;
+  const popupOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (showWelcome) {
+      Animated.parallel([
+        Animated.spring(popupScale, {
+          toValue: 1,
+          friction: 8,
+          tension: 120,
+          useNativeDriver: true,
+        }),
+        Animated.timing(popupOpacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      const timer = setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(popupOpacity, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(popupScale, {
+            toValue: 0.9,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]).start(() => setShowWelcome(false));
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [showWelcome, popupScale, popupOpacity]);
 
   const handleScroll = useCallback((event: any) => {
     const slideSize = event.nativeEvent.layoutMeasurement.width;
@@ -295,7 +333,9 @@ export const HomeScreen: React.FC = () => {
       >
         <Image 
           source={require('../../assets/the-seeks-logo.png')} 
-          style={{ position: 'absolute', right: -scale(135), top: scale(40), width: scale(430), height: scale(90), opacity: 0.15, resizeMode: 'contain' }}        />
+          style={{ position: 'absolute', right: -scale(135), top: scale(40), width: scale(430), height: scale(90), opacity: 0.15 }}
+          contentFit="contain"
+        />
       </LinearGradient>
       {/* The header section is a gradient background with the logo. It is fixed at the top and does not scroll.*/}
       <View style={{ flex: 1, marginTop: insets.top + scale(60) }}>
@@ -574,6 +614,104 @@ export const HomeScreen: React.FC = () => {
 
         </ScrollView>
       </View>
+
+      {/* Premium Welcome Popup */}
+      {showWelcome && (
+        <Animated.View style={{ 
+          position: 'absolute', 
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: isDark ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.4)',
+          alignItems: 'center', 
+          justifyContent: 'center',
+          zIndex: 9999, 
+          opacity: popupOpacity,
+        }}>
+          <Animated.View style={{ 
+            backgroundColor: '#ffffff', 
+            width: scale(260),
+            height: scale(260),
+            borderRadius: scale(130),
+            borderWidth: scale(6),
+            borderColor: 'rgba(124, 58, 237, 0.1)', // subtle purple ring around the popup
+            alignItems: 'center', 
+            justifyContent: 'center',
+            shadowColor: '#7c3aed', 
+            shadowOpacity: 0.4, 
+            shadowOffset: { width: 0, height: 0 }, 
+            shadowRadius: 40, 
+            elevation: 25, 
+            transform: [
+              { scale: popupScale }
+            ]
+          }}>
+            {/* Sparkles */}
+            <Text style={{ position: 'absolute', top: scale(50), left: scale(40), fontSize: scale(14), color: '#c4b5fd', opacity: 0.8 }}>✦</Text>
+            <Text style={{ position: 'absolute', top: scale(40), right: scale(50), fontSize: scale(9), color: '#c4b5fd', opacity: 0.6 }}>✦</Text>
+            <Text style={{ position: 'absolute', bottom: scale(80), left: scale(40), fontSize: scale(10), color: '#c4b5fd', opacity: 0.7 }}>✦</Text>
+            <Text style={{ position: 'absolute', top: scale(110), right: scale(35), fontSize: scale(16), color: '#c4b5fd', opacity: 0.5 }}>✦</Text>
+            
+            {/* Waving Hand Icon */}
+            <View style={{
+              width: scale(48), height: scale(48),
+              borderRadius: scale(24),
+              backgroundColor: '#f1f5f9',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: scale(6)
+            }}>
+              <Animated.Text style={{ 
+                fontSize: scale(26),
+                lineHeight: scale(32), 
+                transform: [{
+                  rotate: popupScale.interpolate({
+                    inputRange: [0.8, 1],
+                    outputRange: ['-20deg', '10deg']
+                  })
+                }]
+              }}>
+                👋
+              </Animated.Text>
+            </View>
+            
+            {/* Heading */}
+            <Text style={{ fontSize: scale(16), fontWeight: '700', color: '#1e293b', textAlign: 'center' }}>
+              Welcome,
+            </Text>
+            <Text style={{ fontSize: scale(19), fontWeight: '800', color: '#7c3aed', textAlign: 'center', marginBottom: scale(4) }}>
+              {displayName.split(' ')[0]}!
+            </Text>
+            
+            {/* Divider */}
+            <View style={{ width: scale(30), height: scale(3), borderRadius: scale(2), backgroundColor: '#7c3aed', opacity: 0.3, marginBottom: scale(8) }} />
+            
+            {/* Body */}
+            <Text style={{ fontSize: scale(10.5), color: '#475569', textAlign: 'center', lineHeight: scale(14), marginBottom: scale(14), paddingHorizontal: scale(20) }}>
+              Good to see you again!{'\n'}
+              Keep learning & achieve greatness ✨
+            </Text>
+            
+            {/* Button */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#7c3aed',
+              paddingVertical: scale(8),
+              paddingHorizontal: scale(16),
+              borderRadius: scale(20),
+              shadowColor: '#7c3aed',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 4,
+            }}>
+              <Ionicons name="heart" size={scale(12)} color="#ffffff" style={{ marginRight: scale(4) }} />
+              <Text style={{ fontSize: scale(11), color: '#ffffff', fontWeight: '700' }}>
+                Let's do great today!
+              </Text>
+            </View>
+          </Animated.View>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 };

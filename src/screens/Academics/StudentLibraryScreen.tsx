@@ -52,11 +52,11 @@ const SkeletonCard: React.FC<{ isDark: boolean }> = ({ isDark }) => {
         },
       ]}
     >
-      <View style={[styles.cardIconWrap, { backgroundColor: bg, marginBottom: scale(12) }]} />
-      <View style={{ width: '75%', height: scale(13), borderRadius: 6, backgroundColor: bg, marginBottom: scale(8) }} />
-      <View style={{ width: '100%', height: scale(9), borderRadius: 5, backgroundColor: shimBg, marginBottom: scale(5) }} />
-      <View style={{ width: '60%', height: scale(9), borderRadius: 5, backgroundColor: shimBg, marginBottom: scale(12) }} />
-      <View style={{ width: scale(60), height: scale(22), borderRadius: scale(10), backgroundColor: bg }} />
+      <View style={[styles.cardIconWrap, { backgroundColor: bg }]} />
+      <View style={styles.cardContent}>
+        <View style={{ width: '85%', height: scale(13), borderRadius: 6, backgroundColor: bg, marginBottom: scale(6) }} />
+        <View style={{ width: '60%', height: scale(9), borderRadius: 5, backgroundColor: shimBg }} />
+      </View>
     </Animated.View>
   );
 };

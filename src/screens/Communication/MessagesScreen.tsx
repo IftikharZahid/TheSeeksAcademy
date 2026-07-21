@@ -15,7 +15,7 @@ import { scale } from '../../utils/responsive';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, limit, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../../api/firebaseConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Audio } from 'expo-av';
+import { useAudioPlayer } from 'expo-audio';
 import * as Clipboard from 'expo-clipboard';
 
 // Blinking dot component for unread messages
@@ -447,7 +447,7 @@ export const MessagesScreen: React.FC = () => {
 
   const flatListRef = useRef<FlatList>(null);
   const prevMsgCountsRef = useRef<Record<string, number>>({});
-  const bellSoundRef = useRef<InstanceType<typeof Audio.Sound> | null>(null);
+  const bellPlayer = useAudioPlayer(require('../../assets/Bell.mp3'));
 
   // User Profile
   const profile = useAppSelector((state: any) => state.auth.profile);
@@ -513,10 +513,6 @@ export const MessagesScreen: React.FC = () => {
     });
     return () => {
       unsubs.forEach(u => u());
-      if (bellSoundRef.current) {
-        bellSoundRef.current.unloadAsync().catch(() => { });
-        bellSoundRef.current = null;
-      }
     };
   }, []);
 
@@ -535,29 +531,14 @@ export const MessagesScreen: React.FC = () => {
     prevMsgCountsRef.current = { ...groupMsgCounts };
 
     if (hasNewMessage) {
-      (async () => {
-        try {
-          if (bellSoundRef.current) {
-            await bellSoundRef.current.unloadAsync().catch(() => { });
-            bellSoundRef.current = null;
-          }
-          const { sound } = await Audio.Sound.createAsync(
-            require('../../assets/Bell.mp3')
-          );
-          bellSoundRef.current = sound;
-          await sound.playAsync();
-          sound.setOnPlaybackStatusUpdate((status) => {
-            if (status.isLoaded && status.didJustFinish) {
-              sound.unloadAsync().catch(() => { });
-              bellSoundRef.current = null;
-            }
-          });
-        } catch (e) {
-          console.log('Bell sound error:', e);
-        }
-      })();
+      try {
+        bellPlayer.seekTo(0);
+        bellPlayer.play();
+      } catch (e) {
+        console.log('Bell sound error:', e);
+      }
     }
-  }, [groupMsgCounts, activeGroup]);
+  }, [groupMsgCounts, activeGroup, bellPlayer]);
 
   // Sync read count for active group
   useEffect(() => {
@@ -1093,6 +1074,10 @@ export const MessagesScreen: React.FC = () => {
           renderItem={renderMessage}
           contentContainerStyle={styles.messagesList}
           keyboardShouldPersistTaps="handled"
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          removeClippedSubviews={true}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
           }

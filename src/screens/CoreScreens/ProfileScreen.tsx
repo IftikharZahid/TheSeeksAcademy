@@ -120,14 +120,41 @@ export const ProfileScreen: React.FC = () => {
     if (!user?.uid || !editField) return;
     setSavingEdit(true);
     try {
-      const docRef = doc(db, 'users', user.uid);
-      await updateDoc(docRef, { [editField]: editValue.trim() });
-      await dispatch(fetchUserProfile({ uid: user.uid, email: user.email }));
+      const trimmedValue = editValue.trim();
+      
+      // OPTIMISTIC REDUX UPDATE (Lightning fast UI)
+      if (profileData) {
+        dispatch(setProfile({ ...profileData, [editField]: trimmedValue }));
+      }
       setEditModalVisible(false);
+
+      // Perform all Firebase updates in the background
+      const docRef = doc(db, 'users', user.uid);
+      const p1 = updateDoc(docRef, { [editField]: trimmedValue });
+      
+      const profileDocRef = doc(db, 'studentsprofile', user.uid);
+      const p2 = setDoc(profileDocRef, { [editField]: trimmedValue }, { merge: true });
+
+      const email = user?.email || profileData?.email;
+      let snap = await getDocs(query(collection(db, 'students'), where('uid', '==', user.uid)));
+      if (snap.empty && email) {
+        snap = await getDocs(query(collection(db, 'students'), where('email', '==', email)));
+      }
+      if (snap.empty && email) {
+        snap = await getDocs(query(collection(db, 'students'), where('email', '==', email.toLowerCase())));
+      }
+      
+      const updatePromises = snap.docs.map(d => updateDoc(doc(db, 'students', d.id), { [editField]: trimmedValue }));
+      await Promise.all([p1, p2, ...updatePromises]);
+
     } catch (error) {
+      console.error('Error saving edit:', error);
       Alert.alert('Error', 'Failed to update profile.');
+      // Revert optimistic update on failure
+      await dispatch(fetchUserProfile({ uid: user.uid, email: user.email }));
+    } finally {
+      setSavingEdit(false);
     }
-    setSavingEdit(false);
   };
 
   const handleCopyEmail = async () => {
@@ -168,15 +195,21 @@ export const ProfileScreen: React.FC = () => {
       await setDoc(docRef, { password: newPassword }, { merge: true });
 
       // Also update in students collection which the admin panel table uses
-      const q = query(collection(db, 'students'), where('email', '==', email.toLowerCase()));
-      const snap = await getDocs(q);
+      let snap = await getDocs(query(collection(db, 'students'), where('uid', '==', auth.currentUser.uid)));
+      if (snap.empty) {
+        snap = await getDocs(query(collection(db, 'students'), where('email', '==', email)));
+      }
+      if (snap.empty) {
+        snap = await getDocs(query(collection(db, 'students'), where('email', '==', email.toLowerCase())));
+      }
+      
       const updatePromises = snap.docs.map(d => updateDoc(doc(db, 'students', d.id), { password: newPassword }));
       await Promise.all(updatePromises);
       
       setPasswordChanged(true);
       setTimeout(() => {
         setPasswordModalVisible(false);
-      }, 2000);
+      }, 400);
     } catch (error: any) {
       const code = error?.code || '';
       if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
